@@ -28,6 +28,9 @@ function createFakeHarness(
     async press() {
       return { success: true };
     },
+    async pointer() {
+      return { success: true };
+    },
     async screenshot() {
       return { path: ".harness/evidence/fake.png", success: true };
     },
@@ -53,6 +56,9 @@ function createFakeHarness(
     async type() {
       return { success: true };
     },
+    async setInputFiles() {
+      return { success: true };
+    },
     async wait() {
       return { success: true };
     },
@@ -66,6 +72,52 @@ function createFakeHarness(
 }
 
 describe("runBrowserTool", () => {
+  test("validates pointer actions before dispatch", async () => {
+    const harness = createFakeHarness(() => undefined);
+    let moved: unknown;
+    harness.pointer = async (input) => {
+      moved = input;
+      return { success: true };
+    };
+    await runBrowserTool(harness, "browser.pointer", {
+      action: "move",
+      x: 600,
+      y: 200,
+      steps: 10,
+    });
+    expect(moved).toEqual({ action: "move", x: 600, y: 200, steps: 10 });
+    for (const params of [
+      { action: "move", x: 10 },
+      { action: "move", x: 0, y: 0, steps: 0 },
+      { action: "click" },
+    ]) {
+      await expect(
+        runBrowserTool(harness, "browser.pointer", params),
+      ).rejects.toBeInstanceOf(ZodError);
+    }
+  });
+  test("validates file upload arguments before dispatch", async () => {
+    const harness = createFakeHarness(() => undefined);
+    let selected: unknown;
+    harness.setInputFiles = async (input) => {
+      selected = input;
+      return { success: true };
+    };
+    await runBrowserTool(harness, "browser.setInputFiles", {
+      selector: "input[type=file]",
+      path: "fixtures/demo.vcf",
+    });
+    expect(selected).toEqual({
+      selector: "input[type=file]",
+      path: "fixtures/demo.vcf",
+    });
+    await expect(
+      runBrowserTool(harness, "browser.setInputFiles", {
+        selector: "input",
+        path: "",
+      }),
+    ).rejects.toBeInstanceOf(ZodError);
+  });
   test("routes browser tool calls through validated params", async () => {
     let clicked: ClickInput | undefined;
     const harness = createFakeHarness((input) => {

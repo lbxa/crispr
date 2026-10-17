@@ -6,6 +6,12 @@
   "compatibility_date": "2026-10-17",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "crispr.lbxa.net",
+      "custom_domain": true,
+    },
+  ],
   "upload_source_maps": true,
   "assets": {
     "directory": ".open-next/assets",

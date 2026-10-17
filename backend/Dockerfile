@@ -11,6 +11,7 @@ COPY scripts ./scripts
 
 # Mount the database built by etl/ at /data and the big-endian Granite model at /models.
 ENV CRISPR_DB=/data/crispr.sqlite \
+    CRISPR_UPLOAD_DIR=/data/uploads \
     GRANITE_GGUF=/models/granite-3.3-2b-instruct-be.Q4_K_M.gguf
 EXPOSE 8000
 CMD ["uvicorn", "crispr_backend.api:app", "--host", "0.0.0.0", "--port", "8000"]

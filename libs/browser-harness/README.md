@@ -24,6 +24,20 @@ To verify a running dev server without starting another Next.js instance in the
 same checkout, run `bun run verify:browser --app-url http://localhost:3000`.
 The attached server stays running after verification.
 
+`bun run --cwd libs/browser-harness verify:upload --app-url http://localhost:3000`
+checks the complete synthetic file → configured IBM upload → summary journey.
+It submits the tiny, explicitly synthetic fixture in `fixtures/`, saves correlated
+browser evidence, and confirms pane switching preserves the result. The forced-ID
+tus client intentionally probes its resource before creating it; this journey
+allows one matching HEAD 404 and its matching console message, preserving both
+in raw evidence. Other failed requests and errors still fail verification.
+
+`bun run --cwd libs/browser-harness verify:regions --app-url http://localhost:3000`
+uses a small synthetic VCF containing known CFTR and HBB alleles. It checks real
+backend reference contexts, cross-chromosome finding jumps, minimap boundaries,
+DNA-to-minimap synchronization and highlighted helix/ladder screenshots. The
+fixture contains no patient data; it reuses the upload journey and error policy.
+
 ## TypeScript
 
 ```ts
@@ -62,21 +76,32 @@ Do not use `--filter` for `serve`; the workspace runner does not preserve stdin.
 Each line is `{ "id": "1", "method": "browser.snapshot", "params": {} }`.
 Responses echo `id` and contain `result` or `error` with a typed error code.
 
-| Method                                                | Parameters                                          |
-| ----------------------------------------------------- | --------------------------------------------------- |
-| `browser.open`                                        | `{url?: string}` relative to the configured app URL |
-| `browser.snapshot`                                    | none                                                |
-| `browser.click`                                       | `{selector, timeoutMs?}`                            |
-| `browser.type`                                        | `{selector, text, timeoutMs?}`                      |
-| `browser.press`                                       | `{key}`                                             |
-| `browser.wait`                                        | `{timeoutMs}`                                       |
-| `browser.waitForText`                                 | `{text, timeoutMs?}`                                |
-| `browser.waitForUrl`                                  | `{url, timeoutMs?}`                                 |
-| `browser.screenshot`                                  | `{name?, fullPage?}`                                |
-| `browser.console`, `browser.network`, `browser.close` | none                                                |
+| Method                                                | Parameters                                                     |
+| ----------------------------------------------------- | -------------------------------------------------------------- |
+| `browser.open`                                        | `{url?: string}` relative to the configured app URL            |
+| `browser.snapshot`                                    | none                                                           |
+| `browser.click`                                       | `{selector, timeoutMs?}`                                       |
+| `browser.type`                                        | `{selector, text, timeoutMs?}`                                 |
+| `browser.setInputFiles`                               | `{selector, path, timeoutMs?}`; one workspace-contained file   |
+| `browser.press`                                       | `{key}`                                                        |
+| `browser.pointer`                                     | `{action: "move", x, y, steps?}` or `{action: "down" \| "up"}` |
+| `browser.wait`                                        | `{timeoutMs}`                                                  |
+| `browser.waitForText`                                 | `{text, timeoutMs?}`                                           |
+| `browser.waitForUrl`                                  | `{url, timeoutMs?}`                                            |
+| `browser.screenshot`                                  | `{name?, fullPage?}`                                           |
+| `browser.console`, `browser.network`, `browser.close` | none                                                           |
 
 `close`, EOF, and signals shut down owned processes. To attach to a caller-owned
 server, pass `--start-app false --app-url http://127.0.0.1:<port>`; it is left alive.
+
+`setInputFiles` targets a native file input, including hidden inputs used by drop
+zones. Paths resolve against the configured workspace. Files and symlinks that
+resolve outside it, or directory uploads, are rejected. Use synthetic/public
+fixtures and keep private genomes out of browser evidence.
+
+`pointer` uses viewport coordinates and a left mouse button. Send move, down,
+move, screenshot, then up to inspect a drag while held; the same isolated
+Playwright session owns capture, CDP errors, and cleanup.
 
 ## Evidence and telemetry
 
@@ -100,6 +125,18 @@ evidence is best-effort: take an awaited snapshot before relying on saved files.
 
 ### 2026-10-17
 
+- The baseline checks the default avatar and absence of manual profile/region controls. Report-driven avatar selection is covered by app tests; library tests retain both model profiles and highlight lifecycle coverage while developer region controls are disabled.
+- The upload journey's `--findings` mode verifies the region map against the configured backend, using synthetic reference alleles rather than downloading stored genomes. It checks both map-to-DNA and DNA-to-map navigation and keeps all browser diagnostics correlated.
+- Added an explicit synthetic genome journey against the configured backend. Initial tus HEAD 404 is classified only by this caller; global browser evidence/error recording remains strict.
+- Added pointer move/down/up operations to both APIs for evidence captured during a held drag, using the existing session's native Playwright mouse.
+- The DNA browser flow also unwinds into the ladder, checks coordinate retention and navigation in that mode, then reopens the pane and rewinds. Scene tests prove planar rails, complementary colors, interrupted transition reversal, and reduced-motion settling.
+
+- The DNA keyboard-scroll check waits for the displayed position to advance within a bounded deadline; a fixed short delay can finish before native scrolling when both WebGL scenes are rendering.
+
+- The Next.js baseline waits for the lazy DNA scene, scrolls, jumps far along a chromosome, checks both chromosome boundaries, and reopens the pane to verify position retention. GPU resource bounds, load cancellation, source validation, and chromosome changes have focused library/app tests.
+
+- Added `setInputFiles` to the TypeScript and JSONL APIs so upload journeys can run through the same CDP/evidence lifecycle. It delegates to Playwright's locator API and requires a real file inside the workspace, checking symlink targets too.
+- The Next.js baseline exercises widget keyboard pickup, placement, cancellation before pane dismissal, and cancellation on pane switches. File extraction remains covered by the app's component tests; the real browser check preserves the mounted anatomy scene throughout.
 - The Next.js baseline can attach with `--app-url` to avoid competing for the checkout's dev lock; it still captures browser and MCP diagnostics and never stops the caller's server.
 - Next.js MCP errors include other connected browser sessions. A clean harness snapshot can coexist with a retained error in an existing tab; inspect that tab and preserve its selections if refreshing before attributing the error to the current run.
 - Adopted `@crispr/*` and `apps/web` defaults, retaining the reusable Bun runtime and CDP session ownership.

@@ -72,8 +72,8 @@ the deterministic gate. Never log credentials or private payloads.
 rollback, library unit and browser integration tests, lint, types, and builds.
 Browser integration can skip when Chromium is unavailable; the explicit
 `verify:browser` gate fails in that case. It launches a real Next.js server,
-asserts the home page and real model readiness, switches profiles and selects a
-region, records screenshots and diagnostics, queries the advertised
+asserts the home page and real model readiness, verifies manual profile and
+developer region controls are absent, records screenshots and diagnostics, queries the advertised
 Next.js MCP tools, and rejects browser or framework errors.
 
 Build and type generation both write `.next/types`; keep them ordered in the

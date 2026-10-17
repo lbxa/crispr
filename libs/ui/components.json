@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-nova",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "../../apps/web/app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@crispr/ui/components",
+    "ui": "@crispr/ui/components",
+    "lib": "@crispr/ui/lib",
+    "hooks": "@crispr/ui/hooks",
+    "utils": "@crispr/ui/lib/utils"
+  }
+}

@@ -21,6 +21,8 @@
     "install:browsers": "playwright install chromium",
     "smoke": "bun src/cli.ts smoke",
     "verify:next": "bun scripts/verify-next.ts",
+    "verify:upload": "bun scripts/verify-genome-upload.ts",
+    "verify:regions": "bun scripts/verify-genome-upload.ts --findings",
     "test": "bun test"
   },
   "dependencies": {

@@ -7,6 +7,7 @@ genome data through this API; only backend code opens the database directly.
 """
 
 import gzip
+import logging
 import os
 from contextlib import asynccontextmanager
 from typing import Literal
@@ -19,9 +20,15 @@ from crispr_backend import db
 from crispr_backend.analysis.pipeline import Analyzer
 from crispr_backend.panel import PANEL
 from crispr_backend.simulation import orders
+from crispr_backend.uploads.routes import router as upload_router
+from crispr_backend.uploads.routes import upload_error_response
+from crispr_backend.uploads.service import UploadService
+from crispr_backend.uploads.settings import UploadSettings
+from crispr_backend.uploads.store import UploadError
 from crispr_backend.vcf import read_calls, read_calls_gz
 
 MAX_VCF_BYTES = 20 * 1024 * 1024
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 # Each order calls the language model (~1 min with Granite on the 3-vCPU server); cap
 # concurrent orders so a public API can't queue unbounded work.
 MAX_ACTIVE_ORDERS = int(os.environ.get("CRISPR_MAX_ACTIVE_ORDERS", "3"))
@@ -31,17 +38,23 @@ MAX_ACTIVE_ORDERS = int(os.environ.get("CRISPR_MAX_ACTIVE_ORDERS", "3"))
 async def lifespan(app: FastAPI):
     with db.session() as connection:
         app.state.analyzer = Analyzer(connection)  # loads HPO and reference data once (~5 s)
+    app.state.uploads = UploadService(UploadSettings.from_env())
     yield
 
 
 app = FastAPI(title="Crispr prototype API", version="0.2.0", lifespan=lifespan)
+app.include_router(upload_router)
+app.add_exception_handler(UploadError, upload_error_response)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in os.environ.get("CRISPR_CORS_ORIGINS", "http://localhost:3000").split(",")],
+    allow_origins=[
+        o.strip()
+        for o in os.environ.get("CRISPR_CORS_ORIGINS", "http://localhost:3000,https://crispr.lbxa.net").split(",")
+    ],
     # The website is served from crispr.<account>.workers.dev.
     allow_origin_regex=os.environ.get("CRISPR_CORS_ORIGIN_REGEX", r"https://crispr\.[a-z0-9-]+\.workers\.dev"),
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-Id"],
 )
 
 

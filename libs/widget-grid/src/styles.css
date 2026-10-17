@@ -1,0 +1,35 @@
+@layer components {
+  [data-slot="widget-card-root"] {
+    --widget-card-action-min: 2.75rem;
+    --widget-card-chart-max: var(--widget-card-chart-base);
+    --widget-card-corner-inset: var(--widget-card-padding);
+    --widget-card-gap: var(--widget-card-gap-base);
+    --widget-card-icon-size: var(--widget-card-icon-base);
+    --widget-card-inner-radius: 1.25rem;
+    --widget-card-padding: var(
+      --widget-card-padding-override,
+      var(--widget-card-padding-base)
+    );
+    --widget-card-title-size: var(--widget-card-title-base);
+  }
+
+  @container widget-card (max-width: 11.99rem) {
+    [data-slot="widget-card-root"] {
+      --widget-card-chart-max: var(--widget-card-chart-compact);
+      --widget-card-gap: 0.625rem;
+      --widget-card-icon-size: 2.5rem;
+      --widget-card-inner-radius: 1rem;
+      --widget-card-padding: var(--widget-card-padding-override, 1rem);
+      --widget-card-title-size: 1.125rem;
+    }
+  }
+
+  @container widget-card (min-width: 24.01rem) {
+    [data-slot="widget-card-root"] {
+      --widget-card-chart-max: var(--widget-card-chart-spacious);
+      --widget-card-gap: 1.5rem;
+      --widget-card-icon-size: 4rem;
+      --widget-card-padding: var(--widget-card-padding-override, 2.25rem);
+    }
+  }
+}

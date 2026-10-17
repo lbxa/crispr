@@ -1,0 +1,14 @@
+# The upstream image has no s390x manifest. Build the pinned upstream Go server
+# natively on LinuxONE; upload offsets and file locking remain owned by tusd.
+FROM golang:1.26.8-alpine AS builder
+ARG TUSD_VERSION=v2.10.1
+RUN CGO_ENABLED=0 GOBIN=/out go install github.com/tus/tusd/v2/cmd/tusd@${TUSD_VERSION}
+
+FROM alpine:3.24.1
+RUN apk add --no-cache ca-certificates \
+    && addgroup -g 1000 uploads \
+    && adduser -D -u 1000 -G uploads uploads
+COPY --from=builder /out/tusd /usr/local/bin/tusd
+USER uploads
+EXPOSE 1080
+ENTRYPOINT ["tusd"]

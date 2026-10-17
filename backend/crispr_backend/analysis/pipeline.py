@@ -6,9 +6,10 @@ from dataclasses import asdict
 import requests
 
 from crispr_backend.analysis import crispr, genotype, phenotype
+from crispr_backend.analysis.genome_view import build_genome_view
 from crispr_backend.llm import chat_json, get_llm
 from crispr_backend.panel import Inheritance, Mechanism
-from crispr_backend.vcf import Call
+from crispr_backend.vcf import Call, ModelProfile
 
 # A genotype finding "likely explains" the symptoms when the disease ranks this high
 # by symptom similarity among all panel diseases. Tuned with scripts/evaluate.py.
@@ -58,8 +59,19 @@ class Analyzer:
         merged = {term.id: term for term in verbatim + mapped}
         return phenotype.most_specific(list(merged.values())), llm.name
 
-    def analyze(self, calls: list[Call], symptoms: str, sex: str | None, use_llm: bool = True) -> dict:
+    def analyze(
+        self,
+        calls: list[Call],
+        symptoms: str,
+        sex: str | None,
+        use_llm: bool = True,
+        *,
+        variants_checked: int | None = None,
+        model_profile: ModelProfile | None = None,
+    ) -> dict:
         """`use_llm=False` skips the language model (keyword matching only), for fast iteration."""
+        if variants_checked is not None and variants_checked < len(calls):
+            raise ValueError("variants_checked cannot be less than retained calls")
         terms, extraction = self.extract_symptoms(symptoms or "", use_llm)
         phenotype_matches = self.profiles.rank(terms)
         findings = []
@@ -74,6 +86,7 @@ class Analyzer:
         report = {
             "conclusion": self._conclusion(findings),
             "findings": findings,
+            "genome_view": build_genome_view(findings, self.regions),
             "symptoms": {
                 "text": symptoms,
                 "extraction": extraction,
@@ -83,7 +96,11 @@ class Analyzer:
                     for m in top_phenotype
                 ],
             },
-            "genome": {"variants_checked": len(calls), "panel_genes": sorted(self.regions)},
+            "genome": {
+                "variants_checked": len(calls) if variants_checked is None else variants_checked,
+                "panel_genes": sorted(self.regions),
+                "model_profile": model_profile,
+            },
             "disclaimer": DISCLAIMER,
         }
         report["summary"] = self._summary(report)

@@ -1,0 +1,118 @@
+.viewer {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+.canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  mask-image: linear-gradient(transparent, #000 9%, #000 91%, transparent);
+}
+.scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  touch-action: pan-y;
+  outline-offset: -3px;
+}
+.scroll::-webkit-scrollbar {
+  display: none;
+}
+.scroll:focus-visible {
+  outline: 1px solid var(--accent);
+  border-radius: 10px;
+}
+.runway {
+  width: 1px;
+  pointer-events: none;
+}
+.primeLeft,
+.primeRight {
+  position: absolute;
+  top: 12px;
+  color: var(--muted);
+  font:
+    11px var(--font-geist-mono),
+    monospace;
+  pointer-events: none;
+}
+.primeLeft {
+  left: 24%;
+}
+.primeRight {
+  right: 24%;
+}
+.focus {
+  position: absolute;
+  top: 50%;
+  left: 18px;
+  right: 18px;
+  height: 22px;
+  transform: translateY(-50%);
+  border-block: 1px solid #a9e1d319;
+  background: #a9e1d305;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.focus span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 9px #a9e1d34d;
+}
+.ruler {
+  position: absolute;
+  top: 32px;
+  bottom: 32px;
+  left: 18px;
+  width: 6px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--border) 0 1px,
+    transparent 1px 20px
+  );
+  pointer-events: none;
+  mask-image: linear-gradient(transparent, #000 15%, #000 85%, transparent);
+}
+.notice {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max-content;
+  max-width: 90%;
+  margin: 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+.notice p {
+  margin: 0;
+}
+.notice button {
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0 12px;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  cursor: pointer;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

@@ -7,8 +7,10 @@ import type {
   BrowserHarnessConfig,
   ClickInput,
   OpenInput,
+  PointerInput,
   PressInput,
   ScreenshotInput,
+  SetInputFilesInput,
   TypeInput,
   WaitForTextInput,
   WaitForUrlInput,
@@ -71,6 +73,16 @@ export class BrowserHarnessRuntime implements BrowserHarness {
 
   async press(input: PressInput) {
     await this.browserSession.press(input.key);
+    return { success: true } as const;
+  }
+
+  async pointer(input: PointerInput) {
+    await this.browserSession.pointer(input);
+    return { success: true } as const;
+  }
+
+  async setInputFiles(input: SetInputFilesInput) {
+    await this.browserSession.setInputFiles(input);
     return { success: true } as const;
   }
 

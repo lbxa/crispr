@@ -24,7 +24,6 @@
 }
 .workspace {
   --pane-width: clamp(240px, 30vw, 400px);
-  --avatar-shift: calc(var(--pane-width) / 2);
   --workspace-ease: cubic-bezier(0.22, 1, 0.36, 1);
   position: relative;
   height: 100svh;
@@ -38,14 +37,11 @@
 }
 .stage {
   height: 100%;
-  transform: translateX(var(--stage-offset, 0px)) scale(var(--stage-scale, 1));
+  transform: scale(var(--stage-scale, 1));
   transition: transform 760ms var(--workspace-ease);
 }
-.workspace[data-pane="left"] {
-  --stage-offset: var(--avatar-shift);
-}
 .workspace[data-pane="right"] {
-  --stage-offset: calc(-1 * var(--avatar-shift));
+  --pane-width: clamp(280px, 32vw, 420px);
 }
 .paneToggles {
   position: absolute;
@@ -66,7 +62,9 @@
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  transition: color 180ms ease, background-color 180ms ease;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease;
 }
 .paneToggle:hover {
   color: var(--foreground);
@@ -103,13 +101,9 @@
   top: max(104px, calc(env(safe-area-inset-top) + 80px));
   bottom: max(124px, calc(env(safe-area-inset-bottom) + 108px));
   width: var(--pane-width);
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: start;
-  gap: 16px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
@@ -118,12 +112,18 @@
     opacity 360ms var(--workspace-ease),
     visibility 0s 760ms;
 }
+.pane::-webkit-scrollbar {
+  display: none;
+}
 .pane[data-side="left"] {
   left: 32px;
   transform: translateX(-24px);
 }
 .pane[data-side="right"] {
   right: 32px;
+  width: clamp(280px, 32vw, 420px);
+  bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px));
+  overflow: hidden;
   transform: translateX(24px);
 }
 .pane[aria-hidden="false"] {
@@ -132,8 +132,35 @@
   transform: translateX(0);
   transition-delay: 0s;
 }
-.pane > * {
+.pane [data-slot="widget-grid-item"] {
   pointer-events: auto;
+}
+.widget {
+  --widget-corner-radius: 32px;
+  border-radius: var(--widget-corner-radius);
+  padding-top: 20px;
+}
+.widgetGrip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 20px;
+}
+.widgetGrip::after {
+  content: "";
+  width: 28px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background-color 180ms ease;
+}
+.widgetGrip:hover::after,
+.widget:focus-visible .widgetGrip::after,
+.widget[data-drag-state="dragging"] .widgetGrip::after {
+  background: var(--accent);
 }
 .controls {
   position: absolute;
@@ -148,46 +175,6 @@
   border-radius: 999px;
   background: var(--surface);
   box-shadow: 0 12px 40px #00000026;
-}
-.profiles {
-  display: flex;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-.profiles label {
-  position: relative;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.profiles input {
-  position: absolute;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  inset: 0;
-  margin: 0;
-  cursor: pointer;
-}
-.profiles span {
-  display: grid;
-  place-items: center;
-  min-width: 72px;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 999px;
-  color: var(--muted);
-}
-.profiles input:checked + span {
-  color: var(--background);
-  background: var(--foreground);
-}
-.profiles input:focus-visible + span {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
 }
 .regionsTrigger {
   display: flex;
@@ -318,14 +305,20 @@
 @media (max-width: 700px) {
   .workspace {
     --pane-width: calc(40vw - 12px);
-    --avatar-shift: 20vw;
   }
   .workspace:not([data-pane="none"]) {
     --stage-scale: 0.64;
   }
-  .pane {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
+  .workspace[data-pane="left"] {
+    --pane-width: clamp(200px, 58vw, 320px);
+  }
+  .workspace[data-pane="right"] .stage {
+    opacity: 0.2;
+  }
+  .pane[data-side="right"] {
+    width: min(360px, calc(100vw - 40px));
+    right: 20px;
+    bottom: 116px;
   }
 }
 @media (max-width: 480px) {
@@ -345,7 +338,8 @@
 @media (prefers-reduced-motion: reduce) {
   .stage,
   .pane,
-  .paneToggle {
+  .paneToggle,
+  .widgetGrip::after {
     transition: none;
   }
 }

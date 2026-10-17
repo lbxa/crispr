@@ -1,3 +1,5 @@
+import { realpath, stat } from "node:fs/promises";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import {
   chromium,
   type Browser,
@@ -14,7 +16,9 @@ import { NetworkRecorder } from "./network-recorder";
 import { emitHarnessEvent, redactUrl } from "./observability";
 import type {
   BrowserHarnessConfig,
+  PointerInput,
   ScreenshotInput,
+  SetInputFilesInput,
   SnapshotResult,
 } from "./types";
 
@@ -241,6 +245,50 @@ export class BrowserSession {
       await this.requirePage().keyboard.press(key);
     } catch (error) {
       throw toHarnessError(error, "action_timeout");
+    }
+  }
+
+  async pointer(input: PointerInput) {
+    try {
+      const { mouse } = this.requirePage();
+      if (input.action === "move") {
+        await mouse.move(input.x, input.y, { steps: input.steps });
+      } else if (input.action === "down") {
+        await mouse.down();
+      } else {
+        await mouse.up();
+      }
+    } catch (error) {
+      throw toHarnessError(error, "action_timeout");
+    }
+  }
+
+  async setInputFiles({ selector, path, timeoutMs }: SetInputFilesInput) {
+    const workspace = await realpath(this.config.workspace);
+    let filePath: string;
+    try {
+      filePath = await realpath(resolve(workspace, path));
+      const fromWorkspace = relative(workspace, filePath);
+      if (
+        isAbsolute(fromWorkspace) ||
+        fromWorkspace === ".." ||
+        fromWorkspace.startsWith(`..${sep}`) ||
+        !(await stat(filePath)).isFile()
+      ) {
+        throw new Error("outside workspace");
+      }
+    } catch {
+      throw new HarnessError(
+        "invalid_config",
+        "Upload fixtures must be files inside the workspace.",
+      );
+    }
+    try {
+      await this.requirePage()
+        .locator(selector)
+        .setInputFiles(filePath, { timeout: timeoutMs });
+    } catch (error) {
+      throw toHarnessError(error, "selector_not_found");
     }
   }
 
