@@ -1,7 +1,7 @@
-"""End-to-end smoke test of a running backend: real server, data, Granite, HTTPS.
+"""End-to-end smoke test of a running backend: real server, data, language model, HTTPS.
 
-    python3 backend/scripts/smoke_test.py                   # live API, full run (~2-3 min)
-    python3 backend/scripts/smoke_test.py --quick           # skip the Granite order (~5 s)
+    python3 backend/scripts/smoke_test.py                   # live API, full run (seconds with Gemini, ~2 min with Granite)
+    python3 backend/scripts/smoke_test.py --quick           # skip the order (~5 s)
     python3 backend/scripts/smoke_test.py --url http://localhost:8000
 
 Standard library only, so it runs without the backend's virtualenv. Exits non-zero if
@@ -17,7 +17,7 @@ import urllib.error
 import urllib.request
 
 DEFAULT_URL = "https://148-100-79-183.sslip.io"
-ORDER_TIMEOUT = 300  # seconds; Granite takes ~1-2 min per order on the server
+ORDER_TIMEOUT = 300  # seconds; Granite takes ~1-2 min per order on the server, Gemini seconds
 
 
 class CheckFailed(Exception):
@@ -89,10 +89,10 @@ def check_fast_analysis(client: Client, state: dict) -> str:
     report = client.json(
         "POST",
         f"/genomes/{state['genome']['id']}/analyze",
-        {"symptoms": "recurrent fever and abdominal pain", "use_granite": False},
+        {"symptoms": "recurrent fever and abdominal pain", "use_llm": False},
     )
     elapsed = time.monotonic() - started
-    expect(report["symptoms"]["extraction"] == "keyword", "use_granite=false still used Granite")
+    expect(report["symptoms"]["extraction"] == "keyword", "use_llm=false still used the language model")
     names = {term["name"] for term in report["symptoms"]["terms"]}
     expect({"Recurrent fever", "Abdominal pain"} <= names, f"symptoms not recognized: {sorted(names)}")
     expect(report["genome"]["variants_checked"] > 100, "analysis saw too few variants")
@@ -125,7 +125,7 @@ def check_order(client: Client) -> str:
     truth = client.json("GET", f"/orders/{order['id']}/truth")
     planted = truth["planted_disease"]
     findings = report["findings"]
-    granite = report["symptoms"]["extraction"] == "granite"
+    model = report["symptoms"]["extraction"]  # "keyword", or the model that read the symptoms
     if planted:
         # The genotype step is deterministic: a planted disease must always be found.
         found = [f for f in findings if f["omim_id"] == planted["omim_id"]]
@@ -137,13 +137,13 @@ def check_order(client: Client) -> str:
         outcome = f"planted {planted['name']}: found, {'ranked first as likely' if top else 'NOT ranked first'}"
     else:
         outcome = f"control genome: {report['conclusion']['status']}"
-    return f"{outcome}; Granite {'used' if granite else 'NOT used'}; {elapsed:.0f}s"
+    return f"{outcome}; symptoms read by {model}; {elapsed:.0f}s"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default=DEFAULT_URL)
-    parser.add_argument("--quick", action="store_true", help="skip the order, which waits for Granite")
+    parser.add_argument("--quick", action="store_true", help="skip the order, which waits for the language model")
     args = parser.parse_args()
 
     client, state = Client(args.url), {}
@@ -155,7 +155,7 @@ def main() -> int:
         ("fast analysis", lambda: check_fast_analysis(client, state)),
     ]
     if not args.quick:
-        checks.append(("order with Granite", lambda: check_order(client)))
+        checks.append(("order with LLM", lambda: check_order(client)))
 
     print(f"Smoke testing {args.url}")
     failures = 0

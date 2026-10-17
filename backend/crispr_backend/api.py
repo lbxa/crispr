@@ -13,7 +13,7 @@ from typing import Literal
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from crispr_backend import db
 from crispr_backend.analysis.pipeline import Analyzer
@@ -22,8 +22,8 @@ from crispr_backend.simulation import orders
 from crispr_backend.vcf import read_calls, read_calls_gz
 
 MAX_VCF_BYTES = 20 * 1024 * 1024
-# Granite takes ~1 min per order on the 3-vCPU server; cap concurrent orders so a
-# public API can't queue unbounded work.
+# Each order calls the language model (~1 min with Granite on the 3-vCPU server); cap
+# concurrent orders so a public API can't queue unbounded work.
 MAX_ACTIVE_ORDERS = int(os.environ.get("CRISPR_MAX_ACTIVE_ORDERS", "3"))
 
 
@@ -49,12 +49,20 @@ class AnalyzeRequest(BaseModel):
     vcf: str = Field(description="Single-sample VCF text on GRCh38", max_length=MAX_VCF_BYTES)
     symptoms: str = Field(default="", max_length=5000)
     sex: Literal["male", "female"] | None = None
-    use_granite: bool = Field(default=True, description="False skips the ~1 min Granite step (keyword matching only)")
+    use_llm: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("use_llm", "use_granite"),  # use_granite: the earlier name
+        description="False skips the language model (keyword matching only)",
+    )
 
 
 class GenomeAnalyzeRequest(BaseModel):
     symptoms: str = Field(default="", max_length=5000)
-    use_granite: bool = Field(default=True, description="False skips the ~1 min Granite step (keyword matching only)")
+    use_llm: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("use_llm", "use_granite"),  # use_granite: the earlier name
+        description="False skips the language model (keyword matching only)",
+    )
 
 
 def run_order_in_background(order_id: str) -> None:
@@ -104,7 +112,7 @@ def analyze_genome(genome_id: int, request: GenomeAnalyzeRequest) -> dict:
     with db.session() as connection:
         genome = genome_row(connection, genome_id)
     calls = read_calls_gz(genome["vcf_gz"])
-    return app.state.analyzer.analyze(calls, request.symptoms, genome["sex"], request.use_granite)
+    return app.state.analyzer.analyze(calls, request.symptoms, genome["sex"], request.use_llm)
 
 
 @app.post("/orders", status_code=202)
@@ -155,4 +163,4 @@ def analyze(request: AnalyzeRequest) -> dict:
         calls = read_calls(request.vcf)
     except (ValueError, IndexError) as error:
         raise HTTPException(422, f"Could not read VCF: {error}") from error
-    return app.state.analyzer.analyze(calls, request.symptoms, request.sex, request.use_granite)
+    return app.state.analyzer.analyze(calls, request.symptoms, request.sex, request.use_llm)

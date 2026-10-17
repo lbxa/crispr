@@ -3,8 +3,10 @@
 import sqlite3
 from dataclasses import asdict
 
+import requests
+
 from crispr_backend.analysis import crispr, genotype, phenotype
-from crispr_backend.granite import get_granite
+from crispr_backend.llm import chat_json, get_llm
 from crispr_backend.panel import Inheritance, Mechanism
 from crispr_backend.vcf import Call
 
@@ -34,15 +36,19 @@ class Analyzer:
         self.profiles = phenotype.DiseaseProfiles(connection)
         self.regions = {row["gene"]: dict(row) for row in connection.execute("SELECT * FROM gene_regions")}
 
-    def extract_symptoms(self, text: str, use_granite: bool = True) -> tuple[list[phenotype.ExtractedTerm], str]:
+    def extract_symptoms(self, text: str, use_llm: bool = True) -> tuple[list[phenotype.ExtractedTerm], str]:
+        """Returns the terms and how they were found: 'keyword', or the model's name ('gemini', 'granite')."""
         verbatim = phenotype.extract_from_text(text)
-        granite = get_granite() if use_granite else None
-        if granite is None:
+        llm = get_llm() if use_llm and text.strip() else None
+        if llm is None:
             return verbatim, "keyword"
-        phrases = granite.chat_json(EXTRACT_SYSTEM, text, max_tokens=120)
+        try:
+            phrases = chat_json(llm, EXTRACT_SYSTEM, text, max_tokens=120)
+        except (RuntimeError, requests.RequestException):
+            phrases = None  # model unreachable or over quota: fall back rather than fail the order
         if not isinstance(phrases, list):
             return verbatim, "keyword"
-        # Granite sometimes returns [{"term": "Fever"}] instead of ["Fever"].
+        # Models sometimes return [{"term": "Fever"}] instead of ["Fever"].
         strings = [
             item if isinstance(item, str) else next((v for v in item.values() if isinstance(v, str)), "")
             for item in phrases
@@ -50,11 +56,11 @@ class Analyzer:
         ]
         mapped = phenotype.extract_from_phrases(strings)
         merged = {term.id: term for term in verbatim + mapped}
-        return phenotype.most_specific(list(merged.values())), "granite"
+        return phenotype.most_specific(list(merged.values())), llm.name
 
-    def analyze(self, calls: list[Call], symptoms: str, sex: str | None, use_granite: bool = True) -> dict:
-        """`use_granite=False` skips the ~1 min Granite step (keyword matching only), for fast iteration."""
-        terms, extraction = self.extract_symptoms(symptoms or "", use_granite)
+    def analyze(self, calls: list[Call], symptoms: str, sex: str | None, use_llm: bool = True) -> dict:
+        """`use_llm=False` skips the language model (keyword matching only), for fast iteration."""
+        terms, extraction = self.extract_symptoms(symptoms or "", use_llm)
         phenotype_matches = self.profiles.rank(terms)
         findings = []
         for finding in genotype.assess(self.variants, calls, sex):

@@ -70,10 +70,10 @@ def test_genome_endpoints_hide_ground_truth(database):
         assert client.get("/genomes/99/genome.vcf").status_code == 404
 
 
-def test_analyze_a_chosen_genome_without_granite(database):
+def test_analyze_a_chosen_genome_without_the_language_model(database):
     with TestClient(app) as client:
         report = client.post(
-            "/genomes/1/analyze", json={"symptoms": "recurrent fevers and abdominal pain", "use_granite": False}
+            "/genomes/1/analyze", json={"symptoms": "recurrent fevers and abdominal pain", "use_llm": False}
         ).json()
     assert report["symptoms"]["extraction"] == "keyword"
     assert report["findings"][0]["disease"] == "Familial Mediterranean fever"

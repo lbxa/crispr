@@ -5,13 +5,15 @@ HPO symptoms, sometimes with an unrelated complaint mixed in. Controls either de
 vague everyday complaints or a phenocopy: symptoms that resemble a panel disease with
 no genetic cause, which tests that the pipeline doesn't diagnose from symptoms alone.
 
-Text comes from Granite when pre-generated (scripts/pregenerate_symptoms.py, slow on
-LinuxONE) and otherwise from a template using HPO term names.
+Text comes from the language model (Gemini or Granite) when pre-generated
+(scripts/pregenerate_symptoms.py) and otherwise from a template using HPO term names.
 """
 
 import json
 import random
 import sqlite3
+
+from crispr_backend.llm import LLM
 
 DEFAULT_FREQUENCY = 0.5
 # Nonspecific complaints (HPO names) used as noise and for controls.
@@ -78,7 +80,7 @@ def render_template(terms: list[str], rng: random.Random) -> str:
 
 
 def describe(connection: sqlite3.Connection, genome_id: int, rng: random.Random) -> tuple[str, str]:
-    """Return (symptom text, source) for an order: pre-generated Granite text if available, else a template."""
+    """Return (symptom text, source) for an order: pre-generated model text if available, else a template."""
     stored = connection.execute(
         "SELECT text, source FROM genome_symptoms WHERE genome_id = ? ORDER BY RANDOM() LIMIT 1", (genome_id,)
     ).fetchone()
@@ -88,7 +90,5 @@ def describe(connection: sqlite3.Connection, genome_id: int, rng: random.Random)
     return render_template(terms, rng), "template"
 
 
-def granite_description(granite, terms: list[str]) -> str:
-    return granite.chat(
-        SYMPTOM_PROMPT, "My symptoms (clinical names): " + json.dumps(terms), max_tokens=120, temperature=0.7
-    )
+def llm_description(llm: LLM, terms: list[str]) -> str:
+    return llm.chat(SYMPTOM_PROMPT, "My symptoms (clinical names): " + json.dumps(terms), max_tokens=120)

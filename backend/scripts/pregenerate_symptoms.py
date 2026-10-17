@@ -1,7 +1,8 @@
-"""Have Granite write plain-language symptom descriptions for demo genomes, ahead of time.
+"""Have the language model write plain-language symptom descriptions for demo genomes.
 
-Granite runs at ~1 token/s on a 3-vCPU LinuxONE VM (~1-2 min per description), so this
-is a batch job, not part of an order. Run on the server, in the background:
+Uses the model chosen by CRISPR_LLM (see .env.example). With Gemini this takes a few
+seconds per genome. Granite runs at ~1 token/s on the 3-vCPU LinuxONE VM (~1-2 min per
+description), so with Granite run it on the server in the background:
 
     nohup .venv/bin/python -m scripts.pregenerate_symptoms --genomes 40 > pregenerate.log 2>&1 &
 
@@ -14,7 +15,7 @@ import json
 import random
 
 from crispr_backend import db
-from crispr_backend.granite import get_granite
+from crispr_backend.llm import get_llm
 from crispr_backend.simulation import symptoms
 
 
@@ -25,9 +26,9 @@ def main() -> None:
     args = parser.parse_args()
     rng = random.Random(args.seed)
 
-    granite = get_granite()
-    if granite is None:
-        raise SystemExit("Granite unavailable: install llama-cpp-python and set GRANITE_GGUF to an instruct model.")
+    llm = get_llm()
+    if llm is None:
+        raise SystemExit("No language model: set GEMINI_API_KEY in backend/.env, or run on the server for Granite.")
 
     with db.session() as connection:
         pending = connection.execute(
@@ -37,10 +38,10 @@ def main() -> None:
         ).fetchall()
         for number, row in enumerate(pending, start=1):
             terms, scenario = symptoms.choose_terms(connection, row["id"], rng)
-            text = symptoms.granite_description(granite, terms)
+            text = symptoms.llm_description(llm, terms)
             connection.execute(
-                "INSERT INTO genome_symptoms (genome_id, scenario, terms, text, source) VALUES (?, ?, ?, ?, 'granite')",
-                (row["id"], scenario, json.dumps(terms), text),
+                "INSERT INTO genome_symptoms (genome_id, scenario, terms, text, source) VALUES (?, ?, ?, ?, ?)",
+                (row["id"], scenario, json.dumps(terms), text, llm.name),
             )
             connection.commit()
             print(f"[{number}/{len(pending)}] genome {row['id']} ({scenario}): {text}", flush=True)

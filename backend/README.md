@@ -2,7 +2,8 @@
 
 Python API that takes a genome (single-sample VCF, GRCh38) and a symptom description,
 finds disease-causing variants that fit both, and proposes a CRISPR-Cas9 edit. It runs
-on IBM LinuxONE (s390x) and uses IBM Granite, locally via llama.cpp, to read symptoms.
+on IBM LinuxONE (s390x) and uses a language model to read symptoms: Google Gemini via
+its API, or IBM Granite running locally via llama.cpp (see [Language model](#language-model)).
 
 **Research prototype on simulated genomes. Not medical advice.**
 
@@ -12,7 +13,7 @@ on IBM LinuxONE (s390x) and uses IBM Granite, locally via llama.cpp, to read sym
 VCF + symptoms
  ├─ genotype   match calls to ClinVar pathogenic variants; apply inheritance
  │             (dominant: 1 copy; recessive: 2 copies, phase-aware; X-linked by sex)
- ├─ phenotype  symptoms text → HPO terms (Granite + HPO name/synonym matching)
+ ├─ phenotype  symptoms text → HPO terms (language model + HPO name/synonym matching)
  │             → Resnik similarity to each panel disease's HPO profile
  ├─ tiering    likely (genotype + disease ranks top 3 by symptoms) / possible / carrier
  ├─ crispr     SpCas9 NGG guides near the variant, ranked by cut distance, GC,
@@ -41,15 +42,15 @@ analysis never reads it.
 | `crispr_backend/vcf.py`           | Pure-Python VCF reading (no htslib needed on s390x)                       |
 | `crispr_backend/analysis/`        | Genotype, phenotype, CRISPR design, pipeline. Never reads ground truth    |
 | `crispr_backend/simulation/`      | "Order your kit" flow and simulated customer symptoms; reads ground truth |
-| `crispr_backend/granite.py`       | Optional local Granite (llama.cpp); `None` when unavailable               |
+| `crispr_backend/llm.py`           | Gemini or Granite, chosen in `.env`; `None` when unavailable              |
 | `crispr_backend/api.py`           | FastAPI app                                                               |
 | `etl/`                            | Builds the database from HPO, ClinVar, Ensembl, NCBI and 1000 Genomes     |
 | `scripts/evaluate.py`             | Accuracy on planted diseases and false-alarm rate on controls             |
-| `scripts/pregenerate_symptoms.py` | Batch Granite symptom descriptions (slow)                                 |
+| `scripts/pregenerate_symptoms.py` | Batch language-model symptom descriptions                                 |
 
 ## Using the backend (no data download needed)
 
-All data and the Granite model live on the LinuxONE server. The API is public at
+All data and the language model live on the LinuxONE server. The API is public at
 **https://148-100-79-183.sslip.io** (interactive docs at `/docs`). Code outside `backend/`
 (the website, notebooks, teammates' scripts) talks to this API and never to the database;
 only backend code opens the database.
@@ -60,21 +61,22 @@ only backend code opens the database.
 | GET    | `/diseases`                | The panel                                                                                                            |
 | GET    | `/genomes`                 | Demo genomes (id, 1000 Genomes sample, sex); never reveals what was planted                                          |
 | GET    | `/genomes/{id}/genome.vcf` | One genome's panel VCF (~80 KB)                                                                                      |
-| POST   | `/genomes/{id}/analyze`    | `{symptoms, use_granite?}` → report for a chosen genome                                                              |
+| POST   | `/genomes/{id}/analyze`    | `{symptoms, use_llm?}` → report for a chosen genome                                                                  |
 | POST   | `/orders`                  | Prototype "order your kit": random genome, returns `{id, status: "processing"}`; 429 if 3 orders are already running |
 | GET    | `/orders/{id}`             | Status (`processing` → `ready`/`failed`), symptoms, report                                                           |
 | GET    | `/orders/{id}/genome.vcf`  | The order's genome file                                                                                              |
 | GET    | `/orders/{id}/truth`       | Demo only: what was planted, to check the report                                                                     |
-| POST   | `/analyze`                 | `{vcf, symptoms, sex?, use_granite?}` → report; the real product's entry point                                       |
+| POST   | `/analyze`                 | `{vcf, symptoms, sex?, use_llm?}` → report; the real product's entry point                                           |
 
-`use_granite: false` skips the ~1 minute Granite step and answers in under a second, but
+`use_llm: false` skips the language model and answers in under a second (`use_granite` is
+accepted as the old name), but
 then only symptoms written in medical terms are recognized (e.g. "bowing of the legs",
 not "my legs are bowed"). Use it while iterating; leave it on for demos.
 
 ```sh
 curl https://148-100-79-183.sslip.io/genomes
 curl -X POST https://148-100-79-183.sslip.io/genomes/3/analyze -H 'Content-Type: application/json' \
-  -d '{"symptoms": "macrocephaly, bowing of the legs, recurrent otitis media", "use_granite": false}'
+  -d '{"symptoms": "macrocephaly, bowing of the legs, recurrent otitis media", "use_llm": false}'
 ```
 
 CORS allows `http://localhost:3000` and `https://crispr.<account>.workers.dev`
@@ -121,11 +123,11 @@ backend/scripts/deploy.sh            # ship code; keeps the server's database an
 backend/scripts/deploy.sh --with-db  # also replace the database with backend/data/crispr.sqlite
 ```
 
-To check the deployed system end to end (server, data, HTTPS, Granite), run the smoke
+To check the deployed system end to end (server, data, HTTPS, language model), run the smoke
 test from anywhere; it needs only Python 3, no virtualenv:
 
 ```sh
-python3 backend/scripts/smoke_test.py          # full: includes a real order with Granite (~2 min)
+python3 backend/scripts/smoke_test.py          # full: includes a real order (~2 min with Granite)
 python3 backend/scripts/smoke_test.py --quick  # skip the order (~5 s); deploy.sh runs this
 python3 backend/scripts/smoke_test.py --url http://localhost:8000
 ```
@@ -138,7 +140,28 @@ on the symptom text.
 The deploy script is idempotent: it rebuilds and restarts the API, keeps ports 80/443 open in
 `/etc/iptables/rules.v4`, and (re)starts the proxy.
 
-**Granite model:** `~/shared/models/granite-3.3-2b-instruct-be.Q4_K_M.gguf`, a
+## Language model
+
+The model turns customers' plain-language symptoms into clinical terms; everything else
+is deterministic. Choose it in `backend/.env`, copied from `.env.example` (git-ignored;
+values without quotes):
+
+```sh
+cp backend/.env.example backend/.env   # then add GEMINI_API_KEY
+backend/scripts/deploy.sh              # uploads .env to the server, readable only by linux1
+```
+
+| `CRISPR_LLM` | Model                                                                  | Trade-off                                               |
+| ------------ | ---------------------------------------------------------------------- | ------------------------------------------------------- |
+| `gemini`     | Gemini 3.6 Flash via the Gemini API (`GEMINI_API_KEY`, `GEMINI_MODEL`) | Seconds per order; symptom text is sent to Google       |
+| `granite`    | IBM Granite 3.3 2B on LinuxONE via llama.cpp                           | Nothing leaves the server; ~1 token/s, ~2 min per order |
+| `none`       | No model                                                               | Keyword matching only                                   |
+| blank        | Gemini if a key is set, otherwise Granite                              |                                                         |
+
+If the model errors or is over quota, the analysis falls back to keyword matching
+instead of failing. Tests always run with `none` and fake HTTP, so they never call a model.
+
+**Granite model file:** `~/shared/models/granite-3.3-2b-instruct-be.Q4_K_M.gguf`, a
 big-endian build from
 [taronaeo/Granite-3.3-2B-Instruct-BE-GGUF](https://huggingface.co/taronaeo/Granite-3.3-2B-Instruct-BE-GGUF)
 (the filename IBM's demo code expects). The model bundled in IBM's image is a 350M
@@ -148,6 +171,7 @@ base model that cannot follow instructions.
 
 ### 2026-10-17
 
+- The language model is swappable (`llm.py`): Gemini 3.6 Flash via API or Granite on LinuxONE, set in a git-ignored `.env` that `deploy.sh` uploads separately so the key never enters the Docker image. Gemini is far faster, but sends symptom text to Google and weakens the "AI on IBM Z" story; Granite stays available. Gemini 3.x ignores `temperature` and counts thinking tokens toward the output limit, so the client sends neither a temperature nor a token cap.
 - All data and Granite stay on the server; teammates and the website use the public HTTPS API, so nobody needs the database locally. Ports 80/443 are persisted by editing `/etc/iptables/rules.v4` directly: `iptables-save` would also capture Docker's chains, which fail to restore at boot before Docker starts.
 - `POST /orders` is capped at 3 concurrent orders (orders still processing after 10 minutes are treated as abandoned) because each runs ~1 minute of Granite on a 3-vCPU VM and the API is public.
 

@@ -7,6 +7,7 @@ import random
 import pytest
 
 from crispr_backend import db
+from crispr_backend.llm import get_llm
 
 REGION_START = 1_000
 RNG = random.Random(42)
@@ -46,11 +47,19 @@ def vcf(sample: str, records: list[tuple[int, str]]) -> str:
     return "\n".join(lines) + "\n"
 
 
+@pytest.fixture(autouse=True)
+def no_language_model(monkeypatch):
+    """Tests never call Gemini or Granite, even if a developer's backend/.env enables one."""
+    monkeypatch.setenv("CRISPR_LLM", "none")
+    get_llm.cache_clear()
+    yield
+    get_llm.cache_clear()
+
+
 @pytest.fixture
 def database(tmp_path, monkeypatch):
     path = tmp_path / "test.sqlite"
     monkeypatch.setenv("CRISPR_DB", str(path))
-    monkeypatch.setenv("GRANITE_DISABLED", "1")
     with db.session(path) as connection:
         connection.executemany("INSERT INTO diseases VALUES (?, ?, ?, ?, ?)", DISEASES)
         connection.executemany("INSERT INTO disease_phenotypes VALUES (?, ?, ?, ?)", PHENOTYPES)

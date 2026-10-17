@@ -4,7 +4,8 @@
 #   backend/scripts/deploy.sh            # code only; keeps the server's database
 #   backend/scripts/deploy.sh --with-db  # also upload backend/data/crispr.sqlite (replaces orders)
 #
-# Needs the server's SSH key (ask Callum). Override defaults with CRISPR_SERVER,
+# Uploads backend/.env (if present) for settings such as GEMINI_API_KEY; it never goes
+# into the Docker image. Needs the server's SSH key (ask Callum). Override defaults with CRISPR_SERVER,
 # CRISPR_SSH_KEY and CRISPR_HOST. Safe to rerun: every step is idempotent.
 set -euo pipefail
 
@@ -18,6 +19,8 @@ backend_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 bundle="$(mktemp -d)/backend.tgz"
 tar --exclude=__pycache__ -czf "$bundle" -C "$backend_dir" Dockerfile requirements.txt crispr_backend scripts
 files=("$bundle")
+# Settings and secrets (GEMINI_API_KEY): uploaded separately, never baked into the image.
+[ -f "$backend_dir/.env" ] && files+=("$backend_dir/.env")
 if [ "$with_db" = 1 ]; then
   [ -f "$backend_dir/data/crispr.sqlite" ] || { echo "No backend/data/crispr.sqlite; build it with etl/ first." >&2; exit 1; }
   files+=("$backend_dir/data/crispr.sqlite")
@@ -30,6 +33,8 @@ ssh -i "$key" "linux1@$server" WITH_DB="$with_db" HOST="$host" 'bash -s' <<'REMO
 set -euo pipefail
 mkdir -p ~/backend ~/data ~/caddy
 tar -xzf ~/backend.tgz -C ~/backend && rm ~/backend.tgz
+if [ -f ~/.env ]; then mv ~/.env ~/backend/.env; fi
+touch ~/backend/.env && chmod 600 ~/backend/.env
 if [ "$WITH_DB" = 1 ]; then
   [ -f ~/data/crispr.sqlite ] && cp ~/data/crispr.sqlite ~/data/crispr.sqlite.previous
   mv ~/crispr.sqlite ~/data/crispr.sqlite
@@ -40,7 +45,7 @@ echo "Building and starting the API"
 cd ~/backend && sudo docker build -q -t crispr-backend . >/dev/null
 sudo docker rm -f crispr-api >/dev/null 2>&1 || true
 sudo docker run -d --name crispr-api --restart unless-stopped -p 127.0.0.1:8000:8000 \
-  -v ~/data:/data -v ~/shared/models:/models:ro crispr-backend >/dev/null
+  --env-file ~/backend/.env -v ~/data:/data -v ~/shared/models:/models:ro crispr-backend >/dev/null
 
 echo "Opening ports 80 and 443"
 for port in 80 443; do
