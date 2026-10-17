@@ -118,14 +118,6 @@ export function HumanModel({
           </button>
         </div>
       ) : null}
-      <button
-        className={styles.reset}
-        type="button"
-        disabled={state.status !== "ready"}
-        onClick={() => scene.current?.resetView()}
-      >
-        Reset view
-      </button>
     </div>
   );
 }
