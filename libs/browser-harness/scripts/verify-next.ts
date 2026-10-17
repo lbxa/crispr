@@ -52,6 +52,30 @@ try {
     throw new Error(`Profile switch failed; inspect ${evidenceDir}`);
   }
   await harness.screenshot({ name: "next-home", fullPage: true });
+  for (const side of ["Left", "Right"]) {
+    await harness.click({ selector: `button[aria-label="${side} pane"]` });
+    const paneSnapshot = await harness.snapshot();
+    if (
+      !paneSnapshot.accessibilityTree.includes(`region "${side} workspace pane"`) ||
+      !paneSnapshot.accessibilityTree.includes(`button "${side} pane" [expanded]`) ||
+      !paneSnapshot.accessibilityTree.includes("Interactive realistic female human model") ||
+      !paneSnapshot.visibleText.includes("1 region selected")
+    ) {
+      throw new Error(`Pane switch lost workspace state; inspect ${evidenceDir}`);
+    }
+    await harness.wait({ timeoutMs: 800 });
+    await harness.screenshot({ name: `${side.toLowerCase()}-pane`, fullPage: true });
+  }
+  await harness.press({ key: "Escape" });
+  // Focus stays on the right toggle, so keyboard users can reopen it directly.
+  await harness.press({ key: "Space" });
+  await harness.click({
+    selector: 'button[aria-label="Right pane"][aria-expanded="true"]',
+  });
+  const closedPanes = await harness.snapshot();
+  if (closedPanes.accessibilityTree.includes("[expanded]")) {
+    throw new Error(`Pane dismissal failed; inspect ${evidenceDir}`);
+  }
   await harness.click({ selector: 'button[popovertarget="anatomy-regions"]' });
   await harness.click({ selector: "#anatomy-regions button" });
   await harness.waitForText({ text: "0 regions selected" });

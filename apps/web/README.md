@@ -9,7 +9,7 @@ operations and workflow policy should be added at the application boundary.
 | File                                     | Owns                                                               |
 | ---------------------------------------- | ------------------------------------------------------------------ |
 | `app/page.tsx`                           | Server-rendered page shell and built asset URLs                    |
-| `app/model-workspace.tsx`                | React profile/region selection and the lazy `HumanModel` import    |
+| `app/model-workspace.tsx`                | React pane/profile/region selection and the lazy `HumanModel` import |
 | `app/page.module.css`, `app/globals.css` | App layout and styling                                             |
 | `app/layout.tsx`                         | Fonts and page metadata                                            |
 | `instrumentation.ts`                     | Node server observability                                          |
@@ -46,7 +46,8 @@ the initial client bundle. Generated `public/models/human` is ignored by Git and
 included in Turbo's build outputs so cached production builds retain assets.
 
 Browser verification covers model readiness, both profiles, region selection,
-screenshots, CDP/browser diagnostics, and Next.js MCP compilation/runtime errors.
+pane switching and keyboard dismissal, screenshots, CDP/browser diagnostics, and
+Next.js MCP compilation/runtime errors.
 
 ## Cloudflare Workers
 
@@ -60,6 +61,8 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-17
 
+- Workspace panes are transparent, empty widget grids owned by `ModelWorkspace`. One pane opens at a time; opening either shifts the avatar away, and toggling it again or pressing Escape restores the centered view. Add future cards inside these sections rather than introducing solid sidebar shells.
+- Pane motion uses CSS transforms around the mounted `HumanModel`, preserving scene state and avoiding canvas resize/reframing during transitions. Narrow screens also scale the scene to leave room; reduced-motion preferences disable transitions.
 - Cloudflare Workers runs the existing Next.js build through OpenNext; native Workers Builds owns releases from `lbxa/crispr` on `main` after the shared verification gate. Next.js 16.4.1 satisfies the pinned adapter's supported version range.
 - Keep the workspace focused on the full-screen anatomy scene. Profile controls stay in a compact dock and region selection opens on demand; avoid restoring explanatory panels, decorative status badges, duplicate headings, or persistent gesture hints.
 - Next.js is the primary UI driver; `HumanModel` is a lazily loaded library component so page delivery and future research workflows are independent of WebGL startup.
