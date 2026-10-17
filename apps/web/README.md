@@ -61,7 +61,7 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 ### 2026-10-17
 
 - Cloudflare Workers runs the existing Next.js build through OpenNext; native Workers Builds owns releases from `lbxa/crispr` on `main` after the shared verification gate. Next.js 16.4.1 satisfies the pinned adapter's supported version range.
-- Keep the workspace focused on the full-screen anatomy scene. Profile controls stay in a compact dock and region selection opens on demand; avoid restoring explanatory panels, decorative status badges, or duplicate headings.
+- Keep the workspace focused on the full-screen anatomy scene. Profile controls stay in a compact dock and region selection opens on demand; avoid restoring explanatory panels, decorative status badges, duplicate headings, or persistent gesture hints.
 - Next.js is the primary UI driver; `HumanModel` is a lazily loaded library component so page delivery and future research workflows are independent of WebGL startup.
 - React controls own profile and highlight selections; `libs/human-model` owns scene mechanics. This keeps product features out of the GPU lifecycle and gives agents one place to find each behavior.
 - Models are copied from the library's hashed build manifest into public assets, allowing static delivery and durable caching without runtime filesystem routes or duplicated source assets.
