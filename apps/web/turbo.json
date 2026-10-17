@@ -1,0 +1,7 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": { "outputs": ["$TURBO_EXTENDS$", "public/models/human/**"] },
+    "check-types": { "dependsOn": ["build"] }
+  }
+}

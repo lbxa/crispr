@@ -1,0 +1,8 @@
+app_name: web
+app_command: bun run --cwd apps/web dev --hostname 127.0.0.1 --port ${PORT}
+app_url: http://127.0.0.1:${PORT}
+port: 3101
+start_app: true
+headless: true
+startup_timeout_ms: 120000
+evidence_dir: .harness/evidence/web

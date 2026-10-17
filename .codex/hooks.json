@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash \"$(git rev-parse --show-toplevel)/.codex/hooks/stop_checks.sh\"",
+            "statusMessage": "Running deterministic verification",
+            "timeout": 900
+          }
+        ]
+      }
+    ]
+  }
+}

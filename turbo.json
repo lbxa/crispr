@@ -1,0 +1,45 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
+  "globalPassThroughEnv": [
+    "ENVIRONMENT",
+    "PORT",
+    "HARNESS_PORT",
+    "NEXT_RUNTIME",
+    "OTEL_*",
+    "OBSERVABILITY_*",
+    "LOKI_*",
+    "HARNESS_RUN_ID",
+    "TASK_ID",
+    "SESSION_ID",
+    "CODEX_*",
+    "APP_NAME",
+    "BROWSER_SESSION_ID",
+    "ISSUE_*",
+    "BRANCH",
+    "COMMIT_SHA",
+    "TEST_NAME"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/dev/**"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "check-types": {
+      "dependsOn": ["^build", "^check-types"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

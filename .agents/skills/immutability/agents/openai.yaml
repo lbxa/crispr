@@ -1,0 +1,4 @@
+interface:
+  display_name: "Immutability"
+  short_description: "Apply immutable coding patterns"
+  default_prompt: "Use $immutability to refactor this code toward clear immutable state updates."

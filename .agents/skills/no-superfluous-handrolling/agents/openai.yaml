@@ -1,0 +1,4 @@
+interface:
+  display_name: "No Superfluous Handrolling"
+  short_description: "Choose maintained libraries over custom code"
+  default_prompt: "Use $no-superfluous-handrolling to decide whether this implementation should rely on a maintained library instead of hand-rolled code."

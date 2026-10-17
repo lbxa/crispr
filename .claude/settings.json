@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/worktree_create.sh",
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash \"$CLAUDE_PROJECT_DIR\"/scripts/agent-hooks/stop-checks.sh",
+            "statusMessage": "Verifying repository before handoff",
+            "timeout": 900
+          }
+        ]
+      }
+    ]
+  }
+}

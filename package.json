@@ -1,0 +1,34 @@
+{
+  "name": "crispr",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "verify": "bun run verify:hooks && turbo run lint check-types test build",
+    "verify:hooks": "bun test scripts/agent-hooks && bash .claude/hooks/worktree_create.test.sh",
+    "verify:browser": "bun run --cwd libs/browser-harness verify:next",
+    "setup": "bash scripts/setup.sh",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check-types": "turbo run check-types"
+  },
+  "devDependencies": {
+    "prettier": "3.9.6",
+    "turbo": "^2.11.9",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "1.3.14"
+    }
+  },
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ]
+}

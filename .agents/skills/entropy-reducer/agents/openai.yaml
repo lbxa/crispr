@@ -1,0 +1,4 @@
+interface:
+  display_name: "Entropy Reducer"
+  short_description: "Reduce AI slop and repository drift"
+  default_prompt: "Use $entropy-reducer to scan the current changes for entropy and produce targeted cleanup actions."

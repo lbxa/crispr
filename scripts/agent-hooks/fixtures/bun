@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${1:-}" = run ] && [ "${2:-}" = verify ]; then
+  printf 'fixture verification output\n'
+  exit "${VERIFY_EXIT_CODE:-0}"
+fi
+exec "$REAL_BUN" "$@"

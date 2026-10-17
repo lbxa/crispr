@@ -1,0 +1,10 @@
+{
+  "extends": "@crispr/typescript-config/bun.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "lib",
+    "types": ["bun", "node"]
+  },
+  "include": ["lib/**/*.ts"],
+  "exclude": ["dist", "node_modules", "lib/**/*.test.ts"]
+}

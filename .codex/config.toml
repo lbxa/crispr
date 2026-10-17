@@ -1,0 +1,10 @@
+[features]
+hooks = true
+
+[agents]
+max_threads = 50
+max_depth = 2
+
+[mcp_servers.context7]
+command = "bunx"
+args = ["-y", "@upstash/context7-mcp"]

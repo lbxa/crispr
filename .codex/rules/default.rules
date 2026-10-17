@@ -1,0 +1,52 @@
+# Converted from .cursor/rules/*.mdc
+# This file encodes command-execution policy only.
+
+# Enforce Bun as the package manager / runner.
+prefix_rule(
+    pattern = ["npm"],
+    decision = "forbidden",
+    justification = "Use `bun` instead of `npm`.",
+    match = ["npm install", "npm run test"],
+    not_match = ["bun install", "bun test"],
+)
+
+prefix_rule(
+    pattern = ["npx"],
+    decision = "forbidden",
+    justification = "Use `bunx` (or `bun run`) instead of `npx`.",
+    match = ["npx vitest", "npx drizzle-kit generate"],
+    not_match = ["bunx drizzle-kit generate"],
+)
+
+prefix_rule(
+    pattern = ["yarn"],
+    decision = "forbidden",
+    justification = "Use `bun` instead of `yarn`.",
+    match = ["yarn install", "yarn test"],
+    not_match = ["bun install", "bun test"],
+)
+
+prefix_rule(
+    pattern = ["pnpm"],
+    decision = "forbidden",
+    justification = "Use `bun` instead of `pnpm`.",
+    match = ["pnpm install", "pnpm test"],
+    not_match = ["bun install", "bun test"],
+)
+
+prefix_rule(
+    pattern = ["node"],
+    decision = "forbidden",
+    justification = "Use `bun <file>` instead of `node <file>`.",
+    match = ["node index.js", "node scripts/sync.js"],
+    not_match = ["bun index.ts", "bun scripts/sync.ts"],
+)
+
+prefix_rule(
+    pattern = ["ts-node"],
+    decision = "forbidden",
+    justification = "Use `bun <file>` instead of `ts-node`.",
+    match = ["ts-node scripts/sync.ts"],
+    not_match = ["bun scripts/sync.ts"],
+)
+

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Capture Tacit Knowledge"
+  short_description: "Record decisions in package changelogs"
+  default_prompt: "Use $capture-tacit-knowledge to record important decisions from this work in the relevant package README changelog."

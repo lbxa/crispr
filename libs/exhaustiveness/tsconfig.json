@@ -1,0 +1,9 @@
+{
+  "extends": "@crispr/typescript-config/bun.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src"],
+  "exclude": ["coverage", "dist", "node_modules"]
+}

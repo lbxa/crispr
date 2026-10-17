@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="title">
+  <title id="title">Crispr</title>
+  <rect width="32" height="32" rx="8" fill="#141918" />
+  <path d="M20 11a7 7 0 1 0 0 10" fill="none" stroke="#edf1ef" stroke-width="3" stroke-linecap="round" />
+  <circle cx="24" cy="23" r="1.75" fill="#a9e1d3" />
+</svg>
