@@ -13,7 +13,8 @@ def test_keeps_the_most_specific_term():
 
 
 def test_maps_clinical_phrases_and_rejects_nonsense():
-    assert map_phrase("Recurrent fevers").name == "Recurrent fever"
+    fever = map_phrase("Recurrent fevers")
+    assert fever is not None and fever.name == "Recurrent fever"
     assert map_phrase("purple elephant") is None
     assert [t.name for t in extract_from_phrases(["Joint pain", "Joint pain"])] == ["Arthralgia"]
 

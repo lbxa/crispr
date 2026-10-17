@@ -107,8 +107,7 @@ def ensembl(path: str, **params) -> requests.Response:
             continue
         response.raise_for_status()
         return response
-    response.raise_for_status()
-    return response
+    raise RuntimeError(f"Ensembl {path}: still failing after 5 attempts")
 
 
 def gene_region(gene: str) -> dict:

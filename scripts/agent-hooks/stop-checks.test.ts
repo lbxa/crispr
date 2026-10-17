@@ -13,7 +13,12 @@ afterEach(async () => {
   );
 });
 
-async function stop(exitCode: number, active: boolean, wrapper = false) {
+async function stop(
+  exitCode: number,
+  active: boolean,
+  wrapper = false,
+  backendExitCode?: number,
+) {
   const fixture = await mkdtemp(join(tmpdir(), "crispr-stop-test-"));
   fixtures.push(fixture);
   await mkdir(join(fixture, "scripts/agent-hooks"), { recursive: true });
@@ -27,6 +32,11 @@ async function stop(exitCode: number, active: boolean, wrapper = false) {
     join(root, ".codex/hooks/stop_checks.sh"),
     join(fixture, ".codex/hooks/stop_checks.sh"),
   );
+  if (backendExitCode !== undefined) {
+    // Presence of the backend's virtualenv opts the machine into backend checks.
+    await mkdir(join(fixture, "backend/.venv/bin"), { recursive: true });
+    await cp(process.execPath, join(fixture, "backend/.venv/bin/python"));
+  }
   await cp(join(import.meta.dir, "fixtures/bun"), join(fixture, "bin/bun"));
   await chmod(join(fixture, "bin/bun"), 0o755);
   const child = Bun.spawn(
@@ -46,6 +56,7 @@ async function stop(exitCode: number, active: boolean, wrapper = false) {
         PATH: `${fixture}/bin:${process.env.PATH}`,
         REAL_BUN: process.execPath,
         VERIFY_EXIT_CODE: String(exitCode),
+        BACKEND_EXIT_CODE: String(backendExitCode ?? 0),
       },
       stdin: new Response(JSON.stringify({ stop_hook_active: active })),
       stdout: "pipe",
@@ -83,4 +94,16 @@ test("repeated failure reports the failure without an infinite continuation", as
   expect(result.result.decision).toBeUndefined();
   expect(result.result.systemMessage).toContain("still failing");
   expect(result.stderr).toContain("Verification log:");
+});
+test("backend checks run and can block when the backend environment exists", async () => {
+  const result = await stop(0, false, false, 1);
+  expect(result.result.decision).toBe("block");
+  expect(result.stderr).toContain("fixture backend verification output");
+});
+test("backend checks are skipped where the backend environment is absent", async () => {
+  expect(await stop(0, false)).toMatchObject({
+    code: 0,
+    result: {},
+    stderr: "",
+  });
 });

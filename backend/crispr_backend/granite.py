@@ -34,7 +34,7 @@ def find_model_path() -> str | None:
 
 class Granite:
     def __init__(self, model_path: str):
-        from llama_cpp import Llama
+        from llama_cpp import Llama  # pyright: ignore[reportMissingImports]  (server-only dependency)
 
         self.model_path = model_path
         self._llm = Llama(model_path=model_path, n_ctx=4096, verbose=False)

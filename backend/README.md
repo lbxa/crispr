@@ -74,10 +74,11 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/uvicorn crispr_backend.api:app --port 8000
 ```
 
-Checks (also `bun run verify:backend` from the repo root):
+Checks: lint, formatting, pyright type checking and tests. Run them with `bun run verify:backend`
+from the repo root; the Claude/Codex stop hook also runs them whenever `backend/.venv` exists.
 
 ```sh
-.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/python -m pytest
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/pyright && .venv/bin/python -m pytest
 .venv/bin/python -m scripts.evaluate
 ```
 
@@ -117,7 +118,8 @@ base model that cannot follow instructions.
 
 ### 2026-10-17
 
-- Backend lives outside the Bun workspaces: Cloudflare Workers Builds runs `bun run verify` for every deploy and has no Python environment, so Python checks run via `bun run verify:backend` instead.
+- Backend lives outside the Bun workspaces: Cloudflare Workers Builds runs `bun run verify` for every deploy and has no Python environment, so Python checks run via `bun run verify:backend` instead. The stop hook runs it only when `backend/.venv` exists, so teammates without the Python setup are unaffected.
+- pyhpo's `Ontology()` re-reads its data (~5 s) on every call; `phenotype.load_ontology()` caches it per process, which cut the backend checks from ~50 s to ~9 s.
 - Demo genomes are 1000 Genomes samples with ClinVar variants planted in a fraction; there is no public set of diagnosed patient genomes. Controls can still carry real pathogenic variants: in the first build, a male with a hemizygous G6PD variant and a carrier of TTR V142I (common in West African ancestry, low penetrance) are genuine findings, not pipeline errors.
 - Granite 3.3 2B runs at ~1 token/s on the 3-vCPU VM. It is used only to extract symptoms at order time (~2 min per order end to end). Report summaries are templated because Granite garbled variant facts in testing, and customer symptom texts are pre-generated in batch.
 - Template symptom texts reuse HPO term names, so evaluation on them is optimistic (100% of planted diseases ranked first, 4% of controls flagged on 100 genomes × 3 descriptions). Granite-written descriptions are the realistic test.

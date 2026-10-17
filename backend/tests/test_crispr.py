@@ -35,6 +35,7 @@ def test_strategy_follows_disease_mechanism():
     args = (SEQUENCE, REGION_START, variant, base(variant), alt_for(variant))
     recessive = plan_edit(*args, Inheritance.AUTOSOMAL_RECESSIVE, Mechanism.LOSS_OF_FUNCTION)
     assert recessive.strategy.startswith("Homology-directed repair")
+    assert recessive.repair_template is not None
     assert base(variant) in recessive.repair_template and len(recessive.repair_template) == 121
     gain = plan_edit(*args, Inheritance.AUTOSOMAL_DOMINANT, Mechanism.GAIN_OF_FUNCTION)
     assert gain.strategy == "Allele-specific knockout" and all(g.allele_specific for g in gain.guides)

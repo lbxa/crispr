@@ -4,4 +4,8 @@ if [ "${1:-}" = run ] && [ "${2:-}" = verify ]; then
   printf 'fixture verification output\n'
   exit "${VERIFY_EXIT_CODE:-0}"
 fi
+if [ "${1:-}" = run ] && [ "${2:-}" = verify:backend ]; then
+  printf 'fixture backend verification output\n'
+  exit "${BACKEND_EXIT_CODE:-0}"
+fi
 exec "$REAL_BUN" "$@"

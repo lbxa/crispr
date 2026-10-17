@@ -16,3 +16,10 @@ extend-exclude = [".venv", "data"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["E501"]  # the formatter owns line length; long strings are left intact
+
+[tool.pyright]
+include = ["crispr_backend", "etl", "scripts", "tests"]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
+typeCheckingMode = "standard"

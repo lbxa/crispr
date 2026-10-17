@@ -53,7 +53,8 @@ processes. Interactive sessions use `browser-harness.yaml`; see
 [the agent feedback loop](docs/agent-harness.md) and
 [browser harness API](libs/browser-harness/README.md).
 
-Codex and Claude Stop hooks run the same `bun run verify` gate. Failures request
+Codex and Claude Stop hooks run the same `bun run verify` gate, plus
+`bun run verify:backend` on machines where `backend/.venv` exists. Failures request
 one repair continuation and preserve logs under `.harness/verification`. Repeated
 failure produces a warning for an honest handoff, rather than an endless loop.
 Browser verification runs explicitly so the hook does not contend with an agent's

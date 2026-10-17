@@ -41,7 +41,7 @@ class EditPlan:
     guides: list[Guide]
     repair_template: str | None
     repair_template_notes: str | None
-    alternative: str | None
+    alternative: str
     off_target: str = "Not assessed. Run a genome-wide off-target search before any lab use."
 
 
@@ -119,7 +119,7 @@ def repair_template(region_sequence: str, region_start: int, pos: int, ref: str)
     return region_sequence[max(0, offset - DONOR_ARM) : offset + len(ref) + DONOR_ARM]
 
 
-def base_editing_option(ref: str, alt: str) -> str | None:
+def base_editing_option(ref: str, alt: str) -> str:
     """Can a base editor revert alt -> ref without a double-strand break?"""
     if len(ref) != 1 or len(alt) != 1:
         return "Prime editing could install the correction without a double-strand break (indel variant)."

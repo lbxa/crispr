@@ -43,9 +43,15 @@ class ExtractedTerm:
 
 
 @cache
+def load_ontology() -> None:
+    """Load HPO once per process; pyhpo's Ontology() re-reads its data files (~5 s) on every call."""
+    Ontology()
+
+
+@cache
 def _ontology_index() -> tuple[dict[str, str], dict[str, set[str]]]:
     """(normalized name or synonym -> HPO id, token -> keys containing it) for phenotype terms."""
-    Ontology()
+    load_ontology()
     root = Ontology.get_hpo_object(PHENOTYPIC_ABNORMALITY)
     by_key: dict[str, str] = {}
     keys_by_token: dict[str, set[str]] = defaultdict(set)
@@ -133,7 +139,7 @@ class PhenotypeMatch:
 
 class DiseaseProfiles:
     def __init__(self, connection: sqlite3.Connection):
-        Ontology()
+        load_ontology()
         terms: dict[str, list[str]] = defaultdict(list)
         for row in connection.execute("SELECT omim_id, hpo_id FROM disease_phenotypes"):
             terms[row["omim_id"]].append(row["hpo_id"])
@@ -146,7 +152,7 @@ class DiseaseProfiles:
         scores = {
             omim_id: patient.similarity(profile, kind="omim", method="resnik") for omim_id, profile in self.sets.items()
         }
-        ordered = sorted(scores, key=scores.get, reverse=True)
+        ordered = sorted(scores, key=lambda omim_id: scores[omim_id], reverse=True)
         return {
             omim_id: PhenotypeMatch(
                 omim_id=omim_id,
