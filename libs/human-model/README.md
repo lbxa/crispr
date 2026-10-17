@@ -143,6 +143,7 @@ anatomy. See `docs/blender-segmentation.md` for the export contract.
 
 ### 2026-10-17
 
+- Type checks depend on this workspace's asset build because the runtime asset tests import the generated manifest. Warm local output can hide this dependency; preserve the task ordering for clean CI checkouts.
 - Track this workspace and its canonical assets as ordinary files in the monorepo. An inherited Git submodule pointer without `.gitmodules` prevented clean CI clones; do not reintroduce a nested repository when copying authoring assets or tooling.
 - Viewer feedback and camera reset inherit host color tokens so the reusable scene fits the app's minimal workspace without adding a separate themed panel.
 - `HumanModel` is a controlled React library component used by `apps/web`; Next.js owns the main UI so growing product features do not become coupled to page-global Three.js code.
