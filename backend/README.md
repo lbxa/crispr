@@ -82,7 +82,9 @@ from the repo root; the Claude/Codex stop hook also runs them whenever `backend/
 .venv/bin/python -m scripts.evaluate
 ```
 
-Tests use a small built-in database and need no downloads. `data/` and `.venv/` are
+Tests use a small built-in database and need no downloads. `tests/test_clinvar.py` covers the ClinVar
+import offline; `.venv/bin/python -m pytest -m network` also checks live ClinVar still has CFTR
+F508del in the expected format (run it after a new ClinVar release). `data/` and `.venv/` are
 git-ignored; rebuild the data with the ETL commands.
 
 ## LinuxONE deployment
