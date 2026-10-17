@@ -47,3 +47,11 @@ yarn-error.log*
 .claude/worktrees/
 .claude/settings.local.json
 *.tsbuildinfo
+IBMHackathon.code-workspace
+
+# Python backend
+backend/.venv/
+backend/data/
+__pycache__/
+.pytest_cache/
+.ruff_cache/

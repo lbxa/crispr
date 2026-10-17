@@ -1,0 +1,3 @@
+-r requirements.txt
+# Data build (laptop only; pysam needs htslib and is not needed on the server)
+pysam==0.24.1

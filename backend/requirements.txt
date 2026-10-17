@@ -1,0 +1,5 @@
+# Runtime (also installed on LinuxONE / s390x; all pure Python or with s390x wheels)
+fastapi==0.143.3
+uvicorn==0.54.0
+pyhpo==4.0.0
+requests==2.34.2

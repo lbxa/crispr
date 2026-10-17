@@ -15,9 +15,12 @@ iteration inspectable and repeatable.
 | `libs/ui`                                      | `@crispr/ui`: shared React components                                            |
 | `libs/eslint-config`, `libs/typescript-config` | Shared tooling                                                                   |
 | `libs/human-model`                             | Reusable React/Three.js component, optimized model assets, and Blender authoring |
+| `backend`                                      | Python API on IBM LinuxONE: genome + symptoms → finding → CRISPR edit plan       |
+| `notebooks`                                    | Sandbox notebooks for IBM services (Granite on LinuxONE, watsonx.ai)             |
 | `.agents/skills`                               | Canonical skills shared by agent clients                                         |
 | `.codex`, `.claude`, `scripts/agent-hooks`     | Agent profiles, setup, and verification hooks                                    |
 
+`backend` is Python and sits outside the Bun workspaces; see `backend/README.md`.
 Use package imports such as `@crispr/ui/button`; do not import another workspace's
 source by relative path. Workspaces are `apps/*` and `libs/*`.
 

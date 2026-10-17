@@ -12,6 +12,7 @@
     "verify": "bun run verify:hooks && turbo run lint check-types test build",
     "verify:hooks": "bun test scripts/agent-hooks && bash .claude/hooks/worktree_create.test.sh",
     "verify:browser": "bun run --cwd libs/browser-harness verify:next",
+    "verify:backend": "cd backend && .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/python -m pytest -q",
     "setup": "bash scripts/setup.sh",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"

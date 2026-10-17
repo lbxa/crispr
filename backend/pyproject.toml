@@ -1,0 +1,18 @@
+[project]
+name = "crispr-backend"
+version = "0.1.0"
+description = "Crispr prototype backend: genome + symptoms -> genetic finding -> CRISPR edit plan"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = [".venv", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]  # the formatter owns line length; long strings are left intact
