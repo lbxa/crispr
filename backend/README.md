@@ -47,68 +47,82 @@ analysis never reads it.
 | `scripts/evaluate.py`             | Accuracy on planted diseases and false-alarm rate on controls             |
 | `scripts/pregenerate_symptoms.py` | Batch Granite symptom descriptions (slow)                                 |
 
-## API
+## Using the backend (no data download needed)
 
-| Method | Path                      | Purpose                                                                                      |
-| ------ | ------------------------- | -------------------------------------------------------------------------------------------- |
-| GET    | `/health`                 | Liveness                                                                                     |
-| GET    | `/diseases`               | The panel                                                                                    |
-| POST   | `/orders`                 | Prototype "order your kit": picks a random demo genome, returns `{id, status: "processing"}` |
-| GET    | `/orders/{id}`            | Status (`processing` → `ready`/`failed`), symptoms, report                                   |
-| GET    | `/orders/{id}/genome.vcf` | The order's genome file                                                                      |
-| GET    | `/orders/{id}/truth`      | Demo only: what was planted, to check the report                                             |
-| POST   | `/analyze`                | `{vcf, symptoms, sex?}` → report; the real product's entry point                             |
+All data and the Granite model live on the LinuxONE server. The API is public at
+**https://148-100-79-183.sslip.io** (interactive docs at `/docs`). Code outside `backend/`
+(the website, notebooks, teammates' scripts) talks to this API and never to the database;
+only backend code opens the database.
 
-Interactive docs: `/docs` once running. CORS origins come from `CRISPR_CORS_ORIGINS`
-(comma-separated, default `http://localhost:3000`).
+| Method | Path                       | Purpose                                                                                                              |
+| ------ | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/health`                  | Liveness                                                                                                             |
+| GET    | `/diseases`                | The panel                                                                                                            |
+| GET    | `/genomes`                 | Demo genomes (id, 1000 Genomes sample, sex); never reveals what was planted                                          |
+| GET    | `/genomes/{id}/genome.vcf` | One genome's panel VCF (~80 KB)                                                                                      |
+| POST   | `/genomes/{id}/analyze`    | `{symptoms, use_granite?}` → report for a chosen genome                                                              |
+| POST   | `/orders`                  | Prototype "order your kit": random genome, returns `{id, status: "processing"}`; 429 if 3 orders are already running |
+| GET    | `/orders/{id}`             | Status (`processing` → `ready`/`failed`), symptoms, report                                                           |
+| GET    | `/orders/{id}/genome.vcf`  | The order's genome file                                                                                              |
+| GET    | `/orders/{id}/truth`       | Demo only: what was planted, to check the report                                                                     |
+| POST   | `/analyze`                 | `{vcf, symptoms, sex?, use_granite?}` → report; the real product's entry point                                       |
 
-## Local development
+`use_granite: false` skips the ~1 minute Granite step and answers in under a second, but
+then only symptoms written in medical terms are recognized (e.g. "bowing of the legs",
+not "my legs are bowed"). Use it while iterating; leave it on for demos.
 
-Requires Python 3.12+.
+```sh
+curl https://148-100-79-183.sslip.io/genomes
+curl -X POST https://148-100-79-183.sslip.io/genomes/3/analyze -H 'Content-Type: application/json' \
+  -d '{"symptoms": "macrocephaly, bowing of the legs, recurrent otitis media", "use_granite": false}'
+```
+
+CORS allows `http://localhost:3000` and `https://crispr.<account>.workers.dev`
+(`CRISPR_CORS_ORIGINS` and `CRISPR_CORS_ORIGIN_REGEX` override them).
+
+## Developing backend code
+
+Requires Python 3.12+. No data download is needed: tests use a small built-in database.
 
 ```sh
 cd backend
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/python -m etl.build_reference     # ~15 min; resumable, --refresh to redo
-.venv/bin/python -m etl.build_genomes --samples 100 --disease-fraction 0.5   # ~10 min
-.venv/bin/uvicorn crispr_backend.api:app --port 8000
 ```
 
 Checks: lint, formatting, pyright type checking and tests. Run them with `bun run verify:backend`
-from the repo root; the Claude/Codex stop hook also runs them whenever `backend/.venv` exists.
+from the repo root (~10 s); the Claude/Codex stop hook also runs them whenever `backend/.venv` exists.
 
 ```sh
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/pyright && .venv/bin/python -m pytest
+```
+
+`tests/test_clinvar.py` covers the ClinVar import offline; `.venv/bin/python -m pytest -m network`
+also checks live ClinVar still has CFTR F508del in the expected format (run it after a new
+ClinVar release).
+
+**Only if you need real data locally** (rebuilding the database, `scripts/evaluate.py`): the
+ETL keeps ~45 MB in the git-ignored `data/` (it streams more from 1000 Genomes while building but stores only the panel genes):
+
+```sh
+.venv/bin/python -m etl.build_reference     # ~15 min; resumable, --refresh to redo
+.venv/bin/python -m etl.build_genomes --samples 100 --disease-fraction 0.5   # ~10 min
 .venv/bin/python -m scripts.evaluate
 ```
 
-Tests use a small built-in database and need no downloads. `tests/test_clinvar.py` covers the ClinVar
-import offline; `.venv/bin/python -m pytest -m network` also checks live ClinVar still has CFTR
-F508del in the expected format (run it after a new ClinVar release). `data/` and `.venv/` are
-git-ignored; rebuild the data with the ETL commands.
-
 ## LinuxONE deployment
 
-The server is a LinuxONE Community Cloud VM (Ubuntu 24.04, s390x, 3 vCPU, 8 GB).
-Docker and IBM's jupyter-lab-ml image are installed. From `backend/` on a laptop:
+The server is a LinuxONE Community Cloud VM (Ubuntu 24.04, s390x, 3 vCPU, 8 GB) running
+three containers: `crispr-api` (this backend, localhost:8000), `crispr-proxy` (Caddy:
+HTTPS on 80/443 with an automatic certificate for the sslip.io name) and `notebook`
+(IBM's Jupyter image). With the server's SSH key (ask Callum):
 
 ```sh
-tar --exclude=__pycache__ -czf backend.tgz Dockerfile requirements.txt crispr_backend scripts
-scp -i ~/.ssh/crispr.pem backend.tgz data/crispr.sqlite linux1@<server-ip>:~/
-ssh -i ~/.ssh/crispr.pem linux1@<server-ip>
-# on the server:
-mkdir -p ~/backend ~/data && tar -xzf backend.tgz -C ~/backend && mv crispr.sqlite ~/data/
-chmod a+rw ~/data ~/data/crispr.sqlite
-cd ~/backend && sudo docker build -t crispr-backend .
-sudo docker rm -f crispr-api; sudo docker run -d --name crispr-api --restart unless-stopped \
-  -p 127.0.0.1:8000:8000 -v ~/data:/data -v ~/shared/models:/models:ro crispr-backend
+backend/scripts/deploy.sh            # ship code; keeps the server's database and orders
+backend/scripts/deploy.sh --with-db  # also replace the database with backend/data/crispr.sqlite
 ```
 
-The API listens on localhost only. To call it from your laptop:
-`ssh -i ~/.ssh/crispr.pem -L 8000:localhost:8000 linux1@<server-ip>`, then
-http://localhost:8000/docs. Exposing it to the website needs HTTPS (the site is served
-over HTTPS, so browsers block plain-HTTP calls): put Caddy in front with a hostname such as
-`<ip-with-dashes>.sslip.io` and open ports 80/443 with iptables. That is not done yet.
+The script is idempotent: it rebuilds and restarts the API, keeps ports 80/443 open in
+`/etc/iptables/rules.v4`, and (re)starts the proxy.
 
 **Granite model:** `~/shared/models/granite-3.3-2b-instruct-be.Q4_K_M.gguf`, a
 big-endian build from
@@ -119,6 +133,9 @@ base model that cannot follow instructions.
 ## Changelog
 
 ### 2026-10-17
+
+- All data and Granite stay on the server; teammates and the website use the public HTTPS API, so nobody needs the database locally. Ports 80/443 are persisted by editing `/etc/iptables/rules.v4` directly: `iptables-save` would also capture Docker's chains, which fail to restore at boot before Docker starts.
+- `POST /orders` is capped at 3 concurrent orders (orders still processing after 10 minutes are treated as abandoned) because each runs ~1 minute of Granite on a 3-vCPU VM and the API is public.
 
 - Backend lives outside the Bun workspaces: Cloudflare Workers Builds runs `bun run verify` for every deploy and has no Python environment, so Python checks run via `bun run verify:backend` instead. The stop hook runs it only when `backend/.venv` exists, so teammates without the Python setup are unaffected.
 - pyhpo's `Ontology()` re-reads its data (~5 s) on every call; `phenotype.load_ontology()` caches it per process, which cut the backend checks from ~50 s to ~9 s.

@@ -34,9 +34,9 @@ class Analyzer:
         self.profiles = phenotype.DiseaseProfiles(connection)
         self.regions = {row["gene"]: dict(row) for row in connection.execute("SELECT * FROM gene_regions")}
 
-    def extract_symptoms(self, text: str) -> tuple[list[phenotype.ExtractedTerm], str]:
+    def extract_symptoms(self, text: str, use_granite: bool = True) -> tuple[list[phenotype.ExtractedTerm], str]:
         verbatim = phenotype.extract_from_text(text)
-        granite = get_granite()
+        granite = get_granite() if use_granite else None
         if granite is None:
             return verbatim, "keyword"
         phrases = granite.chat_json(EXTRACT_SYSTEM, text, max_tokens=120)
@@ -52,8 +52,9 @@ class Analyzer:
         merged = {term.id: term for term in verbatim + mapped}
         return phenotype.most_specific(list(merged.values())), "granite"
 
-    def analyze(self, calls: list[Call], symptoms: str, sex: str | None) -> dict:
-        terms, extraction = self.extract_symptoms(symptoms or "")
+    def analyze(self, calls: list[Call], symptoms: str, sex: str | None, use_granite: bool = True) -> dict:
+        """`use_granite=False` skips the ~1 min Granite step (keyword matching only), for fast iteration."""
+        terms, extraction = self.extract_symptoms(symptoms or "", use_granite)
         phenotype_matches = self.profiles.rank(terms)
         findings = []
         for finding in genotype.assess(self.variants, calls, sex):
