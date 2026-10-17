@@ -121,7 +121,21 @@ backend/scripts/deploy.sh            # ship code; keeps the server's database an
 backend/scripts/deploy.sh --with-db  # also replace the database with backend/data/crispr.sqlite
 ```
 
-The script is idempotent: it rebuilds and restarts the API, keeps ports 80/443 open in
+To check the deployed system end to end (server, data, HTTPS, Granite), run the smoke
+test from anywhere; it needs only Python 3, no virtualenv:
+
+```sh
+python3 backend/scripts/smoke_test.py          # full: includes a real order with Granite (~2 min)
+python3 backend/scripts/smoke_test.py --quick  # skip the order (~5 s); deploy.sh runs this
+python3 backend/scripts/smoke_test.py --url http://localhost:8000
+```
+
+It checks health, the panel, the genome list (no ground truth exposed), a genome
+download, a fast analysis, and a full order compared against `/truth`. A planted
+disease must always be found; whether it's ranked first is reported, since that depends
+on the symptom text.
+
+The deploy script is idempotent: it rebuilds and restarts the API, keeps ports 80/443 open in
 `/etc/iptables/rules.v4`, and (re)starts the proxy.
 
 **Granite model:** `~/shared/models/granite-3.3-2b-instruct-be.Q4_K_M.gguf`, a

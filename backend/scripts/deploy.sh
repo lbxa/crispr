@@ -55,7 +55,7 @@ done
 echo "Starting the HTTPS proxy for $HOST"
 printf '%s {\n\treverse_proxy 127.0.0.1:8000\n}\n' "$HOST" > ~/caddy/Caddyfile
 if sudo docker ps --format '{{.Names}}' | grep -qx crispr-proxy; then
-  sudo docker exec crispr-proxy caddy reload --config /etc/caddy/Caddyfile >/dev/null
+  sudo docker exec crispr-proxy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1
 else
   sudo docker rm -f crispr-proxy >/dev/null 2>&1 || true
   sudo docker run -d --name crispr-proxy --restart unless-stopped --network host \
@@ -68,7 +68,11 @@ REMOTE
 
 echo "Waiting for https://$host"
 for _ in $(seq 45); do
-  curl -sf "https://$host/health" >/dev/null && { echo "Live: https://$host/docs"; exit 0; }
+  if curl -sf "https://$host/health" >/dev/null; then
+    echo "Live: https://$host/docs"
+    # Quick end-to-end check; run without --quick to also test a Granite order (~2 min).
+    exec python3 "$backend_dir/scripts/smoke_test.py" --url "https://$host" --quick
+  fi
   sleep 4
 done
 echo "API is up but HTTPS isn't answering yet; check: ssh ... 'sudo docker logs crispr-proxy'" >&2
