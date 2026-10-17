@@ -35,15 +35,6 @@
 .stage {
   height: 100%;
 }
-.hint {
-  position: absolute;
-  left: 32px;
-  bottom: max(48px, calc(env(safe-area-inset-bottom) + 24px));
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  pointer-events: none;
-}
 .controls {
   position: absolute;
   bottom: max(32px, calc(env(safe-area-inset-bottom) + 16px));
@@ -223,11 +214,6 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
-}
-@media (max-width: 900px) {
-  .hint {
-    display: none;
-  }
 }
 @media (max-width: 480px) {
   .header {
