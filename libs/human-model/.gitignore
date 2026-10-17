@@ -1,0 +1,46 @@
+# Dependencies and package caches
+node_modules/
+.bun/
+
+# Build, test, and local preview output
+dist/
+coverage/
+output/
+.vite/
+.playwright-cli/
+*.tsbuildinfo
+*.log
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Python and the project-local Blender MCP environment
+.mcp/blender-mcp/.venv/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Blender recovery and temporary files
+*.blend[0-9]
+*.blend[0-9][0-9]
+*.blend@
+*.blend~
+
+# Editor and operating-system metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# General temporary files
+.tmp/
+tmp/
+*.swp
+*.swo
+*~

@@ -1,0 +1,15 @@
+{
+  "models": {
+    "female": {
+      "bytes": 25816252,
+      "filename": "realistic-female-segmented.glb",
+      "sha256": "5769fa4a83541ad357a93c2e43f422d4d2132296d326c2fd09cbf985cdb30c7d"
+    },
+    "male": {
+      "bytes": 11079216,
+      "filename": "realistic-male-segmented.glb",
+      "sha256": "89de0598c561c9ebb103c3bbb3c2c01d55ae75f00e7a71c679628f9329aa968c"
+    }
+  },
+  "schemaVersion": 1
+}

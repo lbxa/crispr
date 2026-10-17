@@ -48,6 +48,10 @@ from `apps/web` to inspect the active account.
 output, local state, environment files, and generated platform declarations are
 ignored by Git; generated output is also excluded from source linting.
 
+`libs/human-model` is an ordinary workspace, including canonical source assets.
+It must not become a Git submodule pointer: Workers Builds updates submodules
+during checkout and cannot clone an inherited pointer without a submodule URL.
+
 ## Git deployment
 
 The Cloudflare Worker is `crispr` in account

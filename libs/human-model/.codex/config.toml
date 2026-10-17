@@ -1,0 +1,13 @@
+[mcp_servers.blender]
+command = "uvx"
+args = ["--from", "blender-mcp==1.6.4", "blender-mcp"]
+enabled = true
+required = false
+startup_timeout_sec = 30
+tool_timeout_sec = 120
+default_tools_approval_mode = "prompt"
+
+[mcp_servers.blender.env]
+BLENDER_HOST = "localhost"
+BLENDER_PORT = "9876"
+DISABLE_TELEMETRY = "true"
