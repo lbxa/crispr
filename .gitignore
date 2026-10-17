@@ -23,6 +23,13 @@ coverage
 
 # Build Outputs
 .next/
+.open-next/
+.wrangler/
+.dev.vars*
+.env.*
+!.env.example
+!.env.*.example
+apps/web/cloudflare-env.d.ts
 out/
 build
 dist

@@ -1,6 +1,10 @@
+import { fileURLToPath } from "node:url";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   devIndicators: false,
+  output: "standalone",
+  outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)),
   serverExternalPackages: ["@crispr/observability"],
   transpilePackages: ["@crispr/human-model"],
   async headers() {

@@ -3,6 +3,9 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "build:worker": "turbo run build --filter=web && bun run --cwd apps/web build:worker",
+    "preview:worker": "bun run build:worker && bun run --cwd apps/web preview",
+    "deploy": "bun run build:worker && bun run --cwd apps/web deploy",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",

@@ -13,6 +13,7 @@ operations and workflow policy should be added at the application boundary.
 | `app/page.module.css`, `app/globals.css` | App layout and styling                                             |
 | `app/layout.tsx`                         | Fonts and page metadata                                            |
 | `instrumentation.ts`                     | Node server observability                                          |
+| `wrangler.jsonc`, `open-next.config.ts`  | Cloudflare Worker deployment, bindings, and adapter settings       |
 | `scripts/sync-model-assets.ts`           | Copies the library's generated assets into Next's public directory |
 | `../../libs/human-model/src/scene.ts`    | Three.js scene lifecycle, not app policy                           |
 
@@ -47,10 +48,19 @@ included in Turbo's build outputs so cached production builds retain assets.
 Browser verification covers model readiness, both profiles, region selection,
 screenshots, CDP/browser diagnostics, and Next.js MCP compilation/runtime errors.
 
+## Cloudflare Workers
+
+From the repository root, use `bun run build:worker`, `bun run preview:worker`,
+and `bun run deploy`. The app uses OpenNext with standalone Next.js output and
+repository-wide file tracing so shared libraries are included. Wrangler and the
+adapter are pinned in this workspace. See [deployment ownership, CI settings,
+and recovery](../../docs/deployment.md) before changing the release workflow.
+
 ## Changelog
 
 ### 2026-10-17
 
+- Cloudflare Workers runs the existing Next.js build through OpenNext; native Workers Builds owns releases from `lbxa/crispr` on `main` after the shared verification gate. Next.js 16.4.1 satisfies the pinned adapter's supported version range.
 - Keep the workspace focused on the full-screen anatomy scene. Profile controls stay in a compact dock and region selection opens on demand; avoid restoring explanatory panels, decorative status badges, or duplicate headings.
 - Next.js is the primary UI driver; `HumanModel` is a lazily loaded library component so page delivery and future research workflows are independent of WebGL startup.
 - React controls own profile and highlight selections; `libs/human-model` owns scene mechanics. This keeps product features out of the GPU lifecycle and gives agents one place to find each behavior.

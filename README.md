@@ -9,10 +9,10 @@ iteration inspectable and repeatable.
 | Path                                           | Purpose                                                                          |
 | ---------------------------------------------- | -------------------------------------------------------------------------------- |
 | `apps/web`                                     | Next.js App Router app, workspace name `web`                                     |
-| `libs/browser-harness`                         | `@crispr/browser-harness`: isolated Playwright/CDP sessions and evidence           |
-| `libs/observability`                           | `@crispr/observability`: server telemetry and Loki queries                         |
-| `libs/exhaustiveness`                          | `@crispr/exhaustiveness`: exhaustive state checks                                  |
-| `libs/ui`                                      | `@crispr/ui`: shared React components                                              |
+| `libs/browser-harness`                         | `@crispr/browser-harness`: isolated Playwright/CDP sessions and evidence         |
+| `libs/observability`                           | `@crispr/observability`: server telemetry and Loki queries                       |
+| `libs/exhaustiveness`                          | `@crispr/exhaustiveness`: exhaustive state checks                                |
+| `libs/ui`                                      | `@crispr/ui`: shared React components                                            |
 | `libs/eslint-config`, `libs/typescript-config` | Shared tooling                                                                   |
 | `libs/human-model`                             | Reusable React/Three.js component, optimized model assets, and Blender authoring |
 | `.agents/skills`                               | Canonical skills shared by agent clients                                         |
@@ -61,10 +61,18 @@ copy `.env.local` files or provision external services. Observability emits loca
 JSON logs by default; set `OTEL_EXPORTER_OTLP_ENDPOINT` to enable gRPC export and
 `LOKI_URL` for log queries. No telemetry backend is assumed to be running.
 
+## Deploy
+
+`bun run preview:worker` builds and previews the app in Cloudflare's Workers
+runtime. `bun run deploy` publishes with local Wrangler authentication.
+Cloudflare Workers Builds deploys `main` from `lbxa/crispr` after verification;
+see [deployment configuration and recovery](docs/deployment.md).
+
 ## Changelog
 
 ### 2026-10-17
 
+- Added a pinned OpenNext/Wrangler deployment for `apps/web`, with Cloudflare Workers Builds as the single owner of Git-triggered production releases.
 - Standardized shared workspaces under `libs/` and the `@crispr/*` namespace so copied agent infrastructure resolves against this repository.
 - Agent clients share verification and CDP evidence contracts. Hooks orchestrate checks; browser lifecycle and telemetry remain owned by their libraries.
 - Next.js owns the application UI; `@crispr/human-model` owns the reusable 3D component and Blender assets. Both package READMEs map the code so agents can find UI, runtime, shader, and asset responsibilities.

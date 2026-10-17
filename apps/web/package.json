@@ -6,6 +6,11 @@
   "scripts": {
     "dev": "bun scripts/sync-model-assets.ts && next dev",
     "build": "bun scripts/sync-model-assets.ts && next build",
+    "build:worker": "opennextjs-cloudflare build --skipNextBuild",
+    "preview": "wrangler dev",
+    "deploy": "opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "check-types": "next typegen && tsc --noEmit"
@@ -14,7 +19,8 @@
     "@crispr/ui": "workspace:*",
     "@crispr/human-model": "workspace:*",
     "@crispr/observability": "workspace:*",
-    "next": "16.3.8",
+    "next": "16.4.1",
+    "@opennextjs/cloudflare": "1.20.12",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
@@ -25,6 +31,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "eslint": "10.9.1",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "wrangler": "4.151.1"
   }
 }
