@@ -16,6 +16,8 @@ export interface SequenceWindow {
   /** Whether the stored reference allele matched the real reference sequence. */
   refCheck: "match" | "mismatch" | "unchecked";
   note?: string;
+  /** A fallback after a failed lookup: do not cache it, the next turn may succeed. */
+  transient?: boolean;
 }
 
 export interface SequenceProvider {
@@ -78,9 +80,10 @@ export interface EnsemblOptions {
 
 /**
  * Real GRCh38 sequence from the Ensembl REST API, with a reference-allele check.
- * `refCheck: 'mismatch'` means the stored coordinates or alleles are wrong, which is
- * the quickest way to validate the seed data once the network is reachable.
- * Falls back to the synthetic provider on any failure, and says so in `note`.
+ * A window is only returned as real when the reference allele matches; on a mismatch
+ * the real window is withheld and a synthetic one is returned with refCheck 'mismatch'.
+ * Falls back to the synthetic provider on any failure, says so in `note`, and marks
+ * the window transient so it is not cached.
  *
  * NOTE: written against the documented endpoint shape and exercised with a mocked
  * fetch only. It has not been run against the live service.
@@ -118,13 +121,21 @@ export class EnsemblSequenceProvider implements SequenceProvider {
       const left = seq.slice(0, flank);
       const refSeq = seq.slice(flank, flank + locus.ref.length);
       const right = seq.slice(flank + locus.ref.length);
+      if (refSeq !== locus.ref.toUpperCase()) {
+        const w = await this.fallback.window(locus, flank);
+        return {
+          ...w,
+          refCheck: "mismatch",
+          note: `Ensembl's reference (${refSeq || "-"}) does not match the stored allele (${locus.ref || "-"}); the real window is withheld and synthetic sequence is shown.`,
+        };
+      }
       return {
         sequence: left + locus.alt + right,
         variantStart: flank,
         variantEnd: flank + locus.alt.length,
         windowStartPos: start,
         source: "ensembl-GRCh38",
-        refCheck: refSeq === locus.ref.toUpperCase() ? "match" : "mismatch",
+        refCheck: "match",
       };
     } catch (err) {
       const w = await this.fallback.window(locus, flank);
@@ -132,6 +143,7 @@ export class EnsemblSequenceProvider implements SequenceProvider {
       return {
         ...w,
         note: `Ensembl lookup failed (${reason}); using synthetic sequence.`,
+        transient: true,
       };
     }
   }

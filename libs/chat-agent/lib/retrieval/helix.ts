@@ -14,7 +14,7 @@ export async function getWindow(
   const hit = cache.get(variantId);
   if (hit) return hit;
   const w = await provider.window(variant.locus);
-  cache.set(variantId, w);
+  if (!w.transient) cache.set(variantId, w);
   return w;
 }
 
