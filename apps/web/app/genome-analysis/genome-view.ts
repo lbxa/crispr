@@ -3,6 +3,7 @@ import {
   SEQUENCE_CHUNK,
   type GenomeSequenceSource,
 } from "@crispr/human-model/dna-sequence";
+import type { ReferenceLoader } from "./reference";
 
 const coordinate = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const chromosomeId = z.string().regex(/^(?:[1-9]|1[0-9]|2[0-2]|X|Y|MT)$/);
@@ -94,9 +95,15 @@ export const genomeViewSchema = z
 export type GenomeView = z.infer<typeof genomeViewSchema>;
 export type GenomeRegion = GenomeView["regions"][number];
 
-/** VCFs are variant lists: only backend-provided reference context becomes DNA. */
+/**
+ * VCFs are variant lists, not DNA. Backend-provided reference contexts around findings
+ * always win; with `loadReference`, every other position shows the GRCh38 reference, and
+ * without it (or if the reference is unavailable) those positions stay N.
+ */
 export function referenceSequenceSource(
   view: GenomeView,
+  loadReference?: ReferenceLoader,
+  onReferenceAvailability?: (available: boolean) => void,
 ): GenomeSequenceSource {
   return {
     async readRange(chromosome, start, end, signal) {
@@ -113,6 +120,13 @@ export function referenceSequenceSource(
         end - start > SEQUENCE_CHUNK * 3
       )
         throw new RangeError("Invalid reference sequence range");
+      const reference =
+        loadReference && end > start
+          ? await loadReference(chromosome.id, start, end, signal)
+          : null;
+      signal.throwIfAborted();
+      if (loadReference && end > start)
+        onReferenceAvailability?.(reference !== null);
       const bases = new Array<string>(end - start).fill("N");
       for (const region of view.regions) {
         const context = region.reference_context;
@@ -130,7 +144,12 @@ export function referenceSequenceSource(
           bases[index - start] = base;
         }
       }
-      return bases.join("");
+      // Positions no context covers fall back to the reference (or stay N without one).
+      return reference
+        ? bases
+            .map((base, index) => (base === "N" ? reference[index]! : base))
+            .join("")
+        : bases.join("");
     },
   };
 }

@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { analyzeGenome } from "./backend";
 import { report } from "./report.fixture";
+import { plan } from "../crispr/plan.fixture";
 
 vi.mock("server-only", () => ({}));
 afterEach(() => {
@@ -36,7 +37,7 @@ describe("Python genome analysis gateway", () => {
             tier: "possible",
             gene: "MEFV",
             disease: "Familial Mediterranean fever",
-            crispr: ["PRIVATE_EDIT"],
+            crispr: [{ ...plan.edits[0], unused_sequence: "PRIVATE_EDIT" }],
           },
         ],
       }),
@@ -131,14 +132,12 @@ describe("Python genome analysis gateway", () => {
 
 describe("Cloudflare Workers compatibility", () => {
   it("never asks fetch for redirect: error, which Workers rejects, and still refuses redirects", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(null, {
-          status: 302,
-          headers: { Location: "https://elsewhere.example" },
-        }),
-      );
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { Location: "https://elsewhere.example" },
+      }),
+    );
     vi.stubGlobal("fetch", fetch);
     const result = await analyzeGenome({
       vcf: "data",

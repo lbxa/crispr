@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { genomeView } from "./genome-view.fixture";
 import { genomeViewSchema, referenceSequenceSource } from "./genome-view";
 import { genomeReportSchema } from "./contract";
@@ -79,6 +79,43 @@ it("returns exact reference context with unknown flanks and cancels bounded read
   await expect(
     source.readRange(chromosome, 0, 10, AbortSignal.abort()),
   ).rejects.toThrow();
+});
+
+it("fills positions outside the contexts from the GRCh38 reference, letting contexts win", async () => {
+  const chromosome = genomeView.chromosomes[0]!;
+  const region = genomeView.regions[0]!;
+  const availability: boolean[] = [];
+  const loader = vi.fn(
+    async (
+      _id: string,
+      start: number,
+      end: number,
+      _signal: AbortSignal,
+    ): Promise<string | null> => "T".repeat(end - start),
+  );
+  const source = referenceSequenceSource(genomeView, loader, (available) =>
+    availability.push(available),
+  );
+  const signal = new AbortController().signal;
+  // Without the reference these flanks were "NN"; now they come from it.
+  expect(
+    await source.readRange(
+      chromosome,
+      region.start - 6,
+      region.end + 6,
+      signal,
+    ),
+  ).toBe("TTACGTATCTGGCATT");
+  expect(await source.readRange(chromosome, 0, 10, signal)).toBe(
+    "T".repeat(10),
+  );
+  expect(loader).toHaveBeenLastCalledWith("7", 0, 10, signal);
+  // An unavailable reference falls back to N and is reported, rather than failing the read.
+  loader.mockResolvedValueOnce(null);
+  expect(await source.readRange(chromosome, 0, 10, signal)).toBe(
+    "N".repeat(10),
+  );
+  expect(availability).toEqual([true, true, false]);
 });
 
 it("fails on contradictory overlapping reference windows instead of displaying guessed bases", async () => {

@@ -2,8 +2,6 @@
 
 import hashlib
 import json
-import os
-import re
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
@@ -11,6 +9,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from crispr_backend.security import origin_allowed
 from crispr_backend.uploads.service import UploadService
 from crispr_backend.uploads.store import UploadError
 
@@ -39,15 +38,7 @@ def bearer(header: str | None) -> str:
 def require_origin(origin: str | None) -> None:
     if not origin:
         return  # CLI acceptance clients have no browser origin.
-    allowed = [
-        value.strip()
-        for value in os.environ.get(
-            "CRISPR_CORS_ORIGINS",
-            "http://localhost:3000,https://crispr.lbxa.net",
-        ).split(",")
-    ]
-    pattern = os.environ.get("CRISPR_CORS_ORIGIN_REGEX", r"https://crispr\.[a-z0-9-]+\.workers\.dev")
-    if origin not in allowed and not re.fullmatch(pattern, origin):
+    if not origin_allowed(origin):
         raise UploadError("UPLOAD_ORIGIN", "This website is not allowed to use this upload server.", 403)
 
 

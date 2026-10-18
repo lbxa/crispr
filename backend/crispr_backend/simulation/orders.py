@@ -44,7 +44,7 @@ def run_order(connection: sqlite3.Connection, analyzer: Analyzer, order_id: str)
         connection.execute("UPDATE orders SET symptoms = ?, symptoms_source = ? WHERE id = ?", (text, source, order_id))
         connection.commit()
         genome = connection.execute("SELECT vcf_gz FROM genomes WHERE id = ?", (order["genome_id"],)).fetchone()
-        report = analyzer.analyze(read_calls_gz(genome["vcf_gz"]), text, order["sex"])
+        report = analyzer.analyze(read_calls_gz(genome["vcf_gz"]), text, order["sex"], model_profile=order["sex"])
         connection.execute(
             "UPDATE orders SET status = 'ready', report_json = ? WHERE id = ?", (json.dumps(report), order_id)
         )

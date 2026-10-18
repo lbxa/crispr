@@ -10,6 +10,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
+  scroll-behavior: smooth;
 }
 .explorer::-webkit-scrollbar {
   display: none;
@@ -31,11 +32,9 @@
   min-inline-size: 0;
   gap: 24px;
 }
-/* Heading, then the Unwind/Rewind button beneath it. */
 .header {
-  display: grid;
-  justify-items: start;
-  gap: 12px;
+  display: flex;
+  align-items: center;
   padding-inline-end: 152px;
 }
 .visualization {
@@ -58,10 +57,6 @@
   gap: 4px;
   overflow-wrap: anywhere;
 }
-/* The Unwind/Rewind icon button sits flush with the heading's start edge. */
-.modeToggle {
-  margin-inline-start: -10px;
-}
 .modeIcon {
   inline-size: 24px;
   block-size: 24px;
@@ -81,12 +76,32 @@
   block-size: var(--dna-scene-min-height);
   margin-inline: -16px;
 }
-.loading {
-  margin: 0;
-  padding-top: 50%;
-  color: var(--muted);
-  text-align: center;
-  font-size: 12px;
+.viewerToolbar {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: 16px;
+  inset-inline-start: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+}
+.sceneSkeleton,
+.scenePlaceholder {
+  inline-size: 100%;
+  block-size: 100%;
+}
+.scenePlaceholder {
+  border-radius: 24px;
+}
+.karyotypePlaceholder {
+  inline-size: 100%;
+  block-size: 10rem;
+  border-radius: 12px;
 }
 .footer {
   display: grid;
@@ -116,76 +131,30 @@
   font-size: 12px;
   font-weight: 600;
 }
-.empty {
-  margin: auto;
-  max-inline-size: 28ch;
-  padding: 24px 16px;
-  color: var(--muted);
-  font-size: 13px;
-  text-align: center;
-  line-height: 1.6;
-}
 .inspector {
   display: grid;
   min-inline-size: 0;
   align-content: start;
   gap: 24px;
 }
-.findings {
-  min-inline-size: 0;
-}
-.findings summary {
-  min-block-size: 44px;
-  padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  font-size: 12px;
-  list-style-position: inside;
-  cursor: pointer;
-}
-.findings summary:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-.findings[open] summary {
-  margin-block-end: 12px;
-}
-.findingCount {
-  margin-inline-start: 8px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.findingList {
+.locationButtons {
   display: grid;
-  gap: 12px;
-}
-.findingList button {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
   min-inline-size: 0;
-  min-block-size: 44px;
-  gap: 8px 16px;
-  padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: transparent;
+  gap: 4px;
+}
+.locationButtons button {
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 32px;
+  block-size: auto;
+  justify-content: flex-start;
+  padding-inline: 4px;
   text-align: start;
-  cursor: pointer;
-  font-size: 12px;
+  white-space: normal;
   overflow-wrap: anywhere;
 }
-.findingList button > span:last-child {
-  font:
-    11px var(--font-geist-mono),
-    monospace;
-  color: var(--muted);
-}
 /* A finding that has not been viewed yet breathes until its region has been in view. */
-.findingList button[data-unseen] {
-  border-color: color-mix(in srgb, var(--destructive) 65%, var(--border));
+.locationButtons button[data-unseen] {
   animation: finding-pulse 1.5s ease-in-out infinite;
 }
 @keyframes finding-pulse {
@@ -198,19 +167,21 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .findingList button[data-unseen] {
+  .explorer {
+    scroll-behavior: auto;
+  }
+  .locationButtons button[data-unseen] {
     animation: none;
     box-shadow: 0 0 0 2px
       color-mix(in srgb, var(--destructive) 45%, transparent);
   }
 }
-.findingList button:hover,
-.findingList button[aria-pressed="true"] {
-  border-color: var(--destructive);
+.locationButtons button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--destructive) 6%, transparent);
 }
 .diseaseCards {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   min-inline-size: 0;
 }
@@ -240,15 +211,12 @@
   font-size: 11px;
   line-height: 1.6;
 }
-@container genome-explorer (min-width: 40rem) {
-  .body[data-findings] {
-    grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 1fr);
-  }
-  .body[data-findings] .scene {
-    margin-inline: 0;
+@container genome-explorer (min-width: 36rem) {
+  .diseaseCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 }
-
 /* The label that floats beside the helix when a disease zone scrolls into view. */
 .zoneTag {
   position: absolute;

@@ -29,3 +29,14 @@ def test_read_calls_skips_reference_and_failed_records_and_splits_alleles():
 def test_read_calls_requires_a_sample_column():
     with pytest.raises(ValueError):
         read_calls("chr1\t1\t.\tA\tG\t.\tPASS\t.\n")
+
+
+def test_with_sample_sex_adds_metadata_once_before_the_column_header():
+    from crispr_backend.vcf import with_sample_sex
+
+    text = HEADER + "chr7\t100\t.\tA\tG\t.\tPASS\t.\tGT\t0|1\n"
+    tagged = with_sample_sex(text, "S1", "male")
+    lines = tagged.splitlines()
+    assert lines[lines.index("##SAMPLE=<ID=S1,Sex=male>") + 1].startswith("#CHROM")
+    assert with_sample_sex(tagged, "S1", "female") == tagged  # existing metadata wins
+    assert with_sample_sex("no header", "S1", "male") == "no header"

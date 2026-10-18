@@ -18,7 +18,7 @@ const NAV = [
   { href: "/", label: "Home" },
   { href: "/genome", label: "Genome", current: true },
   { href: "/genome#ask", label: "Genome AI" },
-  { href: "/genome#edit-plan", label: "Edit plan" },
+  { href: "/genome#disease-panel", label: "Findings" },
 ] as const;
 
 export default function GenomePage() {

@@ -20,7 +20,7 @@ import {
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-grpc";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-grpc";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
-import { Resource } from "@opentelemetry/resources";
+import { resourceFromAttributes } from "@opentelemetry/resources";
 import {
   BatchLogRecordProcessor,
   LoggerProvider,
@@ -565,7 +565,7 @@ function setupProviders(config: ResolvedConfig): Providers {
     return {};
   }
 
-  const resource = new Resource({
+  const resource = resourceFromAttributes({
     "service.name": config.serviceName,
     "deployment.environment.name": config.environment,
   });
@@ -597,10 +597,14 @@ function setupProviders(config: ResolvedConfig): Providers {
   }
 
   if (config.exportLogs) {
-    const loggerProvider = new LoggerProvider({ resource });
-    loggerProvider.addLogRecordProcessor(
-      new BatchLogRecordProcessor(new OTLPLogExporter(exporterConfig)),
-    );
+    const loggerProvider = new LoggerProvider({
+      resource,
+      processors: [
+        new BatchLogRecordProcessor({
+          exporter: new OTLPLogExporter(exporterConfig),
+        }),
+      ],
+    });
     logs.setGlobalLoggerProvider(loggerProvider);
     providers.loggerProvider = loggerProvider;
     providers.otelLogger = loggerProvider.getLogger(
