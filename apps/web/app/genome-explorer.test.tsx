@@ -492,6 +492,19 @@ it("draws 46,XX or 46,XY from the reported sex", () => {
   );
   expect(screen.getByRole("group", { name: "Karyotype, 46,XY" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Chromosome Y" })).toBeTruthy();
+  // Without sex metadata the karyotype matches the avatar's default male profile.
+  rerender(
+    <GenomeExplorer
+      active
+      hasGenome
+      report={{
+        ...report,
+        genome: { ...report.genome, model_profile: null },
+        genome_view: genomeView,
+      }}
+    />,
+  );
+  expect(screen.getByRole("group", { name: "Karyotype, 46,XY" })).toBeTruthy();
 });
 
 it("shows every disease card and variant location without a findings disclosure", async () => {

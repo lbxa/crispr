@@ -109,9 +109,9 @@ function GenomeExplorerContent({
   profile?: GenomeReport["genome"]["model_profile"];
 }) {
   const chromosomes = view?.chromosomes ?? DEMO_CHROMOSOMES;
-  // Without a reported sex, a genome with Y calls is drawn 46,XY; the demo genome has a Y.
-  const sex: KaryotypeSex =
-    profile ?? (chromosomes.some(({ id }) => id === "Y") ? "male" : "female");
+  // The report's explicit sex (VCF SAMPLE metadata) decides 46,XX or 46,XY. Without it, follow
+  // the avatar's default male profile so the two never disagree; neither infers sex from calls.
+  const sex: KaryotypeSex = profile ?? "male";
   const regions = view?.regions ?? NO_REGIONS;
   const first = regions[0];
   const [chromosomeId, setChromosomeId] = useState(
