@@ -15,5 +15,6 @@
     "types": ["node"],
     "paths": { "@/*": ["./*"] }
   },
-  "include": ["lib", "agent", "scripts"]
+  "include": ["lib", "agent", "scripts", "web"],
+  "exclude": ["web/build.ts"]
 }

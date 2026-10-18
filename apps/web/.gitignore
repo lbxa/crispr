@@ -36,3 +36,5 @@ yarn-error.log*
 next-env.d.ts
 # Generated from @crispr/human-model's canonical Blender assets.
 /public/models/human/
+# Built by @crispr/chat-agent (bun run --cwd libs/chat-agent build) and copied in by dev/build
+/public/workbench/

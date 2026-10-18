@@ -9,8 +9,8 @@
     "#hooks/*": "./hooks/*.ts"
   },
   "scripts": {
-    "dev": "bun scripts/sync-model-assets.ts && next dev",
-    "build": "bun scripts/sync-model-assets.ts && next build",
+    "dev": "bun scripts/sync-model-assets.ts && bun scripts/sync-workbench.ts && next dev",
+    "build": "bun scripts/sync-model-assets.ts && bun scripts/sync-workbench.ts && next build",
     "build:worker": "opennextjs-cloudflare build --skipNextBuild",
     "preview": "wrangler dev",
     "deploy": "opennextjs-cloudflare deploy",
