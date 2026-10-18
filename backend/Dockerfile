@@ -1,7 +1,8 @@
 # Crispr backend for IBM LinuxONE (s390x).
 # Builds on IBM's jupyter-lab-ml image, which already provides Python 3.12 and a
 # llama.cpp build with the Telum NNPA (zDNN) backend for Granite.
-FROM registry.linuxone.cloud.marist.edu/l1cc/jupyterlab-image-s390x:latest
+# Pinned by digest (the image tagged :latest on 2026-10-18); bump deliberately.
+FROM registry.linuxone.cloud.marist.edu/l1cc/jupyterlab-image-s390x@sha256:d2da8a7b0c88c3b468e29014b2ada9ef8274f98c976ec456904c5e2bae5aa54c
 
 WORKDIR /home/ibm-user/backend
 COPY requirements.txt .

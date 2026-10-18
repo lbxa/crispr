@@ -48,6 +48,16 @@ def vcf(sample: str, records: list[tuple[int, str]]) -> str:
 
 
 @pytest.fixture(autouse=True)
+def fresh_rate_limits():
+    """Each test starts with empty per-client rate-limit windows."""
+    from crispr_backend import api
+
+    for limiter in (api.ANALYSES_PER_MINUTE, api.PLANS_PER_MINUTE, api.ORDERS_PER_MINUTE):
+        limiter.reset()
+    yield
+
+
+@pytest.fixture(autouse=True)
 def no_language_model(monkeypatch):
     """Tests never call Gemini or Granite, even if a developer's backend/.env enables one."""
     monkeypatch.setenv("CRISPR_LLM", "none")

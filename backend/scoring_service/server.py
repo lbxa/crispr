@@ -62,7 +62,8 @@ def main(scorer: Optional[Scorer] = None) -> None:
 
         scorer = Ensemble(find_model_dirs()).predict
     port = int(os.environ.get("PORT", "8001"))
-    host = os.environ.get("SCORER_HOST", "0.0.0.0")  # the server deployment binds loopback only
+    # Loopback by default: the scorer has no authentication. Set SCORER_HOST=0.0.0.0 only in an isolated container network.
+    host = os.environ.get("SCORER_HOST", "127.0.0.1")
     ThreadingHTTPServer((host, port), make_handler(scorer)).serve_forever()
 
 

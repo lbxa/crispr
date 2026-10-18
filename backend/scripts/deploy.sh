@@ -39,11 +39,15 @@ mkdir -p ~/backend ~/data ~/caddy
 tar -xzf ~/backend.tgz -C ~/backend && rm ~/backend.tgz
 if [ -f ~/.env ]; then mv ~/.env ~/backend/.env; fi
 touch ~/backend/.env && chmod 600 ~/backend/.env
+# The uploaded .env comes from whoever deploys; never let a missing line silently turn
+# off CRISPRon scoring (the API treats an unset scorer as "no score", not an error).
+grep -q '^CRISPRON_URL=' ~/backend/.env || printf '\nCRISPRON_URL=http://127.0.0.1:8001\n' >> ~/backend/.env
 if [ "$WITH_DB" = 1 ]; then
   [ -f ~/data/crispr.sqlite ] && cp ~/data/crispr.sqlite ~/data/crispr.sqlite.previous
   mv ~/crispr.sqlite ~/data/crispr.sqlite
 fi
-chmod a+rwx ~/data && chmod a+rw ~/data/crispr.sqlite
+# The containers run as UID 1000 (linux1), the owner, so nothing here needs to be world-writable.
+chmod 0700 ~/data && chmod 0600 ~/data/crispr.sqlite
 # API, worker and tusd use the same UID, with private upload directories. Runtime
 # jobs live here, separate from the replaceable reference database above.
 sudo install -d -m 0700 -o 1000 -g 1000 ~/data/uploads ~/data/uploads/files
@@ -76,7 +80,7 @@ sudo docker run -d --name crispr-tusd --restart unless-stopped --network host \
   -upload-dir /data/uploads/files -max-size 10737418240 \
   -disable-download -disable-concatenation \
   -file-perms 0600 -dir-perms 0700 -verbose=false \
-  -cors-allow-origin '^http://localhost:3000$|^https://crispr\.[a-z0-9-]+\.workers\.dev$|^https://crispr\.lbxa\.net$' \
+  -cors-allow-origin '^http://localhost:3000$|^https://([a-z0-9-]+-)?crispr\.lucas-chu-barbosa\.workers\.dev$|^https://(genome|crispr)\.lbxa\.net$' \
   -cors-allow-headers Authorization \
   -hooks-http http://127.0.0.1:8000/internal/uploads/tus-hook \
   -hooks-http-forward-headers Authorization,Origin,Content-Type,X-Request-Id -hooks-enabled-events pre-create >/dev/null

@@ -57,7 +57,7 @@ analysis never reads it.
 ## Using the backend (no data download needed)
 
 All data and the language model live on the LinuxONE server. The API is public at
-**https://148-100-79-183.sslip.io** (interactive docs at `/docs`). Code outside `backend/`
+**https://148-100-79-183.sslip.io** (interactive docs at `/docs` only when `CRISPR_PUBLIC_DOCS=1`; off by default). Code outside `backend/`
 (the website, notebooks, teammates' scripts) talks to this API and never to the database;
 only backend code opens the database.
 
@@ -305,6 +305,7 @@ base model that cannot follow instructions.
 
 ### 2026-10-18
 
+- Security hardening. Caddy now blocks `/internal/*` with a `handle` block (a bare `respond` ran after the catch-all `handle`, so the tus hook and forward-auth routes were publicly reachable), caps non-upload bodies at 21 MB, and sends HSTS, nosniff, frame and referrer headers without a `Server` header. `crispr_backend/security.py` owns allowed origins (this team's Worker and `genome.lbxa.net`, not any `crispr.*.workers.dev`), per-IP rate limits (`CRISPR_ANALYSES_PER_MINUTE` 20, `CRISPR_PLANS_PER_MINUTE` 60, `CRISPR_ORDERS_PER_MINUTE` 5) and a cap on concurrent analyses (`CRISPR_MAX_ACTIVE_ANALYSES` 3), each answering 429 with `Retry-After`. `/docs`, `/redoc` and `/openapi.json` need `CRISPR_PUBLIC_DOCS=1`; VCF parse errors no longer echo input; the scorer binds loopback by default. `deploy.sh` restores a missing `CRISPRON_URL`, keeps `~/data` owner-only (0700/0600) and limits tusd CORS to the same origins; base images are pinned by digest.
 - Avatar mapping uses Gemini only after deterministic clinical findings are finalized. Restrict its schema to the avatar catalog and exact non-carrier finding indices so the model cannot add diagnoses, color carriers or change clinical tiers. Keep disease associations separate from predicted symptoms and genetic edit targets.
 - Persist `body_map` with completed upload reports; reuse it on reads and refreshes. Mapping is optional enrichment, so provider errors leave an explicit unavailable state instead of failing genome analysis. The web contract test checks catalog parity with the actual model regions.
 - Gemini's structured-output grammar rejects larger nested `maxItems` bounds. Keep the outer mapping cardinality limit in Pydantic and validate exact finding coverage locally; retain the supported-region enum in the request schema. Live acceptance covers the full 24-condition panel, not just a single finding.

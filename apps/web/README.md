@@ -162,6 +162,7 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-18
 
+- Production responses carry a Content-Security-Policy (`next.config.js`): scripts and styles from this origin plus inline (Next.js bootstrap, next-themes) and `'wasm-unsafe-eval'` for the meshopt decoder; connections only to this origin and the upload backend (`CRISPR_API_URL`); no framing, plugins or foreign form targets. Add new external origins there before using them. HSTS, nosniff, frame, referrer and permissions headers apply in every phase; `X-Powered-By` is off. The dev server omits the CSP for hot reload.
 - The CRISPR popup no longer has a "Raw API response" disclosure; the plan's JSON stays out of the customer-facing UI (use the network panel or `/api/crispr/{gene}` when debugging).
 - Keep Wrangler's `keep_names` disabled: name-preservation helpers inside `next-themes` functions escape into its serialized inline script and fail with `__name is not defined`. Verify theme initialization in the Workers preview as well as Next.js.
 - Cloudflare's verification tests the fresh-start cache policy: loading the workspace discards a saved genome without contacting the backend. Wait for cache initialization before asserting that state; restoring cached highlights is no longer the default behavior.
