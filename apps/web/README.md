@@ -34,7 +34,8 @@ operations and workflow policy should be added at the application boundary.
 | `scripts/sync-model-assets.ts`                             | Copies the library's generated assets into Next's public directory                                 |
 | `../../libs/human-model/src/scene.ts`                      | Three.js scene lifecycle, not app policy                                                           |
 | `app/genome/page.tsx`                                      | Genome results route: server shell and top navigation                                              |
-| `app/chat/page.tsx`                                        | `/chat`: iframe of the static workbench (`public/workbench/`; source `prototypes/chat-workbench`)  |
+| `app/chat/page.tsx`                                        | `/chat`: iframe of the workbench built by `@crispr/chat-agent` (copied to `public/workbench/`)     |
+| `app/api/chat/route.ts`, `app/api/state/route.ts`          | Chat stream and first-view state from `@crispr/chat-agent`; logs status and latency only           |
 | `app/genome/genome-workspace.tsx`                          | Body-system rail, `HumanModel` highlights, panel filters, ask bar                                  |
 | `@crispr/ui/genome/*` (`libs/ui`)                          | Summary/edit-plan cards, icons, report types + demo data, styles                                   |
 
@@ -168,6 +169,8 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-18
 
+- `/chat` is now served by `/api/chat` (streamed AI SDK UI message chunks) and `/api/state` from `@crispr/chat-agent`, superseding the iframe-only entry below. The iframe stays: the workbench's CSS and render loop are still self-contained. Its page is built by the package (`bun run --cwd libs/chat-agent build`) and copied into `public/workbench/` by `dev`/`build` through `scripts/sync-workbench.ts`; the generated file is ignored rather than committed. When `/api/chat` is unreachable the page answers with the in-page engine and labels the turn "demo answer: backend unavailable"; a 429 or 400 shows the server's message instead. The chat route logs status, latency and error class only, never question text (questions may describe symptoms).
+- Real variant data for `/chat` comes from an offline ClinVar import (`libs/chat-agent/README.md`). Without it the page says "Real data unavailable" and runs on the labelled seed graph. On Cloudflare Workers the import file is not readable at runtime yet, so a deployed `/chat` shows the seed fallback until the dataset is bundled.
 - The karyotype draws 46,XX or 46,XY from the report's explicit `model_profile`; without it, it follows the avatar's default male profile so the two always agree (it no longer guesses from whether the file has chrY records).
 - Incomplete genome analysis and unavailable region maps use Sonner toasts instead of persistent messages in the DNA viewer; keep that center area clear while the left summary owns recovery actions.
 - Widget drag handles fade in when the card is hovered and remain visible for keyboard pickup or active movement. Hidden handles ignore pointer events so hovering the gap alone cannot reveal them; hovering the card makes its handle available to grab. Keep the 32px grid gap constant and center handles in that gap above each card; reserve no in-card handle padding and never change dimensions on hover, so square widgets and pane scrolling stay stable.

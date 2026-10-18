@@ -138,6 +138,7 @@ evidence is best-effort: take an awaited snapshot before relying on saved files.
 
 ### 2026-10-18
 
+- `verify:chat` (`scripts/verify-chat.ts`) checks `/chat` against an already running app (`--app-url`) at 1360x820 and 400x800 in light and dark. It drives Playwright directly because the harness config has no colour-scheme option; evidence goes to `.harness/evidence/chat-<uuid>/`. The off-target chip is checked with `elementFromPoint` so a chip hidden under a drawer fails, not just a missing one.
 - The workspace baseline hovers the file card again after a pointer drag before focusing its handle for keyboard reordering. Handles intentionally stop accepting pointer events while their card is not hovered; preserve that design rather than forcing clicks on hidden handles.
 - `verify:upload` declares a female synthetic sample and waits for its actual canvas to finish loading after each upload. This covers report-driven model replacement through the live upload service; backend tests separately cover HG001's missing sex declaration and documented reference-sample fallback.
 - `verify:body` reproduces missing backend mappings with a legacy PKU report and can replay an authorized real genome via `--genome`. Assert actual red pixels in the head and neutral pixels below it, retain the carrier label for HG001, and verify refresh/removal without another analysis request. A prepared `body_map` alone missed the live data-path failure.

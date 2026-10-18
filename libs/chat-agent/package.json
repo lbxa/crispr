@@ -1,0 +1,36 @@
+{
+  "name": "@crispr/chat-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./workbench.html": "./dist/workbench/index.html",
+    "./handler": "./agent/handler.ts",
+    "./state": "./agent/state.ts",
+    "./app": "./agent/app.ts",
+    "./payload": "./lib/ui/payload.ts"
+  },
+  "scripts": {
+    "build": "bun web/build.ts",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.build.json",
+    "test": "tsx --test scripts/*.test.ts",
+    "bench": "tsx scripts/bench.ts",
+    "clinvar:download": "bun scripts/import-clinvar.ts download",
+    "clinvar:import": "bun scripts/import-clinvar.ts",
+    "clinvar:record-fixture": "bun scripts/import-clinvar.ts record-fixture"
+  },
+  "dependencies": {
+    "@ai-sdk/provider": "4.0.29",
+    "ai": "7.0.143",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@crispr/eslint-config": "workspace:*",
+    "@types/bun": "1.4.3",
+    "@types/node": "26.4.1",
+    "eslint": "10.9.1",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  }
+}

@@ -51,7 +51,11 @@ const nextConfig = (phase) => ({
   output: "standalone",
   outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)),
   serverExternalPackages: ["@crispr/observability"],
-  transpilePackages: ["@crispr/human-model", "@crispr/ui"],
+  transpilePackages: [
+    "@crispr/human-model",
+    "@crispr/ui",
+    "@crispr/chat-agent",
+  ],
   async headers() {
     return [
       {
