@@ -1,8 +1,7 @@
 import { z } from "zod";
 
 // Matches GET /genes/{gene}/crispr in backend/crispr_backend/api.py. Like the genome report, the
-// Python response is projected to the fields this UI uses: repair-template sequences stay at the
-// backend boundary rather than traveling to the browser.
+// Python response is validated before its evidence and repair templates reach the report drawer.
 export const GENE_PATTERN = /^[A-Za-z0-9-]{1,24}$/;
 
 const band = z.enum(["high", "moderate", "low", "unavailable"]);
@@ -49,7 +48,7 @@ const advisabilitySchema = z.object({
   recommended: z.boolean().nullable(),
 });
 
-const editSchema = z.object({
+export const editSchema = z.object({
   variation_id: z.number().int(),
   variant: z.string().nullable(),
   disease: z.string().optional(),
@@ -59,9 +58,16 @@ const editSchema = z.object({
   alternative: z.string(),
   off_target: z.string(),
   advisability: advisabilitySchema.nullable(),
+  repair_template: z
+    .string()
+    .regex(/^[ACGTN]+$/)
+    .max(4 * 1024 * 1024)
+    .nullable()
+    .optional(),
+  repair_template_notes: z.string().nullable().optional(),
 });
 
-const overviewSchema = z.object({
+export const overviewSchema = z.object({
   verdict: z.enum([
     "recommended",
     "not_recommended",

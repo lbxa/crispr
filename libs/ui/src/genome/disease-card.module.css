@@ -3,6 +3,23 @@
   align-self: start;
   border-radius: 24px;
   --card-spacing: 20px;
+  overflow-wrap: anywhere;
+}
+.card[data-size="sm"] {
+  --card-spacing: 12px;
+  align-self: stretch;
+  border-radius: 20px;
+}
+.card[data-size="sm"] [data-slot="card-footer"] {
+  margin-block-start: auto;
+}
+.card[data-size="sm"] [data-slot="card-description"] {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.card[data-size="sm"] .disclosure {
+  padding-inline: 0;
+  font-size: 12px;
 }
 .cover {
   display: block;
@@ -33,32 +50,15 @@
 }
 .disclosure {
   inline-size: 100%;
+  min-inline-size: 0;
   justify-content: space-between;
   min-block-size: 36px;
+  gap: 8px;
+  white-space: normal;
 }
 .evidence {
   display: grid;
   gap: 16px;
   min-inline-size: 0;
   overflow-wrap: anywhere;
-}
-.evidence dl {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-}
-.evidence dt {
-  color: var(--muted-foreground);
-}
-.evidence dd {
-  margin: 0 0 8px;
-}
-.evidence dd:last-child {
-  margin-block-end: 0;
-}
-.evidence p {
-  margin: 0;
 }

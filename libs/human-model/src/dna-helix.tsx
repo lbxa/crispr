@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { DnaScene } from "./dna-scene";
 import {
   BASE_PIXELS,
@@ -28,6 +35,8 @@ export interface DnaHelixProps {
   active: boolean;
   mode?: DnaViewMode;
   highlights?: readonly DnaInterval[];
+  /** Optional app-owned loading presentation, including its accessible status. */
+  loadingFallback?: ReactNode;
   onPositionChange: (position: number) => void;
   /** The animated position while sliding to a target, then null when the slide ends or is interrupted. */
   onGlide?: (position: number | null) => void;
@@ -41,6 +50,7 @@ export function DnaHelix({
   active,
   mode = "helix",
   highlights,
+  loadingFallback,
   onPositionChange,
   onGlide,
 }: DnaHelixProps) {
@@ -304,16 +314,17 @@ export function DnaHelix({
         Scroll or use arrow and Page keys to travel along the double helix. Home
         and End move to chromosome boundaries.
       </span>
-      {display === "loading" && (
-        <p className={styles.notice} role="status">
-          Preparing double helix…
-        </p>
-      )}
-      {display === "ready" && sequenceState === "loading" && (
-        <p className={styles.notice} role="status">
-          Loading sequence…
-        </p>
-      )}
+      {(display === "loading" ||
+        (display === "ready" && sequenceState === "loading")) &&
+        (loadingFallback != null ? (
+          <div className={styles.loadingOverlay}>{loadingFallback}</div>
+        ) : (
+          <p className={styles.notice} role="status">
+            {display === "loading"
+              ? "Preparing double helix…"
+              : "Loading sequence…"}
+          </p>
+        ))}
       {display === "ready" && sequenceState === "ready" && (
         <span className={styles.srOnly} role="status">
           3D DNA ready

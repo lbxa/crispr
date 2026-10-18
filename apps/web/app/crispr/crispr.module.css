@@ -21,6 +21,7 @@
 .gauge {
   --band: var(--muted);
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   align-items: center;
   margin: 12px 0;
@@ -71,6 +72,10 @@
   width: 100%;
   font-size: 13px;
   border-collapse: collapse;
+}
+.tableScroll {
+  max-inline-size: 100%;
+  overflow-x: auto;
 }
 .table th,
 .table td {

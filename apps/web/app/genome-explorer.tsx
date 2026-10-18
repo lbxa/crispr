@@ -1,10 +1,17 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { flushSync } from "react-dom";
 import { Button } from "@crispr/ui/components/button";
 import { DiseaseCard } from "@crispr/ui/genome/disease-card";
+import { toast } from "@crispr/ui/components/sonner";
 import {
   BASE_PIXELS,
   DNA_BASES,
@@ -14,7 +21,14 @@ import {
 } from "@crispr/human-model/dna-sequence";
 import { DEMO_CHROMOSOMES, DEMO_GENOME } from "./demo-genome";
 import { DISEASE_ARTWORK } from "./disease-artwork";
-import { CrisprDialog, type CrisprGene } from "./crispr/crispr-dialog";
+import { getAnatomyRegion } from "@crispr/human-model/anatomy";
+import { reviewedBodyAssociation } from "./genome-analysis/body-map";
+import { CrisprDrawer, type CrisprGene } from "./crispr/crispr-drawer";
+import { FindingReport } from "./genome-analysis/report";
+import {
+  DnaSceneSkeleton,
+  GenomeExplorerSkeleton,
+} from "./genome-explorer-skeleton";
 import type { GenomeReport } from "./genome-analysis/contract";
 import {
   referenceSequenceSource,
@@ -31,14 +45,11 @@ const DnaHelix = dynamic(
   () => import("@crispr/human-model/dna").then((module) => module.DnaHelix),
   {
     ssr: false,
-    loading: () => (
-      <p className={styles.loading} role="status">
-        Preparing double helix…
-      </p>
-    ),
+    loading: DnaSceneSkeleton,
   },
 );
 const format = new Intl.NumberFormat("en-US");
+const NO_REGIONS: readonly GenomeRegion[] = [];
 // A disease zone gets its floating label once it is this close to the focus line (about the
 // visible half of the helix, at BASE_PIXELS per base).
 const ZONE_NEAR_BASES = 8;
@@ -47,23 +58,33 @@ export function GenomeExplorer({
   active,
   report,
   hasGenome = false,
+  loading = false,
 }: {
   active: boolean;
   report?: GenomeReport;
   hasGenome?: boolean;
+  loading?: boolean;
 }) {
-  if (hasGenome && !report)
-    return (
-      <p className={styles.empty} role="status">
-        Finish genome analysis to see mapped findings.
-      </p>
-    );
-  if (report && !report.genome_view)
-    return (
-      <p className={styles.empty} role="status">
-        Choose the file again to load its region map.
-      </p>
-    );
+  const analysisIncomplete = hasGenome && !report;
+  const mapUnavailable = Boolean(report && !report.genome_view);
+
+  useEffect(() => {
+    if (!active || loading) return;
+    if (analysisIncomplete) {
+      toast.info("Genome analysis incomplete", {
+        description: "Continue from the genome summary to see mapped findings.",
+        id: "genome-analysis-incomplete",
+      });
+    } else if (mapUnavailable) {
+      toast.info("Genome map unavailable", {
+        description: "Choose the file again to load its region map.",
+        id: "genome-map-unavailable",
+      });
+    }
+  }, [active, analysisIncomplete, loading, mapUnavailable]);
+
+  if (loading) return <GenomeExplorerSkeleton />;
+  if (analysisIncomplete || mapUnavailable) return null;
   return (
     <GenomeExplorerContent
       key={report ? "result" : "demo"}
@@ -90,7 +111,7 @@ function GenomeExplorerContent({
   // Without a reported sex, a genome with Y calls is drawn 46,XY; the demo genome has a Y.
   const sex: KaryotypeSex =
     profile ?? (chromosomes.some(({ id }) => id === "Y") ? "male" : "female");
-  const regions = view?.regions ?? [];
+  const regions = view?.regions ?? NO_REGIONS;
   const first = regions[0];
   const [chromosomeId, setChromosomeId] = useState(
     first?.chromosome ?? chromosomes[0]!.id,
@@ -110,6 +131,36 @@ function GenomeExplorerContent({
   const [viewed, setViewed] = useState<ReadonlySet<string>>(() => new Set());
   const [crisprGene, setCrisprGene] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<string | null>(null);
+  const visualization = useRef<HTMLDivElement>(null);
+  // A disease has one report card, even when several mapped variants contribute to it.
+  const findingCards = useMemo(() => {
+    const cards = new Map<
+      string,
+      {
+        annotation: GenomeRegion["annotations"][number];
+        regions: GenomeRegion[];
+      }
+    >();
+    for (const { gene, disease, tier } of findings ?? []) {
+      cards.set(JSON.stringify([gene, disease, tier]), {
+        annotation: { gene, disease, tier },
+        regions: [],
+      });
+    }
+    for (const region of regions) {
+      for (const annotation of region.annotations) {
+        const key = JSON.stringify([
+          annotation.gene,
+          annotation.disease,
+          annotation.tier,
+        ]);
+        const card = cards.get(key) ?? { annotation, regions: [] };
+        if (!card.regions.includes(region)) card.regions.push(region);
+        cards.set(key, card);
+      }
+    }
+    return [...cards.entries()];
+  }, [findings, regions]);
   // Carriers are not candidates for editing, so only genes with a likely or possible finding.
   const crisprGenes = useMemo(() => {
     const byGene = new Map<string, CrisprGene>();
@@ -260,35 +311,49 @@ function GenomeExplorerContent({
               {view ? "GRCh38 · Reference context" : "Demo genome"}
             </span>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={`size-11 rounded-xl ${styles.modeToggle}`}
-            aria-label={
-              mode === "helix" ? "Unwind double helix" : "Rewind double helix"
-            }
-            title={
-              mode === "helix" ? "Unwind double helix" : "Rewind double helix"
-            }
-            onClick={() =>
-              setMode((current) => (current === "helix" ? "ladder" : "helix"))
-            }
-          >
-            <span
-              className={styles.modeIcon}
-              data-mode={mode}
-              aria-hidden="true"
-            />
-          </Button>
         </header>
         <div
           className={styles.body}
-          data-findings={(view && regions.length > 0) || undefined}
+          data-findings={findingCards.length > 0 || undefined}
         >
-          <div className={styles.visualization}>
+          <div className={styles.visualization} ref={visualization}>
             <div className={styles.scene}>
+              <div
+                className={styles.viewerToolbar}
+                role="toolbar"
+                aria-label="DNA viewer tools"
+                aria-orientation="vertical"
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-11 rounded-xl"
+                  aria-label={
+                    mode === "helix"
+                      ? "Unwind double helix"
+                      : "Rewind double helix"
+                  }
+                  title={
+                    mode === "helix"
+                      ? "Unwind double helix"
+                      : "Rewind double helix"
+                  }
+                  onClick={() =>
+                    setMode((current) =>
+                      current === "helix" ? "ladder" : "helix",
+                    )
+                  }
+                >
+                  <span
+                    className={styles.modeIcon}
+                    data-mode={mode}
+                    aria-hidden="true"
+                  />
+                </Button>
+              </div>
               <DnaHelix
+                loadingFallback={<DnaSceneSkeleton />}
                 key={chromosomeId}
                 chromosome={chromosome}
                 source={source}
@@ -393,89 +458,120 @@ function GenomeExplorerContent({
               </p>
             </footer>
           </div>
-          {view && regions.length > 0 && (
+          {findingCards.length > 0 && (
             <aside className={styles.inspector} aria-label="Mutation details">
-              {selected && (
-                <section
-                  className={styles.diseaseCards}
-                  aria-label="Selected finding"
-                >
-                  {selected.annotations.map(({ gene, disease, tier }) => {
-                    const evidenceKey = `${selected.id}:${gene}:${disease}`;
+              <section
+                className={styles.diseaseCards}
+                aria-label="Disease findings"
+              >
+                {findingCards.map(
+                  ([
+                    evidenceKey,
+                    {
+                      annotation: { gene, disease, tier },
+                      regions: cardRegions,
+                    },
+                  ]) => {
+                    const carrierAssociation =
+                      tier === "carrier"
+                        ? reviewedBodyAssociation({ gene, disease })
+                        : undefined;
+                    const finding = findings?.find(
+                      (finding) =>
+                        finding.gene === gene && finding.disease === disease,
+                    );
                     return (
                       <DiseaseCard
                         key={evidenceKey}
                         gene={gene}
                         name={disease}
+                        size="sm"
                         status={tier}
                         artwork={DISEASE_ARTWORK[gene]}
-                        location={`Chr ${selected.chromosome}:${format.format(selected.start + 1)}${selected.end > selected.start + 1 ? `–${format.format(selected.end)}` : ""}`}
-                        expanded={evidence === evidenceKey}
-                        onExpandedChange={(open) =>
+                        location={
+                          cardRegions[0] &&
+                          `Chr ${cardRegions[0].chromosome}:${format.format(cardRegions[0].start + 1)}`
+                        }
+                        locations={
+                          cardRegions.length > 0 && (
+                            <div className={styles.locationButtons}>
+                              {cardRegions.map((region) => (
+                                <Button
+                                  key={region.id}
+                                  variant="ghost"
+                                  size="xs"
+                                  aria-label={`Inspect ${gene} at chr${region.chromosome}:${region.start + 1}`}
+                                  aria-pressed={selected?.id === region.id}
+                                  data-unseen={
+                                    !viewed.has(region.id) || undefined
+                                  }
+                                  onClick={() => {
+                                    selectRegion(region);
+                                    visualization.current?.scrollIntoView?.({
+                                      block: "start",
+                                    });
+                                  }}
+                                >
+                                  <span dir="ltr">
+                                    Chr {region.chromosome}:
+                                    {format.format(region.start + 1)}
+                                    {region.end > region.start + 1
+                                      ? `–${format.format(region.end)}`
+                                      : ""}
+                                  </span>
+                                </Button>
+                              ))}
+                            </div>
+                          )
+                        }
+                        notice={
+                          carrierAssociation && (
+                            <>
+                              Carrier finding · Associated region shown in red
+                              <span className="sr-only">
+                                {": "}
+                                {carrierAssociation.regions
+                                  .map(
+                                    ({ regionId }) =>
+                                      getAnatomyRegion(regionId).label,
+                                  )
+                                  .join(", ")}
+                              </span>
+                            </>
+                          )
+                        }
+                        open={evidence === evidenceKey}
+                        onOpenChange={(open) =>
                           setEvidence(open ? evidenceKey : null)
                         }
                       >
-                        <dl>
-                          <dt>Reference allele</dt>
-                          <dd dir="ltr">{selected.reference}</dd>
-                          <dt>Alternate allele</dt>
-                          <dd dir="ltr">{selected.alternate}</dd>
-                        </dl>
+                        <FindingReport
+                          finding={finding}
+                          regions={cardRegions}
+                        />
                         {tier !== "carrier" &&
+                          !finding?.crispr?.length &&
                           crisprGenes.some((item) => item.gene === gene) && (
                             <Button
                               variant="secondary"
-                              onClick={() => setCrisprGene(gene)}
+                              onClick={() => {
+                                setEvidence(null);
+                                setCrisprGene(gene);
+                              }}
                             >
                               Open editing studio
                             </Button>
                           )}
                       </DiseaseCard>
                     );
-                  })}
-                </section>
-              )}
-              <details
-                className={styles.findings}
-                aria-label="Regions of interest"
-                open={regions.length <= 3}
-              >
-                <summary>
-                  <span>Browse findings</span>
-                  <span className={styles.findingCount}>{regions.length}</span>
-                </summary>
-                <div className={styles.findingList}>
-                  {regions.map((region) => (
-                    <button
-                      key={region.id}
-                      type="button"
-                      aria-label={`Inspect ${region.annotations.map(({ gene }) => gene).join(", ")} at chr${region.chromosome}:${region.start + 1}`}
-                      onClick={() => selectRegion(region)}
-                      aria-pressed={selected?.id === region.id}
-                      data-unseen={!viewed.has(region.id) || undefined}
-                    >
-                      <span>
-                        {region.annotations
-                          .map(({ gene }) => gene)
-                          .filter(
-                            (gene, index, genes) =>
-                              genes.indexOf(gene) === index,
-                          )
-                          .join(" / ")}
-                      </span>
-                      <span dir="ltr">
-                        Chr {region.chromosome}:
-                        {format.format(region.start + 1)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </details>
+                  },
+                )}
+              </section>
             </aside>
           )}
         </div>
       </div>
-      <CrisprDialog
+      <CrisprDrawer
         open={crisprGene !== null}
         onOpenChange={(open) => {
           if (!open) setCrisprGene(null);

@@ -147,10 +147,13 @@ try {
       if (!paneSnapshot.accessibilityTree.includes('group "Current date"')) {
         throw new Error(`Date widget is missing; inspect ${evidenceDir}`);
       }
+      await harness.pointer({ action: "move", x: 100, y: 100 });
+      await harness.screenshot({ name: "widget-handle-hover", fullPage: true });
       // Drag across the sidebar's clipping edge and capture the live top layer.
-      await harness.pointer({ action: "move", x: 100, y: 86 });
+      // The handle is centered in the 32px gap above the first card (top 76px).
+      await harness.pointer({ action: "move", x: 100, y: 60 });
       await harness.pointer({ action: "down" });
-      await harness.pointer({ action: "move", x: 110, y: 86 });
+      await harness.pointer({ action: "move", x: 110, y: 60 });
       await harness.waitForText({ text: "Files picked up." });
       await harness.pointer({ action: "move", x: 620, y: 220, steps: 12 });
       await harness.screenshot({

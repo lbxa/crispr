@@ -76,7 +76,7 @@ sudo docker run -d --name crispr-tusd --restart unless-stopped --network host \
   -upload-dir /data/uploads/files -max-size 10737418240 \
   -disable-download -disable-concatenation \
   -file-perms 0600 -dir-perms 0700 -verbose=false \
-  -cors-allow-origin '^http://localhost:3000$|^https://crispr\.[a-z0-9-]+\.workers\.dev$|^https://crispr\.lbxa\.net$' \
+  -cors-allow-origin '^http://localhost:3000$|^https://crispr\.[a-z0-9-]+\.workers\.dev$|^https://genome\.lbxa\.net$' \
   -cors-allow-headers Authorization \
   -hooks-http http://127.0.0.1:8000/internal/uploads/tus-hook \
   -hooks-http-forward-headers Authorization,Origin,Content-Type,X-Request-Id -hooks-enabled-events pre-create >/dev/null

@@ -1,4 +1,5 @@
 import type { GenomeReport } from "./contract";
+import { plan } from "../crispr/plan.fixture";
 
 // Fields returned by Analyzer.analyze in backend/crispr_backend/analysis/pipeline.py.
 export const report: GenomeReport = {
@@ -45,6 +46,68 @@ export const mappedReport: GenomeReport = {
     mappings: [
       { finding_index: 0, region_ids: ["digestive_tract", "major_joints"] },
       { finding_index: 2, region_ids: ["major_joints"] },
+    ],
+  },
+};
+
+export const detailedReport: GenomeReport = {
+  ...mappedReport,
+  overview: plan.overview,
+  findings: [
+    {
+      tier: "likely",
+      gene: "MEFV",
+      disease: "Familial Mediterranean fever",
+      omim_id: "OMIM:249100",
+      inheritance: "AR",
+      genotype: {
+        status: "affected",
+        explanation: "Synthetic variants are on opposite copies of the gene.",
+      },
+      variants: [
+        {
+          variation_id: 1,
+          name: "Synthetic MEFV variant",
+          rsid: null,
+          chrom: "16",
+          pos: 3293406,
+          ref: "G",
+          alt: "A",
+          significance: "Pathogenic",
+          stars: 2,
+          zygosity: "heterozygous",
+          haplotypes: [1],
+        },
+      ],
+      phenotype: {
+        score: 2.5,
+        rank: 1,
+        matched_terms: [
+          {
+            patient_term: "Fever",
+            disease_term: "Recurrent fever",
+            hpo_id: "HP:0001954",
+          },
+        ],
+      },
+      crispr: plan.edits.map((edit) => ({
+        ...edit,
+        repair_template: "ACGTACGT",
+        repair_template_notes: "Synthetic repair template",
+      })),
+    },
+  ],
+  body_map: undefined,
+  symptoms: {
+    text: "Fever",
+    extraction: "keyword",
+    terms: [{ id: "HP:0001945", name: "Fever", matched_text: "Fever" }],
+    closest_panel_diseases: [
+      {
+        omim_id: "OMIM:249100",
+        disease: "Familial Mediterranean fever",
+        score: 2.5,
+      },
     ],
   },
 };
