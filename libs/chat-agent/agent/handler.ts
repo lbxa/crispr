@@ -9,13 +9,18 @@ import { routeIntent } from "../lib/retrieval/router";
 import { suggestPrompts } from "../lib/retrieval/suggestions";
 import type { CrisprUIMessage } from "../lib/ui/payload";
 import { createCrisprAgent } from "./agent";
-import type { AppContext } from "./app";
+import { getApp, type AppContext } from "./app";
 import { checkGrounding } from "./grounding";
 import { buildSystemPrompt } from "./prompt";
+import { clientIp, RateLimiter } from "./rate-limit";
 import { Turn } from "./turn";
 
 const MAX_MESSAGES = 30;
 const MAX_TEXT = 2000;
+/** The page sends only text and the last data-focus part, so real requests stay far below this. */
+export const MAX_BODY_BYTES = 256_000;
+/** Graph ids look like "gene:CFTR" or "var:vcv7105"; anything else is not one of ours. */
+const ENTITY_ID = /^[a-z]+:[A-Za-z0-9._:-]{1,80}$/;
 
 const BodySchema = z.object({
   messages: z
@@ -63,18 +68,29 @@ function priorFocusIds(
       )
       .filter(
         (id): id is string =>
-          typeof id === "string" && app.graph.node(id) !== undefined,
+          typeof id === "string" &&
+          ENTITY_ID.test(id) &&
+          app.graph.node(id) !== undefined,
       );
     if (ids.length) return ids.slice(0, 8);
   }
   return [];
 }
 
-export function createChatHandler(app: AppContext) {
+export function createChatHandler(
+  app: AppContext,
+  opts: { timeoutMs?: number } = {},
+) {
   return async function POST(req: Request): Promise<Response> {
+    const declared = Number(req.headers.get("content-length") ?? 0);
+    if (declared > MAX_BODY_BYTES)
+      return json(413, "Request body is too large.");
     let raw: unknown;
     try {
-      raw = await req.json();
+      const body = await req.text();
+      if (new TextEncoder().encode(body).length > MAX_BODY_BYTES)
+        return json(413, "Request body is too large.");
+      raw = JSON.parse(body);
     } catch {
       return json(400, "Body must be JSON.");
     }
@@ -85,8 +101,17 @@ export function createChatHandler(app: AppContext) {
     const last = input[input.length - 1]!;
     if (last.role !== "user")
       return json(400, "The last message must come from the user.");
+    const asked = last.parts
+      .filter((p) => p.type === "text" && typeof p.text === "string")
+      .map((p) => p.text as string)
+      .join("\n");
+    if (asked.length > MAX_TEXT)
+      return json(400, `Questions are limited to ${MAX_TEXT} characters.`);
     const question = textOf(last.parts).trim();
     if (!question) return json(400, "The last message has no text.");
+    const abortSignal = opts.timeoutMs
+      ? AbortSignal.any([req.signal, AbortSignal.timeout(opts.timeoutMs)])
+      : req.signal;
 
     const carried = priorFocusIds(app, input);
     // Strip everything but text: tool parts or data parts from the client must never reach the model.
@@ -166,7 +191,7 @@ export function createChatHandler(app: AppContext) {
         );
         const result = await agent.stream({
           messages: await convertToModelMessages(clean),
-          abortSignal: req.signal,
+          abortSignal,
         });
 
         let answer = "";
@@ -202,3 +227,39 @@ export function createChatHandler(app: AppContext) {
     return createUIMessageStreamResponse({ stream });
   };
 }
+
+/**
+ * The /api/chat route: per-IP rate limit in front of the chat handler. Tests pass
+ * their own app and limiter; the default uses the process-wide app.
+ */
+export function createRouteHandler(deps: {
+  app: () => AppContext;
+  limiter: RateLimiter;
+  timeoutMs: number;
+}) {
+  let handler: ((req: Request) => Promise<Response>) | undefined;
+  return async function POST(req: Request): Promise<Response> {
+    const verdict = deps.limiter.hit(clientIp(req));
+    if (!verdict.ok) {
+      return new Response(
+        JSON.stringify({ error: "Too many questions. Try again shortly." }),
+        {
+          status: 429,
+          headers: {
+            "content-type": "application/json",
+            "retry-after": String(verdict.retryAfterSeconds),
+          },
+        },
+      );
+    }
+    handler ??= createChatHandler(deps.app(), { timeoutMs: deps.timeoutMs });
+    return handler(req);
+  };
+}
+
+/** 20 questions a minute per IP; a turn may take up to 55 s before it is aborted. */
+export const handleChat = createRouteHandler({
+  app: getApp,
+  limiter: new RateLimiter(20, 60_000),
+  timeoutMs: 55_000,
+});

@@ -22,6 +22,7 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@crispr/chat-agent": "workspace:*",
     "@crispr/human-model": "workspace:*",
     "@crispr/observability": "workspace:*",
     "@crispr/ui": "workspace:*",
