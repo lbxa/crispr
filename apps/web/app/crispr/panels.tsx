@@ -1,356 +1,170 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { CheckIcon, ChevronRightIcon, CircleDashedIcon } from "lucide-react";
+import { Badge } from "@crispr/ui/components/badge";
+import { Button } from "@crispr/ui/components/button";
+import { ReportDrawer } from "@crispr/ui/report-drawer";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@crispr/ui/components/card";
 import styles from "./crispr.module.css";
-import type { Advisability, Edit, Energy, Guide, Overview } from "./contract";
-
-const ENERGY_TERMS: [keyof Energy, string, string][] = [
-  [
-    "rna_dna",
-    "RNA–DNA hybrid",
-    "Energy of the guide binding its target (kcal/mol)",
-  ],
-  ["rna_dna_weighted", "RNA–DNA hybrid, weighted", "Same, position-weighted"],
-  ["dna_opening", "DNA opening", "Energy to unzip the target DNA"],
-  [
-    "spacer_self_fold",
-    "Spacer self-fold",
-    "Guide folding on itself, which can block binding",
-  ],
-  [
-    "crisproff_score",
-    "CRISPRoff score",
-    "Combined binding score; the model's ΔG input",
-  ],
-];
-
-function Context({ context }: { context: string }) {
-  const parts: [string, string, string | undefined][] = [
-    [context.slice(0, 4), "5′ context", styles.ctx5],
-    [context.slice(4, 24), "protospacer", styles.ctxSpacer],
-    [context.slice(24, 27), "PAM", styles.ctxPam],
-    [context.slice(27), "3′ context", styles.ctx3],
-  ];
-  return (
-    <span className={styles.mono} data-testid="context">
-      {parts.map(([text, title, className]) => (
-        <span key={title} className={className} title={title}>
-          {text}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-function GuideDetails({ guide }: { guide: Guide }) {
-  const models = guide.model_scores ? Object.entries(guide.model_scores) : [];
-  return (
-    <div className={styles.details} data-testid="guide-details">
-      <div>
-        <h5>Site</h5>
-        <p className={styles.muted}>
-          Cuts after position {guide.cut_position} on the {guide.strand} strand,{" "}
-          {guide.cut_distance} bp from the variant · GC{" "}
-          {Math.round(guide.gc_content * 100)}% ·{" "}
-          {guide.allele_specific
-            ? "allele-specific (mutant copy only)"
-            : "also matches the healthy allele"}
-        </p>
-        {guide.notes.map((note) => (
-          <p key={note} className={styles.muted}>
-            {note}
-          </p>
-        ))}
-        {guide.context && (
-          <p>
-            <span className={styles.muted}>Model input (30 nt): </span>
-            <Context context={guide.context} />
-          </p>
-        )}
-      </div>
-      {models.length > 0 && (
-        <div>
-          <h5>Ensemble ({models.length} models)</h5>
-          {models.map(([name, value]) => (
-            <div key={name} className={styles.modelRow}>
-              <span className={styles.muted}>
-                {name.replace(".model.best", "")}
-              </span>
-              <span className={styles.bar}>
-                <span
-                  style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
-                />
-              </span>
-              <span>{value.toFixed(1)}</span>
-            </div>
-          ))}
-          <p className={styles.muted}>
-            range {Math.min(...models.map(([, v]) => v)).toFixed(1)}–
-            {Math.max(...models.map(([, v]) => v)).toFixed(1)}
-          </p>
-        </div>
-      )}
-      {guide.energy && (
-        <div>
-          <h5>Binding energies (CRISPRoff)</h5>
-          <table className={styles.table}>
-            <tbody>
-              {ENERGY_TERMS.map(([key, label, hint]) => (
-                <tr key={key} title={hint}>
-                  <td>{label}</td>
-                  <td>{guide.energy?.[key].toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Gauge({ advisability }: { advisability: Advisability }) {
-  const { score, band } = advisability;
-  return (
-    <div className={styles.gauge} data-band={band} data-testid="advisability">
-      <div className={styles.gaugeScore}>
-        {score === null ? "—" : Math.round(score)}
-        <span>/100</span>
-      </div>
-      <div>
-        <div className={styles.gaugeLabel}>{advisability.label}</div>
-        <div className={styles.track} aria-hidden="true">
-          <div className={styles.fill} style={{ width: `${score ?? 0}%` }} />
-        </div>
-        <div className={styles.muted}>
-          band: <b data-testid="band">{band}</b> · {advisability.guides_scored}{" "}
-          guide(s) scored
-          {advisability.guides_skipped > 0 &&
-            `, ${advisability.guides_skipped} skipped`}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GuideRow({ guide, best }: { guide: Guide; best: boolean }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <tr
-        data-best={best}
-        className={styles.row}
-        onClick={() => setOpen(!open)}
-      >
-        <td className={styles.mono}>
-          <button
-            className={styles.toggle}
-            aria-expanded={open}
-            aria-label="Toggle guide details"
-          >
-            {open ? "▾" : "▸"}
-          </button>
-          {guide.spacer}
-        </td>
-        <td className={styles.mono}>{guide.pam}</td>
-        <td>{guide.strand}</td>
-        <td>{guide.cut_distance}</td>
-        <td>{guide.score}</td>
-        <td>
-          {guide.efficiency === null ? "n/a" : guide.efficiency.toFixed(1)}
-        </td>
-      </tr>
-      {open && (
-        <tr>
-          <td colSpan={6}>
-            <GuideDetails guide={guide} />
-          </td>
-        </tr>
-      )}
-    </>
-  );
-}
-
-export function EditCard({ edit }: { edit: Edit }) {
-  return (
-    <section className={styles.edit}>
-      <h4>{edit.variant}</h4>
-      <p className={styles.muted}>{edit.strategy}</p>
-      {edit.advisability && <Gauge advisability={edit.advisability} />}
-      {edit.advisability && (
-        <p className={styles.basis}>{edit.advisability.basis}</p>
-      )}
-      {edit.guides.length === 0 ? (
-        <p className={styles.muted}>
-          No SpCas9 guide could be designed within cutting distance of this
-          variant. {edit.alternative}
-        </p>
-      ) : (
-        <div className={styles.tableScroll} data-base-ui-swipe-ignore="x">
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Spacer</th>
-                <th>PAM</th>
-                <th>Strand</th>
-                <th>Cut dist.</th>
-                <th>Rule score</th>
-                <th>CRISPRon</th>
-              </tr>
-            </thead>
-            <tbody>
-              {edit.guides.map((guide) => (
-                <GuideRow
-                  key={`${guide.strand}${guide.cut_position}${guide.spacer}`}
-                  guide={guide}
-                  best={guide.spacer === edit.advisability?.best_guide}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
+import type { Overview } from "./contract";
 
 const VERDICT_TITLE: Record<Overview["verdict"], string> = {
-  recommended: "Gene editing looks promising",
-  not_recommended: "Gene editing looks unlikely to work well",
-  unavailable: "We couldn't estimate this",
-  no_guide: "No suitable edit site found",
-  no_edit: "No gene edit suggested",
+  recommended: "Potentially viable",
+  not_recommended: "Not supported",
+  unavailable: "Not enough data",
+  no_guide: "No suitable guide",
+  no_edit: "No edit proposed",
 };
-
-const VERDICT_PLAIN: Record<Overview["verdict"], string> = {
-  recommended:
-    "Based on this analysis, CRISPR gene editing is a reasonable option to discuss with your care team.",
+const VERDICT_DESCRIPTION: Record<Overview["verdict"], string> = {
+  recommended: "The model found a promising editing approach for lab review.",
   not_recommended:
-    "Based on this analysis, CRISPR gene editing is unlikely to work well for this condition. Other treatments may be a better fit.",
+    "This CRISPR approach did not meet the model's activity threshold.",
   unavailable:
-    "We couldn't predict how well gene editing would work for this result.",
+    "We need a reliable activity prediction before judging this approach.",
   no_guide:
-    "No standard CRISPR guide could be designed close enough to this variant. Other editing approaches may still be possible.",
-  no_edit: "This result doesn't point to a gene edit.",
+    "This analysis found no standard CRISPR guide close enough to the variant.",
+  no_edit: "This result does not propose a gene edit.",
 };
-
-const FILL_MS = 1400;
-// Where the bar's colour ends up, as an HSL hue: green when advisable, red when not.
-const FINAL_HUE: Partial<Record<Overview["verdict"], number>> = {
-  recommended: 140,
-  not_recommended: 8,
-};
-
-function prefersReducedMotion() {
-  return (
-    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
-  );
-}
-
-/** Eases from 0 up to `target`, or jumps straight there when the user prefers reduced motion. */
-function useFillProgress(target: number) {
-  const [value, setValue] = useState(() =>
-    prefersReducedMotion() ? target : 0,
-  );
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    let frame = requestAnimationFrame(function tick(now) {
-      start ??= now;
-      const t = Math.min(1, (now - start) / FILL_MS);
-      setValue(target * (1 - (1 - t) ** 3)); // ease-out
-      if (t < 1) frame = requestAnimationFrame(tick);
-    });
-    let start: number | undefined;
-    return () => cancelAnimationFrame(frame);
-  }, [target]);
-  return value;
-}
 
 export function OverviewPanel({
   overview,
   subject,
+  source = "genome",
 }: {
   overview: Overview;
   subject: string;
+  source?: "genome" | "catalog";
 }) {
   const { score, threshold } = overview;
-  const shown = useFillProgress(score ?? 0);
-  const finalHue = FINAL_HUE[overview.verdict];
-  // The bar starts red and drifts to its final colour as it fills.
-  const fillColor =
-    finalHue === undefined
-      ? undefined
-      : `hsl(${finalHue * (score ? shown / score : 1)} 65% 58%)`;
   return (
-    <section
+    <Card
       className={styles.overview}
       data-verdict={overview.verdict}
       data-testid="overview"
+      role="region"
       aria-label="CRISPR overview"
     >
-      <div className={styles.overviewTop}>
-        <div>
-          <div className={styles.verdict} data-testid="verdict">
+      <CardHeader>
+        <div className={styles.resultCaption}>
+          <span>Your editing outlook</span>
+          <Badge variant="secondary">
+            {source === "catalog" ? "Catalog example" : "Research preview"}
+          </Badge>
+        </div>
+        <CardTitle>
+          <h3 className={styles.verdict} data-testid="verdict">
             {VERDICT_TITLE[overview.verdict]}
-          </div>
-          <div className={styles.muted}>{subject}</div>
-        </div>
-        <div className={styles.overviewScore}>
-          <span data-testid="overview-score">
-            {score === null ? "—" : Math.round(shown)}
-          </span>
-          <span>/100</span>
-        </div>
-      </div>
-      <div
-        className={styles.meter}
-        role="img"
-        aria-label={`Score ${score ?? "unavailable"} out of 100; gene editing is advised from ${threshold}`}
-      >
+          </h3>
+        </CardTitle>
+        <CardDescription>{subject}</CardDescription>
+      </CardHeader>
+      <CardContent className={styles.resultBody}>
         <div
-          className={styles.meterFill}
-          data-testid="meter-fill"
-          style={{ width: `${shown}%`, background: fillColor }}
-        />
-        <div className={styles.meterTick} style={{ left: `${threshold}%` }}>
-          <span>advised from {threshold}</span>
+          className={styles.scoreRing}
+          style={
+            {
+              "--score": Math.max(0, Math.min(100, score ?? 0)),
+            } as CSSProperties
+          }
+          role={score === null ? undefined : "meter"}
+          aria-label="Editing score"
+          aria-valuemin={score === null ? undefined : 0}
+          aria-valuemax={score === null ? undefined : 100}
+          aria-valuenow={
+            score === null ? undefined : Math.max(0, Math.min(100, score))
+          }
+          aria-valuetext={
+            score === null
+              ? undefined
+              : `${score} out of 100; provisional threshold ${threshold}`
+          }
+        >
+          <div className={styles.ringLabel}>
+            <span data-testid="overview-score">
+              {score === null ? "—" : Math.round(score)}
+            </span>
+            <span>
+              {score === null ? "Score unavailable" : "Editing score /100"}
+            </span>
+          </div>
         </div>
-      </div>
-      <p className={styles.headline}>{VERDICT_PLAIN[overview.verdict]}</p>
-      <p className={styles.basis}>
-        The score estimates how reliably a gene edit would work. This is a
-        research prototype, not medical advice.
-      </p>
-    </section>
+        <p className={styles.outlookDescription}>
+          {VERDICT_DESCRIPTION[overview.verdict]}
+        </p>
+        <ul className={styles.outlookSteps} aria-label="Research progress">
+          <li data-complete={overview.edits_considered > 0}>
+            {overview.edits_considered > 0 ? (
+              <CheckIcon aria-hidden="true" />
+            ) : (
+              <CircleDashedIcon aria-hidden="true" />
+            )}
+            <span>
+              {overview.edits_considered > 0
+                ? "Target found"
+                : "No edit target"}
+            </span>
+          </li>
+          <li data-complete={score !== null}>
+            {score !== null ? (
+              <CheckIcon aria-hidden="true" />
+            ) : (
+              <CircleDashedIcon aria-hidden="true" />
+            )}
+            <span>{score !== null ? "Model scored" : "Not scored"}</span>
+          </li>
+          <li>
+            <CircleDashedIcon aria-hidden="true" />
+            <span>Lab review next</span>
+          </li>
+        </ul>
+        <p className={styles.clinicalNote}>
+          Predicted cutting activity, not a treatment-success rate. Clinical
+          eligibility needs specialist review.
+        </p>
+        {source === "catalog" && (
+          <p className={styles.clinicalNote}>
+            Catalog example; this is not an analysis of your uploaded genome.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
-/** Everything a genomics specialist would want; collapsed so the consumer view stays simple. */
+/** Lab evidence opens above the consumer report without replacing its state. */
 export function AdvancedGenomics({
-  overview,
+  subject,
   children,
 }: {
-  overview: Overview;
-  children: React.ReactNode;
+  subject: string;
+  children: ReactNode;
 }) {
   return (
-    <details className={styles.advanced} data-testid="advanced">
-      <summary>Advanced genomics</summary>
-      <div className={styles.advancedBody}>
-        <section className={styles.technical}>
-          <h4>How the score was reached</h4>
-          <p>{overview.headline}</p>
-          {overview.target && (
-            <p className={styles.muted}>
-              Best target: <b>{overview.target}</b>
-              {overview.gene && <> ({overview.gene})</>} ·{" "}
-              {overview.edits_considered} edit(s) considered
-            </p>
-          )}
-          <p className={styles.basis}>{overview.basis}</p>
-        </section>
+    <ReportDrawer
+      title="Advanced genomics"
+      description={`${subject}. Guide designs, scoring evidence and safety notes.`}
+      trigger={
+        <Button variant="secondary" className={styles.advancedTrigger}>
+          <span>
+            Advanced genomics
+            <span className={styles.advancedHint}>
+              Evidence, safety notes & all guides
+            </span>
+          </span>
+          <ChevronRightIcon data-icon="inline-end" aria-hidden="true" />
+        </Button>
+      }
+    >
+      <div className={styles.advancedBody} data-testid="advanced">
         {children}
       </div>
-    </details>
+    </ReportDrawer>
   );
 }

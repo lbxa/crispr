@@ -14,6 +14,8 @@ import {
   CardTitle,
 } from "@crispr/ui/components/card";
 import type { GenomeAnalysisState } from "./use-genome-analysis";
+import type { DownloadLabReport } from "./client";
+import { DownloadReportButton } from "./download-report-button";
 import { formatGenomeBytes } from "./contract";
 import styles from "./summary-card.module.css";
 
@@ -30,6 +32,7 @@ export function GenomeSummaryCard({
   onResume,
   onCancel,
   onClear,
+  onDownloadReport,
 }: {
   analysis: Exclude<GenomeAnalysisState, { status: "idle" }>;
   onRetry: () => void;
@@ -37,6 +40,7 @@ export function GenomeSummaryCard({
   onResume: () => void;
   onCancel: () => void;
   onClear?: () => void;
+  onDownloadReport?: DownloadLabReport;
 }) {
   const transferring =
     analysis.status === "uploading" || analysis.status === "paused";
@@ -190,6 +194,7 @@ export function GenomeSummaryCard({
           <ReportDrawer
             title="Genome report"
             description="Your complete genome and CRISPR analysis."
+            footer={<DownloadReportButton download={onDownloadReport} />}
             trigger={
               <Button variant="ghost" className="w-full justify-between">
                 View full report <span aria-hidden="true">↗</span>

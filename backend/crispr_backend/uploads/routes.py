@@ -2,6 +2,8 @@
 
 import hashlib
 import json
+import logging
+import time
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
@@ -9,11 +11,15 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from crispr_backend.security import origin_allowed
+from crispr_backend.lab_pdf import render_lab_pdf
+from crispr_backend.security import ConcurrencyCap, RateLimiter, client_key, origin_allowed
 from crispr_backend.uploads.service import UploadService
 from crispr_backend.uploads.store import UploadError
 
 router = APIRouter()
+REPORTS_PER_MINUTE = RateLimiter(20)
+ACTIVE_REPORTS = ConcurrencyCap(2)
+logger = logging.getLogger(__name__)
 
 
 class CreateUpload(BaseModel):
@@ -69,6 +75,43 @@ def create_upload(payload: CreateUpload, request: Request, service: Service) -> 
 def get_upload(upload_id: str, request: Request, service: Service) -> JSONResponse:
     session = service.authenticate(bearer(request.headers.get("Authorization")), upload_id)
     return JSONResponse(service.view(session), headers={"Cache-Control": "private, no-store"})
+
+
+@router.get("/uploads/{upload_id}/report.pdf")
+def download_lab_report(upload_id: str, request: Request, service: Service) -> Response:
+    session = service.authenticate(bearer(request.headers.get("Authorization")), upload_id)
+    REPORTS_PER_MINUTE.check(client_key(request))
+    started = time.monotonic()
+    with ACTIVE_REPORTS:
+        snapshot = service.lab_report(session)
+        try:
+            pdf = render_lab_pdf(snapshot)
+        except Exception as error:
+            logger.error(
+                json.dumps({"event": "lab_report.failed", "upload_id": upload_id, "error_type": type(error).__name__})
+            )
+            raise UploadError(
+                "LAB_REPORT_UNAVAILABLE", "The lab report could not be generated. Try again shortly.", 503
+            ) from error
+    logger.info(
+        json.dumps(
+            {
+                "event": "lab_report.generated",
+                "upload_id": upload_id,
+                "duration_ms": round((time.monotonic() - started) * 1000),
+                "size_bytes": len(pdf),
+            }
+        )
+    )
+    return Response(
+        pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="genome-lab-report-{upload_id}.pdf"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.post("/uploads/{upload_id}/complete", status_code=202)

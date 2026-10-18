@@ -9,6 +9,8 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
+      // Overlapping agent checks must not clean another Vitest process's files.
+      reportsDirectory: `./coverage/${process.pid}`,
       reporter: ["text", "json-summary"],
       thresholds: {
         statements: 80,

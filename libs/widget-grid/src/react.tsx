@@ -715,7 +715,7 @@ export function WidgetGridItem({
         popover={floating ? "manual" : undefined}
         className={cn(
           "@container/widget-card relative z-10 flex min-h-0 min-w-0 flex-col outline-none transition-[filter,box-shadow] focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none",
-          size === "normal"
+          size !== "small"
             ? "rounded-xl [--widget-corner-radius:var(--radius-xl)]"
             : "rounded-lg [--widget-corner-radius:var(--radius-lg)]",
           active && "z-30 cursor-grabbing select-none drop-shadow-xl",
@@ -987,9 +987,10 @@ export function WidgetCardPreview({
         data-size={size}
         className={cn(
           "@container/widget-card min-h-0 min-w-0 overflow-hidden",
-          size === "normal"
-            ? "aspect-square rounded-xl [--widget-corner-radius:var(--radius-xl)]"
-            : "aspect-square rounded-lg [--widget-corner-radius:var(--radius-lg)]",
+          size === "wide" ? "aspect-[2/1]" : "aspect-square",
+          size !== "small"
+            ? "rounded-xl [--widget-corner-radius:var(--radius-xl)]"
+            : "rounded-lg [--widget-corner-radius:var(--radius-lg)]",
           className,
         )}
       />

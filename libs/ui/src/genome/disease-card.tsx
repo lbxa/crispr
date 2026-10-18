@@ -105,6 +105,7 @@ export function DiseaseCard({
           {artwork && (
             <img
               className={styles.cover}
+              data-report-bleed=""
               src={artwork}
               width={768}
               height={512}

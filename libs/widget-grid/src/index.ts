@@ -1,6 +1,6 @@
 export type WidgetId = string;
 
-export type WidgetSize = "normal" | "small";
+export type WidgetSize = "normal" | "small" | "wide";
 
 export type WidgetDescriptor = Readonly<{
   id: WidgetId;
@@ -55,6 +55,12 @@ export const WIDGET_FOOTPRINTS = {
     columnSpan: 1,
     rowSpan: 1,
     columnAlignment: 1,
+    rowAlignment: 1,
+  },
+  wide: {
+    columnSpan: 2,
+    rowSpan: 1,
+    columnAlignment: 2,
     rowAlignment: 1,
   },
 } as const satisfies Readonly<Record<WidgetSize, WidgetFootprint>>;

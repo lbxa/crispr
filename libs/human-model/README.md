@@ -181,6 +181,8 @@ anatomy. See `docs/blender-segmentation.md` for the export contract.
 
 ### 2026-10-18
 
+- The anatomy canvas uses grab/grabbing cursors to advertise drag-to-rotate. This cursor affordance preserves the existing camera controls and does not enable camera panning.
+- DNA presentation uses 21 displayed base pairs per visual turn for a longer, calmer wavelength. This is display geometry, not a molecular measurement; keep the 20px-per-base navigation scale, reference coordinates and ladder spacing unchanged.
 - `DnaHelix.loadingFallback` lets consumers supply a scene-sized loading surface and accessible status for scene/sequence loading without depending on a design system. Retryable display and sequence errors retain their own controls; omit the slot to keep the default status text.
 - The anatomy canvas accepts the host's `--avatar-filter` (default `none`) for theme-specific tone adjustments without reloading assets or recreating the WebGL scene. Keep this separate from app-owned phenotype presentation and leave canonical model materials intact.
 - The display atlas maps phenylketonuria to `head_brain`, its primary neurological association ([MedlinePlus](https://medlineplus.gov/genetics/condition/phenylketonuria/)). Keep this distinct from a diagnosis or treatment target. The app owns finding tiers and must explicitly label carrier associations when showing them.

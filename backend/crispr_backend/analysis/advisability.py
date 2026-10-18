@@ -73,14 +73,14 @@ def assess(guides: "list[Guide] | None", skipped: int = 0, strategy: str | None 
     return Advisability(score, band, label, best.spacer, len(scored), skipped, basis, cutoff, score >= cutoff)
 
 
-def overview(edits: "list[tuple[str, dict]]") -> dict:
+def overview(edits: "list[tuple[str, dict]]", *, cutoff: float | None = None) -> dict:
     """One verdict across edit plans, from the best score against the threshold.
 
     `edits` are (gene, edit) pairs, where an edit is a plan dict carrying an `advisability` entry.
     verdict: recommended | not_recommended | unavailable (no score) | no_guide (no SpCas9 target near
     any variant) | no_edit (nothing to edit).
     """
-    cutoff = threshold()
+    cutoff = threshold() if cutoff is None else cutoff
     scored = [(g, e) for g, e in edits if e.get("advisability") and e["advisability"]["score"] is not None]
     if not edits:
         return _overview("no_edit", None, cutoff, None, "No CRISPR edit is proposed.", 0)

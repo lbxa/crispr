@@ -24,7 +24,11 @@
   min-height: 0;
   outline-offset: -4px;
   touch-action: none;
+  cursor: grab;
   filter: var(--avatar-filter, none);
+}
+.canvas:active {
+  cursor: grabbing;
 }
 .notice {
   position: absolute;

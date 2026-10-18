@@ -35,25 +35,20 @@ export function GenomeExplorerSkeleton() {
         </header>
         <div className={styles.body}>
           <div className={styles.visualization}>
+            <div className={styles.viewerControls}>
+              <Skeleton className="size-11 shrink-0 rounded-xl" />
+              <Skeleton className="h-8 w-full min-w-0 max-w-sm rounded-lg" />
+            </div>
             <div className={styles.scene}>
               <Skeleton className={styles.scenePlaceholder} />
-              <Skeleton className="absolute start-4 top-4 size-11 rounded-xl" />
+            </div>
+            <div className={styles.footer}>
+              <Skeleton className="h-4 w-24" />
             </div>
             <Skeleton className={styles.karyotypePlaceholder} />
-            <div className={styles.footer}>
-              <div className={styles.location}>
-                <Skeleton className="h-5 w-24" />
-                <Skeleton className="h-3 w-28" />
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {[0, 1, 2, 3, 4].map((index) => (
-                  <Skeleton key={index} className="h-3 w-8" />
-                ))}
-              </div>
-              <Skeleton className="h-3 w-44 max-w-full" />
-            </div>
           </div>
           <aside className={styles.inspector}>
+            <Skeleton className="h-7 w-44" />
             <section className={styles.diseaseCards}>
               {[0, 1].map((index) => (
                 <Card key={index} size="sm" className="rounded-[20px] pt-0">

@@ -1,0 +1,44 @@
+.card {
+  flex: 1;
+  min-width: 0;
+  border-radius: var(--widget-corner-radius, 32px);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pills:empty {
+  display: none;
+}
+
+.pill {
+  min-height: 32px;
+  max-width: 100%;
+  height: auto;
+  padding-block: 6px;
+  cursor: pointer;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+
+.listItem {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.inputGroup {
+  height: 40px;
+}

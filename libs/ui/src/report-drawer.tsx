@@ -13,6 +13,7 @@ import {
   DrawerClose,
   DrawerContent,
   DrawerDescription,
+  DrawerFooter,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
@@ -33,12 +34,17 @@ export function ReportDrawer({
   title,
   description,
   trigger,
+  footer,
+  hideHeading = false,
   children,
   ...props
 }: {
   title: string;
   description: string;
   trigger?: ReactElement;
+  footer?: ReactNode;
+  /** Retain the accessible name while a full-surface state owns the visible heading. */
+  hideHeading?: boolean;
   children: ReactNode;
 } & Pick<ComponentProps<typeof Drawer>, "open" | "onOpenChange">) {
   const mobile = useSyncExternalStore(
@@ -54,9 +60,16 @@ export function ReportDrawer({
     >
       {trigger && <DrawerTrigger render={trigger} />}
       <DrawerContent className={styles.drawer}>
-        <DrawerHeader className={styles.header}>
-          <DrawerTitle>{title}</DrawerTitle>
-          <DrawerDescription>{description}</DrawerDescription>
+        <DrawerHeader
+          className={styles.header}
+          data-heading-hidden={hideHeading || undefined}
+        >
+          <DrawerTitle className={hideHeading ? "sr-only" : undefined}>
+            {title}
+          </DrawerTitle>
+          <DrawerDescription className={hideHeading ? "sr-only" : undefined}>
+            {description}
+          </DrawerDescription>
           <DrawerClose
             render={
               <Button
@@ -73,6 +86,9 @@ export function ReportDrawer({
         <div className={styles.body} data-report-scroll="">
           {children}
         </div>
+        {footer && (
+          <DrawerFooter className={styles.footer}>{footer}</DrawerFooter>
+        )}
       </DrawerContent>
     </Drawer>
   );

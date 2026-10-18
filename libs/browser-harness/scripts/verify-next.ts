@@ -1,12 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
+import { chromium, type Browser } from "playwright";
+import { expect } from "playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { z } from "zod";
 
 import { loadBrowserHarnessConfig } from "../src/index";
 import { BrowserHarnessRuntime } from "../src/browser-harness-runtime";
+import { BrowserSession } from "../src/browser-session";
 import { EvidenceWriter } from "../src/evidence";
 
 const workspace = resolve(import.meta.dir, "../../..");
@@ -24,7 +27,12 @@ const config = await loadBrowserHarnessConfig({
     : {}),
 });
 const evidence = new EvidenceWriter(config.evidenceDir);
-const harness = new BrowserHarnessRuntime(config);
+let browser: Browser | undefined;
+const browserSession = new BrowserSession(config, async (options) => {
+  browser = await chromium.launch(options);
+  return browser;
+});
+const harness = new BrowserHarnessRuntime(config, undefined, browserSession);
 const diagnostics = new Client({
   name: "crispr-browser-verification",
   version: "1.0.0",
@@ -34,6 +42,8 @@ await evidence.writeJson("run-context.json", config.observability);
 let verifiedUrl: string;
 try {
   await harness.start();
+  const page = browser?.contexts()[0]?.pages()[0];
+  if (!page) throw new Error("The harness did not create its page");
   await harness.waitForText({ text: "Gene editing workspace" });
   await harness.waitForText({ text: "3D anatomy ready", timeoutMs: 90_000 });
   const initialSnapshot = await harness.snapshot();
@@ -81,36 +91,25 @@ try {
     await harness.wait({ timeoutMs: 800 });
     if (side === "Right") {
       await harness.waitForText({ text: "3D DNA ready", timeoutMs: 60_000 });
+      const basePair = page.getByRole("spinbutton", { name: "Base pair" });
+      await expect(basePair).toHaveValue("1024001");
       await harness.click({ selector: '[aria-label="DNA sequence"]' });
       await harness.press({ key: "PageDown" });
-      let scrolled = await harness.snapshot();
       // Native keyboard scrolling can finish late while both WebGL scenes render.
-      for (
-        let attempt = 0;
-        attempt < 30 && scrolled.visibleText.includes("1,024,001 bp");
-        attempt++
-      ) {
-        await harness.wait({ timeoutMs: 100 });
-        scrolled = await harness.snapshot();
-      }
-      if (scrolled.visibleText.includes("1,024,001 bp")) {
-        throw new Error(
-          `DNA scrolling did not advance; inspect ${evidenceDir}`,
-        );
-      }
+      await expect
+        .poll(() => basePair.inputValue(), { timeout: 5000 })
+        .not.toBe("1024001");
       // Click the middle of chromosome 1 on the karyotype; the helix slides there.
       await harness.click({ selector: '[data-testid="karyotype-1-maternal"]' });
       // The readout passes through intermediate values while the helix slides, so wait for
       // the same mid-chromosome position on two consecutive reads.
-      const middle = /\b1[12]\d,\d{3},\d{3} bp/;
+      const middle = /^1[12]\d{7}$/;
       let reached: string | undefined;
       let previous: string | undefined;
       for (let attempt = 0; attempt < 60; attempt++) {
         await harness.wait({ timeoutMs: 150 });
-        const current = middle.exec(
-          (await harness.snapshot()).visibleText,
-        )?.[0];
-        if (current && current === previous) {
+        const current = await basePair.inputValue();
+        if (middle.test(current) && current === previous) {
           reached = current;
           break;
         }
@@ -124,20 +123,23 @@ try {
       await harness.click({
         selector: 'button[aria-label="Unwind double helix"]',
       });
-      await harness.waitForText({ text: "Flat ladder" });
+      await harness.waitForText({ text: "Double helix (expanded)" });
       await harness.wait({ timeoutMs: 1400 });
       await harness.screenshot({ name: "dna-flat-ladder", fullPage: true });
-      const ladder = await harness.snapshot();
-      if (!ladder.visibleText.includes(reached)) {
-        throw new Error(
-          `Unwinding lost the genome position; inspect ${evidenceDir}`,
-        );
-      }
+      await expect(basePair).toHaveValue(reached);
       await harness.click({ selector: '[aria-label="DNA sequence"]' });
       await harness.press({ key: "End" });
-      await harness.waitForText({ text: "248,000,000 bp" });
+      await expect(basePair).toHaveValue("248000000");
       await harness.press({ key: "Home" });
-      await harness.waitForText({ text: "1 bp" });
+      await expect(basePair).toHaveValue("1");
+      await basePair.fill("90000000");
+      await basePair.press("Enter");
+      await expect(basePair).toHaveValue("90000000");
+      await expect(page.getByTestId("karyotype-cursor")).toHaveAttribute(
+        "data-position",
+        "89999999",
+      );
+      await harness.screenshot({ name: "dna-live-position", fullPage: true });
     }
     await harness.screenshot({
       name: `${side.toLowerCase()}-pane`,
@@ -146,6 +148,9 @@ try {
     if (side === "Left") {
       if (!paneSnapshot.accessibilityTree.includes('group "Current date"')) {
         throw new Error(`Date widget is missing; inspect ${evidenceDir}`);
+      }
+      if (!paneSnapshot.accessibilityTree.includes('group "Symptoms"')) {
+        throw new Error(`Symptoms widget is missing; inspect ${evidenceDir}`);
       }
       await harness.pointer({ action: "move", x: 100, y: 100 });
       await harness.screenshot({ name: "widget-handle-hover", fullPage: true });
@@ -173,7 +178,7 @@ try {
       await harness.waitForText({ text: "Files picked up." });
       await harness.press({ key: "ArrowRight" });
       await harness.press({ key: "Enter" });
-      await harness.waitForText({ text: "Files moved to position 2 of 2." });
+      await harness.waitForText({ text: "Files moved to position 2 of 5." });
       await harness.press({ key: "Space" });
       await harness.press({ key: "Escape" });
       await harness.waitForText({
@@ -195,8 +200,10 @@ try {
   // Focus stays on the right toggle, so keyboard users can reopen it directly.
   await harness.press({ key: "Space" });
   await harness.waitForText({ text: "3D DNA ready" });
-  await harness.waitForText({ text: "1 bp" });
-  await harness.waitForText({ text: "Flat ladder" });
+  await expect(page.getByRole("spinbutton", { name: "Base pair" })).toHaveValue(
+    "90000000",
+  );
+  await harness.waitForText({ text: "Double helix (expanded)" });
   await harness.click({ selector: 'button[aria-label="Rewind double helix"]' });
   const rewound = await harness.snapshot();
   if (!rewound.accessibilityTree.includes('heading "Double helix"')) {

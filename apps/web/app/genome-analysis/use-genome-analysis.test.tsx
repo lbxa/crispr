@@ -6,6 +6,7 @@ import { uploadConfig, uploadJob, uploadSession } from "./upload.fixture";
 import { report } from "./report.fixture";
 import type { GenomeAnalysisState } from "./contract";
 import type { HttpRequest, HttpResponse, Upload } from "tus-js-client";
+import { LIBRARY_GENOMES } from "../genome-library/catalog";
 
 const { uploads } = vi.hoisted(() => ({
   uploads: [] as {
@@ -68,6 +69,87 @@ afterEach(() => {
 });
 
 describe("genome analysis lifecycle", () => {
+  it("prepares the curated file and allows another attempt after a failed download", async () => {
+    const genome = LIBRARY_GENOMES[0]!;
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(new Response("VCF"));
+    vi.stubGlobal("fetch", fetch);
+    const { result } = renderHook(useGenomeAnalysis);
+    await act(async () => {
+      expect(await result.current.prepareLibraryGenome(genome)).toBeNull();
+    });
+    expect(result.current.libraryError).toBeTruthy();
+    let file: File | null = null;
+    await act(async () => {
+      file = await result.current.prepareLibraryGenome(genome);
+    });
+    expect(file).toMatchObject({
+      name: genome.fileName,
+      size: 3,
+      type: "application/vcf",
+    });
+    expect(result.current.libraryLoading).toBeNull();
+    expect(result.current.libraryError).toBeNull();
+    expect(uploads).toHaveLength(0);
+  });
+
+  it("a local file cancels and supersedes a delayed library selection", async () => {
+    let finish!: (response: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      finish = resolve;
+    });
+    const fetch = vi
+      .fn()
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce(Response.json(uploadConfig))
+      .mockResolvedValueOnce(Response.json(uploadSession));
+    vi.stubGlobal("fetch", fetch);
+    const { result } = renderHook(useGenomeAnalysis);
+    let preparation!: Promise<File | null>;
+    act(() => {
+      preparation = result.current.prepareLibraryGenome(LIBRARY_GENOMES[0]!);
+    });
+    expect(result.current.libraryLoading).toBe(LIBRARY_GENOMES[0]!.id);
+    await act(async () => {
+      await result.current.analyze(new File(["VCF"], "mine.vcf"));
+    });
+    expect(fetch.mock.calls[0]![1].signal.aborted).toBe(true);
+    await act(async () => {
+      finish(new Response("VCF"));
+      expect(await preparation).toBeNull();
+    });
+    expect(result.current.analysis).toMatchObject({
+      status: "uploading",
+      file: { name: "mine.vcf" },
+    });
+    expect(result.current.libraryLoading).toBeNull();
+    expect(result.current.libraryError).toBeNull();
+    expect(uploads).toHaveLength(1);
+  });
+
+  it("aborts pending library requests on unmount and ignores a late response", async () => {
+    let finish!: (response: Response) => void;
+    const fetch = vi.fn().mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const { result, unmount } = renderHook(useGenomeAnalysis);
+    let preparation!: Promise<File | null>;
+    act(() => {
+      preparation = result.current.prepareLibraryGenome(LIBRARY_GENOMES[0]!);
+    });
+    unmount();
+    expect(fetch.mock.calls[0]![1].signal.aborted).toBe(true);
+    finish(new Response("VCF"));
+    expect(await preparation).toBeNull();
+    expect(uploads).toHaveLength(0);
+  });
+
   it("restores the current genome without starting an upload or fetching analysis again", async () => {
     // Arrange
     const fetch = vi.fn();

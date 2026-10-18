@@ -23,6 +23,7 @@ import {
   uploadSession,
 } from "./genome-analysis/upload.fixture";
 import type { Upload } from "tus-js-client";
+import { LIBRARY_GENOMES } from "./genome-library/catalog";
 
 vi.mock("tus-js-client", () => ({
   Upload: class {
@@ -141,6 +142,63 @@ function openLeftPane() {
 }
 
 describe("workspace widget grids", () => {
+  it("loads a server genome into the existing upload, summary and explorer flow", async () => {
+    const genome = LIBRARY_GENOMES[0]!;
+    const upload = mockUploadFetch({ ...report, genome_view: genomeView });
+    const fetch = vi.fn((url: string, options?: RequestInit) =>
+      url === `/api/genome-library/${genome.id}`
+        ? Promise.resolve(new Response("VCF"))
+        : upload(url, options),
+    );
+    vi.stubGlobal("fetch", fetch);
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: `Use ${genome.fileName}` }),
+      );
+    });
+    expect(
+      document
+        .getElementById("workspace-pane-right")!
+        .getAttribute("aria-hidden"),
+    ).toBe("false");
+    openLeftPane();
+    await screen.findByRole("button", { name: "View full report" });
+    expect(screen.getByRole("button", { name: "Replace file" })).toBeTruthy();
+    expect(
+      screen
+        .getByRole("button", { name: `Use ${genome.fileName}` })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(upload).toHaveBeenCalledWith(
+      `${uploadConfig.api_url}/uploads`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("keeps failed library downloads retryable without starting a genome upload", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 503 }));
+    vi.stubGlobal("fetch", fetch);
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    const button = screen.getByRole("button", {
+      name: `Use ${LIBRARY_GENOMES[0]!.fileName}`,
+    });
+    await act(async () => fireEvent.click(button));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "Choose file" })).toBeTruthy();
+    expect(fetch).toHaveBeenCalledOnce();
+  });
   it("keeps HG001's PKU carrier association red without an avatar overlay", async () => {
     vi.stubGlobal(
       "fetch",
@@ -504,6 +562,9 @@ describe("workspace widget grids", () => {
       within(leftPane).getByLabelText("Left widgets").getAttribute("data-slot"),
     ).toBe("widget-grid");
     expect(within(leftPane).getByRole("group", { name: "Files" })).toBeTruthy();
+    fireEvent.click(
+      within(leftPane).getByRole("button", { name: "Add fatigue" }),
+    );
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Choose a file"), {
         target: { files: [new File(["VCF"], "sample.vcf")] },
@@ -523,6 +584,9 @@ describe("workspace widget grids", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
     expect(screen.getByText("sample.vcf")).toBeTruthy();
+    expect(
+      within(leftPane).getByRole("button", { name: "Remove Fatigue" }),
+    ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Replace file" })).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "View full report" }),
@@ -532,6 +596,9 @@ describe("workspace widget grids", () => {
       .filter((item) => item.hasAttribute("data-widget-id"));
     expect(widgets.map((item) => item.getAttribute("data-widget-id"))).toEqual([
       "files",
+      "library",
+      "symptoms",
+      "call-doctor",
       "date",
       "summary",
     ]);

@@ -71,6 +71,8 @@ visibility and `inert`; disabling the grid only controls movement.
 - `normal` widgets occupy 2×2 cells with even column anchors and can start on
   any row, so a filled row of small cards does not leave a blank row; they may grow
   vertically for intrinsic content. `small` widgets occupy one square cell.
+- `wide` widgets occupy 2×1 cells with even column anchors and grow vertically
+  with their content, for rectangular forms such as the optional Symptoms card.
 - Packing uses earliest-valid first fit and accepts two or four logical columns.
 - The React grid measures its container, using two columns below `wideAt`
   (default 640px) and four above it. `gap` defaults to 16px.
@@ -161,6 +163,11 @@ bun run verify:browser
 ```
 
 ## Changelog
+
+### 2026-10-18
+
+- Coverage reports live under `coverage/<vitest-pid>/` so overlapping agent checks cannot delete each other's temporary data. Keep coverage cleaning and thresholds enabled; each run retains its own `coverage-summary.json`.
+- `wide` adds a 2×1 footprint for rectangular widgets, using the same packing and drag targets as square cards. Its height grows with form content; small cards retain their fixed square height.
 
 ### 2026-10-17
 

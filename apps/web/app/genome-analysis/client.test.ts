@@ -48,6 +48,94 @@ function prepare(file = new File(["VCF"], "sample.vcf")) {
 }
 
 describe("IBM genome upload gateway", () => {
+  it("downloads the saved analysis with its capability without uploading the genome again", async () => {
+    const { client, fetch, publish } = prepare();
+    await client.start();
+    uploads[0]!.options.onSuccess?.(
+      {} as Parameters<NonNullable<UploadOptions["onSuccess"]>>[0],
+    );
+    await vi.waitFor(() =>
+      expect(publish).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: "complete" }),
+      ),
+    );
+    fetch.mockClear();
+    fetch.mockResolvedValue(
+      new Response("%PDF-test", {
+        headers: { "Content-Type": "application/pdf", "Content-Length": "9" },
+      }),
+    );
+    const pdf = await client.downloadReport(new AbortController().signal);
+    expect(await pdf.text()).toBe("%PDF-test");
+    expect(fetch).toHaveBeenCalledExactlyOnceWith(
+      `${uploadConfig.api_url}/uploads/${uploadSession.id}/report.pdf`,
+      expect.objectContaining({
+        headers: {
+          Authorization: `Bearer ${uploadSession.token}`,
+          Accept: "application/pdf",
+        },
+        credentials: "omit",
+        redirect: "error",
+        cache: "no-store",
+      }),
+    );
+    expect(uploads).toHaveLength(1);
+    client.dispose();
+    await expect(
+      client.downloadReport(new AbortController().signal),
+    ).rejects.toThrow("in this session");
+  });
+
+  it.each([
+    ["text/html", "9", "<private>"],
+    ["application/pdf", "9", "not a pdf"],
+    ["application/pdf", "9000000", "%PDF-test"],
+    ["application/pdf", "", "%PDF-test"],
+  ])(
+    "rejects an invalid PDF boundary (%s, length=%s)",
+    async (type, length, content) => {
+      const { client, fetch, publish } = prepare();
+      await client.start();
+      uploads[0]!.options.onSuccess?.(
+        {} as Parameters<NonNullable<UploadOptions["onSuccess"]>>[0],
+      );
+      await vi.waitFor(() =>
+        expect(publish).toHaveBeenLastCalledWith(
+          expect.objectContaining({ status: "complete" }),
+        ),
+      );
+      fetch.mockResolvedValue(
+        new Response(content, {
+          headers: { "Content-Type": type, "Content-Length": length },
+        }),
+      );
+      await expect(
+        client.downloadReport(new AbortController().signal),
+      ).rejects.toThrow("invalid PDF");
+      client.dispose();
+    },
+  );
+
+  it("reports expired PDF access without exposing the server response", async () => {
+    const { client, fetch, publish } = prepare();
+    await client.start();
+    uploads[0]!.options.onSuccess?.(
+      {} as Parameters<NonNullable<UploadOptions["onSuccess"]>>[0],
+    );
+    await vi.waitFor(() =>
+      expect(publish).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: "complete" }),
+      ),
+    );
+    fetch.mockResolvedValue(
+      new Response("private server diagnostic", { status: 410 }),
+    );
+    await expect(
+      client.downloadReport(new AbortController().signal),
+    ).rejects.toThrow("has expired");
+    client.dispose();
+  });
+
   it("passes a large compressed File to tus without reading it or sending its name", async () => {
     const file = new File(["compressed fixture"], "HG001.vcf.gz");
     Object.defineProperty(file, "size", { value: 1_900_000_000 });

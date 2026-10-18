@@ -3,15 +3,26 @@
 import dynamic from "next/dynamic";
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
 } from "react";
 import { flushSync } from "react-dom";
+import { InfoIcon } from "lucide-react";
 import { Button } from "@crispr/ui/components/button";
+import { Field, FieldGroup, FieldLabel } from "@crispr/ui/components/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+} from "@crispr/ui/components/input-group";
 import { DiseaseCard } from "@crispr/ui/genome/disease-card";
 import { toast } from "@crispr/ui/components/sonner";
+import { ReportDrawer } from "@crispr/ui/report-drawer";
 import {
   BASE_PIXELS,
   DNA_BASES,
@@ -24,6 +35,7 @@ import { DISEASE_ARTWORK } from "./disease-artwork";
 import { getAnatomyRegion } from "@crispr/human-model/anatomy";
 import { reviewedBodyAssociation } from "./genome-analysis/body-map";
 import { CrisprDrawer, type CrisprGene } from "./crispr/crispr-drawer";
+import type { DownloadLabReport } from "./genome-analysis/client";
 import { FindingReport } from "./genome-analysis/report";
 import {
   DnaSceneSkeleton,
@@ -60,11 +72,13 @@ export function GenomeExplorer({
   report,
   hasGenome = false,
   loading = false,
+  onDownloadReport,
 }: {
   active: boolean;
   report?: GenomeReport;
   hasGenome?: boolean;
   loading?: boolean;
+  onDownloadReport?: DownloadLabReport;
 }) {
   const analysisIncomplete = hasGenome && !report;
   const mapUnavailable = Boolean(report && !report.genome_view);
@@ -93,6 +107,8 @@ export function GenomeExplorer({
       view={report?.genome_view}
       findings={report?.findings}
       profile={report?.genome.model_profile}
+      plans={report?.gene_plans}
+      onDownloadReport={onDownloadReport}
     />
   );
 }
@@ -102,11 +118,15 @@ function GenomeExplorerContent({
   view,
   findings,
   profile,
+  plans,
+  onDownloadReport,
 }: {
   active: boolean;
   view?: GenomeView;
   findings?: GenomeReport["findings"];
   profile?: GenomeReport["genome"]["model_profile"];
+  plans?: GenomeReport["gene_plans"];
+  onDownloadReport?: DownloadLabReport;
 }) {
   const chromosomes = view?.chromosomes ?? DEMO_CHROMOSOMES;
   // Without a reported sex, a genome with Y calls is drawn 46,XY; the demo genome has a Y.
@@ -128,11 +148,25 @@ function GenomeExplorerContent({
   // While the helix slides to a target, the readout and karyotype cursor follow it.
   const [glide, setGlide] = useState<number | null>(null);
   const shown = glide ?? position;
+  const [basePairDraft, setBasePairDraft] = useState<{
+    chromosomeId: string;
+    position: number;
+    value: string;
+  } | null>(null);
+  // Only unfinished edits are state; every scene move returns the field to its live value.
+  if (
+    basePairDraft &&
+    (basePairDraft.chromosomeId !== chromosomeId ||
+      basePairDraft.position !== shown)
+  )
+    setBasePairDraft(null);
   // Findings the user has not looked at pulse until their region has been in view.
   const [viewed, setViewed] = useState<ReadonlySet<string>>(() => new Set());
   const [crisprGene, setCrisprGene] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<string | null>(null);
   const visualization = useRef<HTMLDivElement>(null);
+  const basePairInput = useRef<HTMLInputElement>(null);
+  const basePairId = useId();
   // A disease has one report card, even when several mapped variants contribute to it.
   const findingCards = useMemo(() => {
     const cards = new Map<
@@ -224,6 +258,11 @@ function GenomeExplorerContent({
     ({ tier, gene }) =>
       tier !== "carrier" && crisprGenes.some((item) => item.gene === gene),
   );
+  const zoneStyle = zone
+    ? ({
+        "--zone-offset": `${(zone.start - shown) * BASE_PIXELS}px`,
+      } as CSSProperties)
+    : undefined;
   const unseen = useMemo(
     () =>
       new Set(
@@ -320,7 +359,9 @@ function GenomeExplorerContent({
       <div className={styles.content}>
         <header className={styles.header}>
           <div className={styles.title}>
-            <h2>{mode === "helix" ? "Double helix" : "Flat ladder"}</h2>
+            <h2>
+              {mode === "helix" ? "Double helix" : "Double helix (expanded)"}
+            </h2>
             <span className={styles.demo}>
               {view ? "GRCh38 · Reference context" : "Demo genome"}
             </span>
@@ -331,41 +372,96 @@ function GenomeExplorerContent({
           data-findings={findingCards.length > 0 || undefined}
         >
           <div className={styles.visualization} ref={visualization}>
-            <div className={styles.scene}>
-              <div
-                className={styles.viewerToolbar}
-                role="toolbar"
-                aria-label="DNA viewer tools"
-                aria-orientation="vertical"
+            <div className={styles.viewerControls}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-11 rounded-xl"
+                aria-label={
+                  mode === "helix"
+                    ? "Unwind double helix"
+                    : "Rewind double helix"
+                }
+                title={
+                  mode === "helix"
+                    ? "Unwind double helix"
+                    : "Rewind double helix"
+                }
+                onClick={() =>
+                  setMode((current) =>
+                    current === "helix" ? "ladder" : "helix",
+                  )
+                }
               >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-11 rounded-xl"
-                  aria-label={
-                    mode === "helix"
-                      ? "Unwind double helix"
-                      : "Rewind double helix"
-                  }
-                  title={
-                    mode === "helix"
-                      ? "Unwind double helix"
-                      : "Rewind double helix"
-                  }
-                  onClick={() =>
-                    setMode((current) =>
-                      current === "helix" ? "ladder" : "helix",
-                    )
-                  }
-                >
-                  <span
-                    className={styles.modeIcon}
-                    data-mode={mode}
-                    aria-hidden="true"
-                  />
-                </Button>
-              </div>
+                <span
+                  className={styles.modeIcon}
+                  data-mode={mode}
+                  aria-hidden="true"
+                />
+              </Button>
+              <form
+                role="search"
+                aria-label="Base pair search"
+                className="w-full min-w-0 max-w-sm"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const input = basePairInput.current;
+                  if (!input?.reportValidity()) return;
+                  navigate(input.valueAsNumber - 1, { animate: true });
+                  setBasePairDraft(null);
+                }}
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget))
+                    setBasePairDraft(null);
+                }}
+              >
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor={basePairId} className="sr-only">
+                      Base pair
+                    </FieldLabel>
+                    <InputGroup>
+                      <InputGroupInput
+                        className="h-full px-2 py-0"
+                        ref={basePairInput}
+                        id={basePairId}
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={chromosome.length}
+                        step={1}
+                        required
+                        value={basePairDraft?.value ?? String(shown + 1)}
+                        onChange={(event) =>
+                          setBasePairDraft({
+                            chromosomeId,
+                            position: shown,
+                            value: event.currentTarget.value,
+                          })
+                        }
+                        placeholder="Jump to base pair"
+                        title={`Position 1 to ${format.format(chromosome.length)} on chromosome ${chromosome.id}`}
+                      />
+                      <InputGroupAddon
+                        align="inline-end"
+                        className="gap-1 py-0"
+                      >
+                        <InputGroupText>bp</InputGroupText>
+                        <InputGroupButton
+                          type="submit"
+                          size="xs"
+                          aria-label="Go to base pair"
+                        >
+                          Go
+                        </InputGroupButton>
+                      </InputGroupAddon>
+                    </InputGroup>
+                  </Field>
+                </FieldGroup>
+              </form>
+            </div>
+            <div className={styles.scene}>
               <DnaHelix
                 loadingFallback={<DnaSceneSkeleton />}
                 key={chromosomeId}
@@ -384,47 +480,120 @@ function GenomeExplorerContent({
                 }}
               />
               {zone && (
-                <div
-                  key={zone.id}
-                  className={styles.zoneTag}
-                  role="group"
-                  aria-label="Disease zone"
-                  data-testid="zone-tag"
-                  style={
-                    {
-                      // Where the zone sits relative to the focus line; the stylesheet clamps it.
-                      "--zone-offset": `${(zone.start - shown) * BASE_PIXELS}px`,
-                    } as CSSProperties
-                  }
-                >
-                  <strong>
-                    {[
-                      ...new Set(zone.annotations.map(({ gene }) => gene)),
-                    ].join(" / ")}
-                  </strong>
-                  <span>
-                    {[
-                      ...new Set(
-                        zone.annotations.map(({ disease }) => disease),
-                      ),
-                    ].join("; ")}
-                  </span>
-                  {!zoneCrispr &&
-                    zone.annotations.every((a) => a.tier === "carrier") && (
-                      <em>Carrier · not an editing target</em>
-                    )}
+                <>
+                  <div
+                    key={zone.id}
+                    className={styles.zoneTag}
+                    role="group"
+                    aria-label="Disease zone"
+                    data-testid="zone-tag"
+                    style={zoneStyle}
+                  >
+                    <strong>
+                      {[
+                        ...new Set(zone.annotations.map(({ gene }) => gene)),
+                      ].join(" / ")}
+                    </strong>
+                    <span>
+                      {[
+                        ...new Set(
+                          zone.annotations.map(({ disease }) => disease),
+                        ),
+                      ].join("; ")}
+                    </span>
+                    {!zoneCrispr &&
+                      zone.annotations.every((a) => a.tier === "carrier") && (
+                        <em>Carrier · not an editing target</em>
+                      )}
+                  </div>
                   {zoneCrispr && (
-                    <button
+                    <Button
+                      key={`cut-${zone.id}`}
                       type="button"
-                      className={styles.zoneAction}
+                      size="icon"
+                      className={styles.cutTool}
+                      style={zoneStyle}
+                      aria-label={`Open CRISPR editor for ${zoneCrispr.gene}`}
+                      title={`Open CRISPR editor for ${zoneCrispr.gene}`}
+                      aria-haspopup="dialog"
+                      aria-expanded={crisprGene === zoneCrispr.gene}
                       onClick={() => setCrisprGene(zoneCrispr.gene)}
                     >
-                      CRISPR
-                    </button>
+                      <span
+                        className={styles.scissorsIcon}
+                        aria-hidden="true"
+                      />
+                    </Button>
                   )}
-                </div>
+                </>
               )}
             </div>
+            <footer className={styles.footer}>
+              <ReportDrawer
+                title="Sequence guide"
+                description="Colors, coordinates and sequence source."
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={styles.guideTrigger}
+                  >
+                    <InfoIcon data-icon="inline-start" aria-hidden="true" />
+                    Sequence guide
+                  </Button>
+                }
+              >
+                <p className={styles.sequenceNote}>
+                  {view
+                    ? referenceAvailable || covered
+                      ? regions.length === 0
+                        ? "No flagged regions in the screened genes · GRCh38 reference sequence"
+                        : "GRCh38 reference · Alternate allele shown separately"
+                      : regions.length === 0
+                        ? "No flagged regions in the screened genes. Reference sequence is unavailable here."
+                        : "Reference unavailable here · N = unknown base"
+                    : "Synthetic sequence · Upload a genome to map findings"}
+                </p>
+                <dl>
+                  <dt>Chromosome</dt>
+                  <dd>Chr {chromosome.id}</dd>
+                  <dt>Chromosome length</dt>
+                  <dd>{format.format(chromosome.length)} bp</dd>
+                  <dt>Coordinates</dt>
+                  <dd>
+                    Positions count from base 1 on the selected chromosome.
+                  </dd>
+                </dl>
+                <section className={styles.guideKey} aria-label="Base colors">
+                  <h3>Color key</h3>
+                  <ul className={styles.legend}>
+                    {(
+                      [
+                        ["A", "Adenine"],
+                        ["T", "Thymine"],
+                        ["C", "Cytosine"],
+                        ["G", "Guanine"],
+                        ["N", "Unknown base"],
+                      ] as const
+                    ).map(([base, label]) => (
+                      <li
+                        key={base}
+                        data-base={base}
+                        style={{ background: DNA_BASES[base].color }}
+                      >
+                        <span>{label}</span>
+                        <strong>{base}</strong>
+                      </li>
+                    ))}
+                    {view && (
+                      <li style={{ background: DNA_FINDING_COLOR }}>
+                        <span>Flagged region</span>
+                      </li>
+                    )}
+                  </ul>
+                </section>
+              </ReportDrawer>
+            </footer>
             <KaryotypeNavigator
               chromosomes={chromosomes}
               current={chromosomeId}
@@ -436,46 +605,10 @@ function GenomeExplorerContent({
               onChoose={chooseChromosome}
               onSelect={selectRegion}
             />
-            <footer className={styles.footer}>
-              <div className={styles.location}>
-                <span className={styles.chromosomeName}>
-                  Chr {chromosome.id}
-                </span>
-                <output aria-label="Current base" aria-live="off">
-                  {format.format(shown + 1)}
-                  <span> bp</span>
-                </output>
-                <span>of {format.format(chromosome.length)}</span>
-              </div>
-              <div className={styles.legend} aria-label="Base colors">
-                {(["A", "T", "C", "G"] as const).map((base) => (
-                  <span key={base}>
-                    <i style={{ background: DNA_BASES[base].color }} />
-                    {base}
-                  </span>
-                ))}
-                {view && (
-                  <span>
-                    <i style={{ background: DNA_FINDING_COLOR }} />
-                    Finding
-                  </span>
-                )}
-              </div>
-              <p className={styles.disclaimer}>
-                {view
-                  ? referenceAvailable || covered
-                    ? regions.length === 0
-                      ? "No flagged regions in the screened genes · GRCh38 reference sequence"
-                      : "GRCh38 reference · Alternate allele shown separately"
-                    : regions.length === 0
-                      ? "No flagged regions in the screened genes. Reference sequence is unavailable here."
-                      : "Reference unavailable here · N = unknown base"
-                  : "Synthetic sequence · Upload a genome to map findings"}
-              </p>
-            </footer>
           </div>
           {findingCards.length > 0 && (
             <aside className={styles.inspector} aria-label="Mutation details">
+              <h1 className={styles.findingsHeading}>Genetic findings</h1>
               <section
                 className={styles.diseaseCards}
                 aria-label="Disease findings"
@@ -594,6 +727,8 @@ function GenomeExplorerContent({
         }}
         genes={crisprGenes}
         initialGene={crisprGene ?? crisprGenes[0]?.gene ?? ""}
+        plans={plans}
+        onDownloadReport={onDownloadReport}
       />
     </section>
   );

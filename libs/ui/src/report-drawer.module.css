@@ -17,7 +17,12 @@
   inset-block-start: 20px;
   inset-inline-end: 20px;
 }
+.header[data-heading-hidden] {
+  min-block-size: 64px;
+  padding: 0;
+}
 .body {
+  --report-body-inset: 24px;
   display: flex;
   flex: 1;
   min-block-size: 0;
@@ -26,8 +31,14 @@
   gap: 24px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 0 24px max(24px, env(safe-area-inset-bottom));
+  padding: 0 var(--report-body-inset) max(24px, env(safe-area-inset-bottom));
   overflow-wrap: anywhere;
+}
+.body > [data-report-bleed] {
+  flex-shrink: 0;
+  inline-size: calc(100% + 2 * var(--report-body-inset));
+  max-inline-size: none;
+  margin-inline: calc(-1 * var(--report-body-inset));
 }
 .body dl {
   display: grid;
@@ -45,6 +56,10 @@
 }
 .body p {
   line-height: 1.65;
+}
+.footer {
+  flex-shrink: 0;
+  padding: 16px 24px max(24px, env(safe-area-inset-bottom));
 }
 @media (prefers-reduced-motion: reduce) {
   .drawer {

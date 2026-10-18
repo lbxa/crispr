@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { chromium, type Browser } from "playwright";
+import { expect } from "playwright/test";
 import { z } from "zod";
 import { BrowserHarnessRuntime } from "../src/browser-harness-runtime";
 import { BrowserSession } from "../src/browser-session";
@@ -107,7 +108,8 @@ try {
   // A completed analysis opens the genome explorer by itself.
   await harness.waitForText({ text: "3D DNA ready", timeoutMs: 60_000 });
   if (values.findings) {
-    await harness.waitForText({ text: "117,559,590 bp" });
+    const basePair = page.getByRole("spinbutton", { name: "Base pair" });
+    await expect(basePair).toHaveValue("117559590");
     const reference = await harness.snapshot();
     if (
       !reference.visibleText.includes("GRCh38") ||
@@ -118,20 +120,20 @@ try {
       );
     await harness.screenshot({ name: "cftr-deletion-map", fullPage: true });
     await harness.click({ selector: 'button[aria-label^="Inspect HBB at "]' });
-    await harness.waitForText({ text: "5,227,002 bp" });
+    await expect(basePair).toHaveValue("5227002");
     // A focused karyotype chromosome reaches its ends with Home and End.
     await page.locator('[role="button"][aria-label="Chromosome 11"]').focus();
     await harness.press({ key: "End" });
-    await harness.waitForText({ text: "135,086,622 bp" });
+    await expect(basePair).toHaveValue("135086622");
     await harness.press({ key: "Home" });
-    await harness.waitForText({ text: "1 bp" });
+    await expect(basePair).toHaveValue("1");
     await harness.click({
       selector: '[role="button"][aria-label^="Jump to HBB at "]',
     });
-    await harness.waitForText({ text: "5,227,002 bp" });
+    await expect(basePair).toHaveValue("5227002");
     await harness.click({ selector: '[aria-label="DNA sequence"]' });
     await harness.press({ key: "ArrowDown" });
-    await harness.waitForText({ text: "5,227,003 bp" });
+    await expect(basePair).toHaveValue("5227003");
     // The karyotype cursor follows the helix in zero-based coordinates.
     const cursor = await page
       .locator('[data-testid="karyotype-cursor"]')
@@ -146,7 +148,7 @@ try {
     await harness.click({
       selector: 'button[aria-label="Unwind double helix"]',
     });
-    await harness.waitForText({ text: "Flat ladder" });
+    await harness.waitForText({ text: "Double helix (expanded)" });
     await harness.wait({ timeoutMs: 1200 });
     await harness.screenshot({ name: "hbb-finding-ladder", fullPage: true });
   }
@@ -155,12 +157,29 @@ try {
     await harness.click({ selector: 'button[aria-label="Left pane"]' });
   }
   await harness.waitForText({ text: "Analysis complete" });
+  const rightPane = page.locator("#workspace-pane-right");
+  const dnaCanvas = await rightPane.locator("canvas").elementHandle();
+  const positionBeforeReport = await rightPane
+    .getByRole("spinbutton", { name: "Base pair" })
+    .inputValue();
+  await expect(rightPane).toHaveCSS("opacity", "1");
   await harness.click({ selector: 'button:has-text("View full report")' });
+  await page
+    .getByRole("dialog", { name: "Genome report" })
+    .waitFor({ state: "visible" });
+  await harness.screenshot({ name: "report-over-workspace", fullPage: true });
+  // Modal aria-hidden hides the background from assistive technology, not from view.
+  await expect(rightPane).toHaveCSS("opacity", "1");
+  await expect(rightPane).toHaveCSS("visibility", "visible");
+  await expect(page.locator('button[aria-label="Right pane"]')).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
   await page
     .getByRole("dialog", { name: "Genome report" })
     .getByRole("heading", {
       name: values.findings
-        ? "Disease-causing variants found"
+        ? /^Disease-causing variants found(?:,|$)/
         : "No genetic cause found in the screened genes",
       exact: true,
     })
@@ -203,6 +222,39 @@ try {
   await page
     .getByRole("dialog", { name: "Genome report" })
     .waitFor({ state: "hidden" });
+  await expect(rightPane).toHaveCSS("opacity", "1");
+  await expect(
+    rightPane.getByRole("spinbutton", { name: "Base pair" }),
+  ).toHaveValue(positionBeforeReport);
+  if (values.findings) {
+    const findingReport = page.getByRole("dialog", {
+      name: "Cystic fibrosis",
+      exact: true,
+    });
+    for (const dismissal of ["close", "escape", "backdrop"] as const) {
+      await harness.click({
+        selector: 'button[aria-label="View CFTR report"]',
+      });
+      await expect(findingReport).toBeVisible();
+      await expect(rightPane).toHaveCSS("opacity", "1");
+      await expect(rightPane).toHaveCSS("visibility", "visible");
+      if (dismissal === "close")
+        await findingReport.getByRole("button", { name: "Close" }).click();
+      else if (dismissal === "escape") await harness.press({ key: "Escape" });
+      else {
+        await harness.pointer({ action: "move", x: 20, y: 20 });
+        await harness.pointer({ action: "down" });
+        await harness.pointer({ action: "up" });
+      }
+      await expect(findingReport).toBeHidden();
+      await expect(rightPane).toHaveCSS("opacity", "1");
+      await expect(
+        rightPane.getByRole("spinbutton", { name: "Base pair" }),
+      ).toHaveValue(positionBeforeReport);
+    }
+  }
+  if (!(await dnaCanvas?.evaluate((canvas) => canvas.isConnected)))
+    throw new Error("Opening the genome report replaced the DNA viewer");
   await harness.click({ selector: 'button[aria-label="Remove genome"]' });
   await harness.waitForText({ text: "Drop your genome" });
   await harness.open();

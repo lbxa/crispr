@@ -5,6 +5,9 @@ import logging
 import shutil
 import time
 
+from pydantic import ValidationError
+
+from crispr_backend.reporting import LabAnalysis, LabReport, gene_plans
 from crispr_backend.uploads.settings import UploadSettings
 from crispr_backend.uploads.store import UploadError, UploadFormat, UploadRepository, timestamp
 from crispr_backend.uploads.tus import TusStore
@@ -13,14 +16,34 @@ logger = logging.getLogger(__name__)
 
 
 def public_report(report: dict) -> dict:
-    """Expose the summary and explicit viewer map, without symptoms or edit plans."""
+    """Expose bounded analysis evidence and actual edit plans, without raw symptom text."""
     result = {
         "conclusion": {key: report["conclusion"][key] for key in ("status", "label")},
         "summary": {"text": report["summary"]["text"]},
         "genome": {key: report["genome"][key] for key in ("variants_checked", "panel_genes")},
-        "findings": [{key: finding[key] for key in ("tier", "gene", "disease")} for finding in report["findings"]],
+        "findings": [
+            {
+                key: finding[key]
+                for key in (
+                    "tier",
+                    "gene",
+                    "disease",
+                    "omim_id",
+                    "inheritance",
+                    "genotype",
+                    "variants",
+                    "phenotype",
+                    "crispr",
+                )
+                if key in finding
+            }
+            for finding in report["findings"]
+        ],
+        "gene_plans": gene_plans(report),
         "disclaimer": report["disclaimer"],
     }
+    if "overview" in report:
+        result["overview"] = report["overview"]
     if "model_profile" in report["genome"]:
         result["genome"]["model_profile"] = report["genome"]["model_profile"]
     # Older completed jobs have no map; keep them readable and request reanalysis in the UI.
@@ -121,6 +144,19 @@ class UploadService:
         queued = self.repository.enqueue_completed_upload(session["id"])
         logger.info(json.dumps({"event": "upload.queued", "upload_id": session["id"]}))
         return self.view(queued)
+
+    def lab_report(self, session: dict) -> LabReport:
+        if session["status"] != "complete" or not session["report_json"]:
+            raise UploadError("LAB_REPORT_NOT_READY", "The lab report is available after analysis completes.", 409)
+        try:
+            analysis = LabAnalysis.model_validate_json(session["report_json"])
+        except ValidationError as error:
+            raise UploadError(
+                "LAB_REPORT_UNAVAILABLE", "This saved analysis cannot be exported as a lab report.", 503
+            ) from error
+        return LabReport(
+            session["id"], timestamp(session["updated_at"]), session["sha256"], session["records_scanned"], analysis
+        )
 
     def retry(self, session: dict) -> dict:
         if not self.repository.require_retryable(session):

@@ -19,6 +19,10 @@ cards have surfaces. Preserve the app's existing CSS Module layout.
 
 ### 2026-10-18
 
+- `report-drawer` can visually hide its heading for full-surface confirmations via `hideHeading`. It retains the accessible dialog title/description and close control; app-owned confirmation content supplies the visible heading and focus target.
+- Disease artwork fills the report drawer's inner width on desktop and mobile. Direct body children opt into this layout with `data-report-bleed`; the shared drawer owns the inset calculation so report text and controls retain their normal padding.
+- Shared drawers use 32px exposed corners to match the rounded workspace cards: side drawers round the inner edge, while mobile sheets round the top edge. Keep content clipping inherited from the popup radius.
+- `report-drawer` accepts an optional `footer` outside the scrolling body, with safe-area padding on mobile. Keep action behavior in the app; the shared drawer only owns positioning and spacing.
 - `components/sonner` exports the shared shadcn `Toaster` and `toast` API. Mount the Toaster beneath the app's `ThemeProvider`; it reads the active theme and uses the app's semantic surface tokens.
 - Disease cards accept `size="sm"` and app-owned location actions for two-column grids. Compact cards wrap long disease names and coordinate labels, keep full report access, and align their footers without fixed text heights. The demo disease panel also uses two columns.
 - `components/skeleton` is the official Base Nova primitive with reduced-motion animation disabled. The app owns placeholder geometry and accessible loading status; keep decorative placeholders out of the accessibility tree.
