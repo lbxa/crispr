@@ -13,7 +13,10 @@
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
     "test": "tsx --test scripts/*.test.ts",
-    "bench": "tsx scripts/bench.ts"
+    "bench": "tsx scripts/bench.ts",
+    "clinvar:download": "bun scripts/import-clinvar.ts download",
+    "clinvar:import": "bun scripts/import-clinvar.ts",
+    "clinvar:record-fixture": "bun scripts/import-clinvar.ts record-fixture"
   },
   "dependencies": {
     "@ai-sdk/provider": "4.0.29",

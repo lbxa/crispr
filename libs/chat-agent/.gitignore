@@ -1,0 +1,2 @@
+# ClinVar downloads and the generated import (regenerate: bun run clinvar:download && bun run clinvar:import)
+data/
