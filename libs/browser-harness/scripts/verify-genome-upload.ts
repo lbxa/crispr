@@ -60,7 +60,8 @@ try {
       uploadRequests++;
   });
   await harness.waitForText({ text: "3D anatomy ready", timeoutMs: 90_000 });
-  await harness.click({ selector: 'button[aria-label="Left pane"]' });
+  // The file pane starts open with an upload prompt and no genome.
+  await harness.waitForText({ text: "Drop your genome" });
   await harness.setInputFiles({
     selector: 'input[type="file"]',
     path: `libs/browser-harness/fixtures/${fixture}`,
@@ -70,21 +71,31 @@ try {
     .locator('[data-genome-cached="true"]')
     .waitFor({ state: "attached" });
   await harness.screenshot({ name: "genome-summary", fullPage: true });
-  const requestsBeforeRefresh = uploadRequests;
+  let requestsBeforeRefresh = uploadRequests;
+  // A refresh starts fresh: the saved genome is discarded and nothing is re-fetched.
   await harness.open();
   await page
     .locator('[data-genome-cache-ready="true"]')
     .waitFor({ state: "attached" });
-  await harness.click({ selector: 'button[aria-label="Left pane"]' });
-  await harness.waitForText({ text: "Analysis complete", timeoutMs: 15_000 });
-  await harness.waitForText({ text: fixture });
+  await harness.waitForText({ text: "Drop your genome", timeoutMs: 15_000 });
   await harness.waitForText({ text: "3D anatomy ready", timeoutMs: 90_000 });
-  if (uploadRequests !== requestsBeforeRefresh)
-    throw new Error(
-      "Restoring the genome unexpectedly contacted the upload service",
-    );
-  await harness.screenshot({ name: "restored-genome-summary", fullPage: true });
-  await harness.click({ selector: 'button[aria-label="Right pane"]' });
+  const fresh = await harness.snapshot();
+  if (
+    fresh.visibleText.includes("Analysis complete") ||
+    uploadRequests !== requestsBeforeRefresh
+  )
+    throw new Error("A refresh did not start without the previous genome");
+  await harness.screenshot({ name: "fresh-start", fullPage: true });
+  await harness.setInputFiles({
+    selector: 'input[type="file"]',
+    path: `libs/browser-harness/fixtures/${fixture}`,
+  });
+  await harness.waitForText({ text: "Analysis complete", timeoutMs: 90_000 });
+  await page
+    .locator('[data-genome-cached="true"]')
+    .waitFor({ state: "attached" });
+  requestsBeforeRefresh = uploadRequests;
+  // A completed analysis opens the genome explorer by itself.
   await harness.waitForText({ text: "3D DNA ready", timeoutMs: 60_000 });
   if (values.findings) {
     await harness.waitForText({ text: "117,559,590 bp" });
@@ -155,7 +166,7 @@ try {
       !probeUrls.has(entry.location?.url ?? "") || !entry.text.includes("404"),
   );
   if (
-    initialProbes.length > 1 ||
+    initialProbes.length > 2 ||
     unexpectedRequests.length ||
     unexpectedConsole.length ||
     snapshot.pageErrors.length ||
@@ -174,7 +185,6 @@ try {
   await page
     .locator('[data-genome-cache-ready="true"]')
     .waitFor({ state: "attached" });
-  await harness.click({ selector: 'button[aria-label="Left pane"]' });
   await harness.waitForText({ text: "Drop your genome" });
   await harness.waitForText({ text: "3D anatomy ready", timeoutMs: 90_000 });
   const cleared = await harness.snapshot();
@@ -186,7 +196,7 @@ try {
     cleared.pageErrors.length > snapshot.pageErrors.length ||
     cleared.runtimeExceptions.length > snapshot.runtimeExceptions.length
   )
-    throw new Error("Removing the saved genome did not survive refresh");
+    throw new Error("Removing the genome did not leave the page empty");
   await harness.screenshot({ name: "removed-genome", fullPage: true });
   const result = {
     success: true,
@@ -194,7 +204,7 @@ try {
     evidence_dir: evidenceDir,
     expected_initial_tus_probes: initialProbes.length,
     findings_navigation: values.findings,
-    refresh_restoration: true,
+    fresh_start_after_refresh: true,
     cache_removal: true,
   };
   await Bun.write(

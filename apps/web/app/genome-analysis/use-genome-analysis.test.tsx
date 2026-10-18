@@ -75,7 +75,7 @@ describe("genome analysis lifecycle", () => {
     vi.mocked(currentGenomeCache.restore).mockResolvedValue(cachedGenome);
 
     // Act
-    const { result } = renderHook(useGenomeAnalysis);
+    const { result } = renderHook(() => useGenomeAnalysis({ restore: true }));
     await waitFor(() =>
       expect(result.current.analysis.status).toBe("complete"),
     );
@@ -85,6 +85,20 @@ describe("genome analysis lifecycle", () => {
     expect(result.current.cacheSaved).toBe(true);
     expect(fetch).not.toHaveBeenCalled();
     expect(currentGenomeCache.remember).not.toHaveBeenCalled();
+  });
+
+  it("starts without a genome and discards the saved copy by default", async () => {
+    // Arrange
+    vi.mocked(currentGenomeCache.restore).mockResolvedValue(cachedGenome);
+
+    // Act
+    const { result } = renderHook(useGenomeAnalysis);
+    await waitFor(() => expect(result.current.cacheReady).toBe(true));
+
+    // Assert
+    expect(result.current.analysis.status).toBe("idle");
+    expect(currentGenomeCache.restore).not.toHaveBeenCalled();
+    expect(currentGenomeCache.forget).toHaveBeenCalled();
   });
 
   it("does not let a delayed cache read replace a newly selected genome", async () => {
@@ -102,7 +116,7 @@ describe("genome analysis lifecycle", () => {
         .mockResolvedValueOnce(Response.json(uploadConfig))
         .mockResolvedValueOnce(Response.json(uploadSession)),
     );
-    const { result } = renderHook(useGenomeAnalysis);
+    const { result } = renderHook(() => useGenomeAnalysis({ restore: true }));
 
     // Act
     await act(async () => {
@@ -198,7 +212,7 @@ describe("genome analysis lifecycle", () => {
   it("forgets the restored genome so a later refresh cannot bring it back", async () => {
     // Arrange
     vi.mocked(currentGenomeCache.restore).mockResolvedValue(cachedGenome);
-    const { result } = renderHook(useGenomeAnalysis);
+    const { result } = renderHook(() => useGenomeAnalysis({ restore: true }));
     await waitFor(() =>
       expect(result.current.analysis.status).toBe("complete"),
     );

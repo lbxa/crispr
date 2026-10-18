@@ -85,7 +85,8 @@ export function ModelWorkspace({
     getSharedWorkspace,
     getServerSharedWorkspace,
   );
-  const [openPanes, setOpenPanes] = useState<readonly Pane[]>([]);
+  // The file pane starts open so a first-time visitor sees where to upload a genome.
+  const [openPanes, setOpenPanes] = useState<readonly Pane[]>(["left"]);
   const visiblePanes = sharedWorkspace ? openPanes : openPanes.slice(-1);
   const paneLayout =
     visiblePanes.length === 2 ? "both" : (visiblePanes[0] ?? "none");
@@ -228,6 +229,12 @@ export function ModelWorkspace({
               {cacheError && (
                 <p className={styles.cacheNotice} role="status">
                   {cacheError}
+                </p>
+              )}
+              {!genomeFile && (
+                <p className={styles.uploadPrompt} role="status">
+                  Start here: drop your genome file to find disease-causing
+                  variants.
                 </p>
               )}
               <ManagedWidgetGrid

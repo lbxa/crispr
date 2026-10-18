@@ -53,7 +53,9 @@ try {
   for (const side of ["Left", "Right"]) {
     const opposite = side === "Left" ? "Right" : "Left";
     const bothOpen = side === "Right" && config.viewport.width >= 1440;
-    await harness.click({ selector: `button[aria-label="${side} pane"]` });
+    // The file pane starts open to invite an upload, so only the other pane needs opening.
+    if (side !== "Left")
+      await harness.click({ selector: `button[aria-label="${side} pane"]` });
     const paneSnapshot = await harness.snapshot();
     if (
       !paneSnapshot.accessibilityTree.includes(

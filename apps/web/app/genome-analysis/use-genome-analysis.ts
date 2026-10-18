@@ -7,7 +7,11 @@ import type { GenomeAnalysisState } from "./contract";
 
 export type { GenomeAnalysisState } from "./contract";
 
-export function useGenomeAnalysis() {
+/**
+ * `restore` brings back the genome saved on this device. The app starts fresh instead: it
+ * discards the saved copy on load so a returning visitor is invited to upload again.
+ */
+export function useGenomeAnalysis({ restore = false } = {}) {
   const [analysis, setAnalysis] = useState<GenomeAnalysisState>({
     status: "idle",
   });
@@ -29,8 +33,10 @@ export function useGenomeAnalysis() {
   useEffect(() => {
     let disposed = false;
     const initialSelection = selection.current;
-    void currentGenomeCache
-      .restore()
+    void (restore
+      ? currentGenomeCache.restore()
+      : currentGenomeCache.forget().then(() => null)
+    )
       .then((cached) => {
         if (disposed) return;
         if (cached && selection.current === initialSelection) {
@@ -55,7 +61,7 @@ export function useGenomeAnalysis() {
       activeUpload.current = null;
       upload?.dispose();
     };
-  }, []);
+  }, [restore]);
 
   const completedGenome = analysis.status === "complete" ? analysis : null;
   const status = analysis.status;

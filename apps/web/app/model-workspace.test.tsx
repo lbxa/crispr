@@ -115,6 +115,12 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// The file pane starts open; open it only when a test has closed it.
+function openLeftPane() {
+  const toggle = screen.getByRole("button", { name: "Left pane" });
+  if (toggle.getAttribute("aria-expanded") !== "true") fireEvent.click(toggle);
+}
+
 describe("workspace widget grids", () => {
   it("keeps both panes and the scene mounted on a wide workspace", () => {
     resizeWorkspace(true);
@@ -126,7 +132,6 @@ describe("workspace widget grids", () => {
     const scene = screen.getByTestId("human-model");
     const leftToggle = screen.getByRole("button", { name: "Left pane" });
     const rightToggle = screen.getByRole("button", { name: "Right pane" });
-    fireEvent.click(leftToggle);
     fireEvent.click(rightToggle);
 
     const leftPane = screen.getByRole("region", {
@@ -157,7 +162,6 @@ describe("workspace widget grids", () => {
     );
     const leftToggle = screen.getByRole("button", { name: "Left pane" });
     const rightToggle = screen.getByRole("button", { name: "Right pane" });
-    fireEvent.click(leftToggle);
     fireEvent.click(rightToggle);
     const fileCard = screen.getByRole("button", { name: "Choose file" });
     const rightPane = screen.getByRole("region", {
@@ -184,6 +188,29 @@ describe("workspace widget grids", () => {
     resizeWorkspace(true);
     expect(leftToggle.getAttribute("aria-expanded")).toBe("false");
     expect(rightToggle.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("opens the file pane with an upload prompt that goes away once a file is chosen", async () => {
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+
+    expect(
+      screen
+        .getByRole("button", { name: "Left pane" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(screen.getByText(/drop your genome file/i)).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "sample.vcf")] },
+      });
+    });
+
+    expect(screen.queryByText(/drop your genome file/i)).toBeNull();
   });
 
   it("omits manual body profiles and developer region controls", () => {
@@ -215,7 +242,7 @@ describe("workspace widget grids", () => {
           modelUrls={{ male: "/male.glb", female: "/female.glb" }}
         />,
       );
-      fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+      openLeftPane();
 
       await act(async () => {
         fireEvent.change(screen.getByLabelText("Choose a file"), {
@@ -246,7 +273,7 @@ describe("workspace widget grids", () => {
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    openLeftPane();
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Choose a file"), {
         target: { files: [new File(["VCF"], "first.vcf")] },
@@ -276,7 +303,7 @@ describe("workspace widget grids", () => {
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    openLeftPane();
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Choose a file"), {
         target: { files: [new File(["VCF"], "carrier.vcf")] },
@@ -293,7 +320,7 @@ describe("workspace widget grids", () => {
       />,
     );
     const scene = screen.getByTestId("human-model");
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    openLeftPane();
     const leftPane = screen.getByRole("region", {
       name: "Left workspace pane",
     });
@@ -352,7 +379,7 @@ describe("workspace widget grids", () => {
       });
     };
     expect(rightPane.getAttribute("aria-hidden")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    openLeftPane();
     await upload("first.vcf");
     expect(rightPane.getAttribute("aria-hidden")).toBe("false");
     expect(
@@ -378,7 +405,7 @@ describe("workspace widget grids", () => {
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    openLeftPane();
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Choose a file"), {
         target: { files: [new File(["VCF"], "unmapped.vcf")] },
@@ -401,7 +428,7 @@ describe("workspace widget grids", () => {
     // Nothing has been analyzed yet, so there is nothing to say about symptoms.
     expect(stage.hasAttribute("data-phenotype")).toBe(false);
     expect(screen.queryByText("No phenotypic symptoms predicted")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    openLeftPane();
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Choose a file"), {
         target: { files: [new File(["VCF"], "sample.vcf")] },
@@ -426,7 +453,7 @@ describe("workspace widget grids", () => {
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    openLeftPane();
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Choose a file"), {
         target: { files: [new File(["VCF"], "sample.vcf")] },
@@ -450,7 +477,7 @@ describe("workspace widget grids", () => {
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    openLeftPane();
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Choose a file"), {
         target: { files: [new File(["VCF"], "retry.vcf")] },
@@ -473,7 +500,6 @@ describe("workspace widget grids", () => {
     );
     const openPicker = vi.spyOn(HTMLInputElement.prototype, "click");
     const leftToggle = screen.getByRole("button", { name: "Left pane" });
-    fireEvent.click(leftToggle);
     const widget = screen.getByRole("group", { name: "Files" });
 
     fireEvent.keyDown(widget, { key: " " });
@@ -498,7 +524,7 @@ describe("workspace widget grids", () => {
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    openLeftPane();
     const widget = screen.getByRole("group", { name: "Files" });
     fireEvent.keyDown(widget, { key: " " });
 

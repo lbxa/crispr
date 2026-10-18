@@ -170,6 +170,25 @@
   font-size: 12px;
   line-height: 1.6;
 }
+.uploadPrompt {
+  margin: 0 0 16px;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  animation: prompt-in 0.5s ease both;
+}
+@keyframes prompt-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .uploadPrompt {
+    animation: none;
+  }
+}
 .widgetGrip {
   position: absolute;
   top: 0;
