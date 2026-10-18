@@ -162,6 +162,7 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-18
 
+- Keep Wrangler's `keep_names` disabled: name-preservation helpers inside `next-themes` functions escape into its serialized inline script and fail with `__name is not defined`. Verify theme initialization in the Workers preview as well as Next.js.
 - Cloudflare's verification tests the fresh-start cache policy: loading the workspace discards a saved genome without contacting the backend. Wait for cache initialization before asserting that state; restoring cached highlights is no longer the default behavior.
 - The karyotype navigator (`app/karyotype/`) replaces the chromosome Select, the base-pair input and the minimap scrollbar, so the 2026-10-18 notes on those controls below no longer apply; the displayed-position rule carries over to the karyotype cursor. Unwind/Rewind keeps the Hugeicons icon button but sits under the viewer heading rather than in an in-scene toolbar. The karyotype sits beneath the helix with "Chr." captions, numbers and instant hover tooltips (native SVG tooltips wait about a second).
 - Widget cards use surface contrast and soft shadows without a permanent outer border. Retain keyboard-focus, file-drop and error outlines so interaction states remain visible.

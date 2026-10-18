@@ -89,6 +89,11 @@ Workers observability and source map uploads are enabled. Use Cloudflare logs or
 Node/Bun OTLP gRPC endpoint unset in Workers; this deployment uses Cloudflare's
 native log collection and does not provision a collector.
 
+Keep `keep_names: false` in Wrangler. Its default name-preservation transform
+injects an external `__name` helper into the function `next-themes` serializes
+into HTML, causing a browser error. A Next.js-only check does not exercise this
+bundling step; verify the theme in `preview:worker` before publishing.
+
 The current page does not require ISR, R2, a database, or other paid bindings.
 Configure an appropriate OpenNext cache backend when introducing runtime cache
 invalidation. Hashed model assets and Next's static assets are served with
