@@ -164,6 +164,8 @@ try {
       await harness.waitForText({
         text: "Files returned to its original position.",
       });
+      // Returning the card hides its handle until the pointer hovers over the card again.
+      await harness.pointer({ action: "move", x: 100, y: 100 });
       await harness.click({
         selector: '[data-widget-id="files"] > span[aria-hidden="true"]',
       });

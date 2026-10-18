@@ -59,9 +59,10 @@
 .cursor {
   pointer-events: none;
 }
+/* The location marker: red, on the one chromosome copy that was clicked. */
 .cursor line {
-  stroke: var(--accent);
-  stroke-width: 2;
+  stroke: var(--karyotype-cursor, #e5484d);
+  stroke-width: 2.5;
   stroke-linecap: round;
 }
 .dot {

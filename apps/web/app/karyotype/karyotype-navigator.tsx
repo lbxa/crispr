@@ -143,6 +143,8 @@ export function KaryotypeNavigator({
   const scroller = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLElement>(null);
   // The browser's own SVG tooltips wait about a second; this one shows as soon as the pointer arrives.
+  // The copy (maternal or paternal) last clicked; the location marker sits on it alone.
+  const [activeCopy, setActiveCopy] = useState<Parent>("maternal");
   const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(
     null,
   );
@@ -174,7 +176,12 @@ export function KaryotypeNavigator({
     );
   }
 
-  function clickPoint(id: string, event: MouseEvent<SVGRectElement>) {
+  function clickPoint(
+    id: string,
+    copy: Parent,
+    event: MouseEvent<SVGRectElement>,
+  ) {
+    setActiveCopy(copy);
     const length = lengths.get(id);
     const rect = event.currentTarget.getBoundingClientRect();
     if (!length || rect.height <= 0) return;
@@ -221,6 +228,10 @@ export function KaryotypeNavigator({
   const shown = pairs.find(({ homologs }) =>
     homologs.some(({ id }) => id === current),
   );
+  // The clicked copy, or the only copy of this chromosome (X or Y in a male).
+  const copies = shown?.homologs.filter(({ id }) => id === current) ?? [];
+  const marked =
+    copies.find(({ parent }) => parent === activeCopy) ?? copies[0];
 
   return (
     <section ref={frame} className={styles.navigator} aria-label="Chromosomes">
@@ -311,7 +322,9 @@ export function KaryotypeNavigator({
                             y={top}
                             width={CHR_W + 2 * HIT_PAD}
                             height={bottom - top}
-                            onClick={(event) => clickPoint(id, event)}
+                            onClick={(event) =>
+                              clickPoint(id, homolog.parent, event)
+                            }
                           />
                         )}
                       </g>
@@ -359,24 +372,20 @@ export function KaryotypeNavigator({
               ];
             })}
           </g>
-          {shown && lengths.has(current) && (
+          {marked && lengths.has(current) && (
             <g
               className={styles.cursor}
               data-testid="karyotype-cursor"
               data-position={Math.round(position)}
               aria-hidden="true"
             >
-              {shown.homologs
-                .filter(({ id }) => id === current)
-                .map(({ cx, parent }) => (
-                  <line
-                    key={parent}
-                    x1={cx - R - 3}
-                    x2={cx + R + 3}
-                    y1={yOf(current, position)}
-                    y2={yOf(current, position)}
-                  />
-                ))}
+              <line
+                data-copy={marked.parent}
+                x1={marked.cx - R - 3}
+                x2={marked.cx + R + 3}
+                y1={yOf(current, position)}
+                y2={yOf(current, position)}
+              />
             </g>
           )}
           {regions.map((region) =>
@@ -412,7 +421,10 @@ export function KaryotypeNavigator({
                     {...hoverHandlers(
                       `${genes} · ${diseases} · chr${region.chromosome}:${region.start + 1}`,
                     )}
-                    onClick={() => onSelect(region)}
+                    onClick={() => {
+                      setActiveCopy(homolog.parent);
+                      onSelect(region);
+                    }}
                     onKeyDown={(event) => {
                       if (event.key !== "Enter" && event.key !== " ") return;
                       event.preventDefault();

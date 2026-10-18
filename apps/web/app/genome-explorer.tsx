@@ -35,6 +35,7 @@ import {
   type GenomeRegion,
   type GenomeView,
 } from "./genome-analysis/genome-view";
+import { createReferenceLoader } from "./genome-analysis/reference";
 import {
   KaryotypeNavigator,
   type KaryotypeSex,
@@ -173,8 +174,21 @@ function GenomeExplorerContent({
     first?.id ?? null,
   );
   const chromosome = chromosomes.find(({ id }) => id === chromosomeId)!;
+  // Whether GRCh38 reference bases are reaching the viewer (null until the first read).
+  const [referenceAvailable, setReferenceAvailable] = useState<boolean | null>(
+    null,
+  );
   const source = useMemo(
-    () => (view ? referenceSequenceSource(view) : DEMO_GENOME),
+    () =>
+      view
+        ? referenceSequenceSource(
+            view,
+            createReferenceLoader(
+              new Map(view.chromosomes.map(({ id, length }) => [id, length])),
+            ),
+            setReferenceAvailable,
+          )
+        : DEMO_GENOME,
     [view],
   );
   const highlights = useMemo(
@@ -449,10 +463,12 @@ function GenomeExplorerContent({
               </div>
               <p className={styles.disclaimer}>
                 {view
-                  ? regions.length === 0
-                    ? "No flagged regions in the screened genes. Reference sequence is unavailable here."
-                    : covered
-                      ? "GRCh38 reference · Alternate allele shown separately"
+                  ? referenceAvailable || covered
+                    ? regions.length === 0
+                      ? "No flagged regions in the screened genes · GRCh38 reference sequence"
+                      : "GRCh38 reference · Alternate allele shown separately"
+                    : regions.length === 0
+                      ? "No flagged regions in the screened genes. Reference sequence is unavailable here."
                       : "Reference unavailable here · N = unknown base"
                   : "Synthetic sequence · Upload a genome to map findings"}
               </p>
