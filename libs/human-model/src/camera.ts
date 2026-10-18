@@ -7,8 +7,6 @@ export interface CameraFit {
   size: THREE.Vector3;
 }
 
-/** How far the viewer may tilt up or down from the fitted angle (about 12°). */
-export const TILT_RADIANS = 0.21;
 /** Closest and farthest zoom, as multiples of the fitted distance. */
 export const ZOOM_RANGE = { min: 0.8, max: 1.25 } as const;
 
@@ -30,13 +28,13 @@ export function fitCameraToObject(
   const viewDirection = new THREE.Vector3(0.08, 0.03, 1).normalize();
 
   controls.target.copy(center);
-  // Slight freedom around the fitted framing: a few degrees of tilt and a modest zoom range.
-  // Turning around the vertical axis (azimuth) stays unrestricted.
+  // The model only turns left/right (azimuth, unrestricted) with a modest zoom range.
+  // The vertical viewing angle is pinned to the fit, so it never tilts or flips.
   controls.minDistance = distance * ZOOM_RANGE.min;
   controls.maxDistance = distance * ZOOM_RANGE.max;
   const polarAngle = Math.acos(viewDirection.y);
-  controls.minPolarAngle = Math.max(0, polarAngle - TILT_RADIANS);
-  controls.maxPolarAngle = Math.min(Math.PI, polarAngle + TILT_RADIANS);
+  controls.minPolarAngle = polarAngle;
+  controls.maxPolarAngle = polarAngle;
   camera.near = Math.max(distance / 100, 0.01);
   camera.far = distance * 100;
   camera.position.copy(center).addScaledVector(viewDirection, distance);

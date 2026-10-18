@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import * as THREE from "three";
 import type { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { TILT_RADIANS, ZOOM_RANGE, fitCameraToObject } from "../src/camera";
+import { ZOOM_RANGE, fitCameraToObject } from "../src/camera";
 
 describe("fitCameraToObject", () => {
   test("frames a portrait object and updates clipping planes", () => {
@@ -23,7 +23,7 @@ describe("fitCameraToObject", () => {
     expect(controls.target.distanceTo(result.center)).toBeLessThan(0.0001);
   });
 
-  test("allows slight tilt and zoom while horizontal turning stays unrestricted", () => {
+  test("pins the vertical angle and allows zoom while horizontal turning stays unrestricted", () => {
     const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 100);
     const controls = {
       maxDistance: Infinity,
@@ -41,15 +41,10 @@ describe("fitCameraToObject", () => {
 
     expect(controls.minDistance).toBeCloseTo(result.distance * ZOOM_RANGE.min);
     expect(controls.maxDistance).toBeCloseTo(result.distance * ZOOM_RANGE.max);
-    expect(controls.maxPolarAngle - controls.minPolarAngle).toBeCloseTo(
-      2 * TILT_RADIANS,
-    );
-    expect(controls.maxPolarAngle - controls.minPolarAngle).toBeLessThan(0.6);
-    // The camera starts inside the tilt range, measured from the up axis.
+    expect(controls.minPolarAngle).toBe(controls.maxPolarAngle);
+    // The camera sits at the pinned angle, measured from the up axis.
     const offset = camera.position.clone().sub(result.center).normalize();
-    const polar = Math.acos(offset.y);
-    expect(polar).toBeGreaterThan(controls.minPolarAngle);
-    expect(polar).toBeLessThan(controls.maxPolarAngle);
+    expect(Math.acos(offset.y)).toBeCloseTo(controls.minPolarAngle, 6);
     expect(controls.minAzimuthAngle).toBe(-Infinity);
     expect(controls.maxAzimuthAngle).toBe(Infinity);
   });
