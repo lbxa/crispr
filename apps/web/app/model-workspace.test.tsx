@@ -202,7 +202,7 @@ describe("workspace widget grids", () => {
         .getByRole("button", { name: "Left pane" })
         .getAttribute("aria-expanded"),
     ).toBe("true");
-    expect(screen.getByText(/drop your genome file/i)).toBeTruthy();
+    expect(screen.getByText(/start here: add your genome/i)).toBeTruthy();
 
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Choose a file"), {
@@ -210,7 +210,7 @@ describe("workspace widget grids", () => {
       });
     });
 
-    expect(screen.queryByText(/drop your genome file/i)).toBeNull();
+    expect(screen.queryByText(/start here: add your genome/i)).toBeNull();
   });
 
   it("omits manual body profiles and developer region controls", () => {

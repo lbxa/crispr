@@ -108,6 +108,11 @@ export function FileDropCard({
                   ? formatGenomeBytes(file.size)
                   : "VCF or VCF.gz · Up to 10 GiB"}
               </EmptyDescription>
+              {!file && (
+                <p className={styles.invite} role="status">
+                  Start here: add your genome to find disease-causing variants.
+                </p>
+              )}
             </EmptyHeader>
           </Empty>
         </CardContent>

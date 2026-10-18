@@ -231,12 +231,6 @@ export function ModelWorkspace({
                   {cacheError}
                 </p>
               )}
-              {!genomeFile && (
-                <p className={styles.uploadPrompt} role="status">
-                  Start here: drop your genome file to find disease-causing
-                  variants.
-                </p>
-              )}
               <ManagedWidgetGrid
                 defaultOrder={
                   genomeFile ? ["files", "date", "summary"] : ["files", "date"]
