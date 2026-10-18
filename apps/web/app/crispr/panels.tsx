@@ -186,27 +186,29 @@ export function EditCard({ edit }: { edit: Edit }) {
           variant. {edit.alternative}
         </p>
       ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Spacer</th>
-              <th>PAM</th>
-              <th>Strand</th>
-              <th>Cut dist.</th>
-              <th>Rule score</th>
-              <th>CRISPRon</th>
-            </tr>
-          </thead>
-          <tbody>
-            {edit.guides.map((guide) => (
-              <GuideRow
-                key={`${guide.strand}${guide.cut_position}${guide.spacer}`}
-                guide={guide}
-                best={guide.spacer === edit.advisability?.best_guide}
-              />
-            ))}
-          </tbody>
-        </table>
+        <div className={styles.tableScroll} data-base-ui-swipe-ignore="x">
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Spacer</th>
+                <th>PAM</th>
+                <th>Strand</th>
+                <th>Cut dist.</th>
+                <th>Rule score</th>
+                <th>CRISPRon</th>
+              </tr>
+            </thead>
+            <tbody>
+              {edit.guides.map((guide) => (
+                <GuideRow
+                  key={`${guide.strand}${guide.cut_position}${guide.spacer}`}
+                  guide={guide}
+                  best={guide.spacer === edit.advisability?.best_guide}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

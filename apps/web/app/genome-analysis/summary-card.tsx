@@ -2,6 +2,8 @@
 
 import { LoaderCircleIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@crispr/ui/components/button";
+import { ReportDrawer } from "@crispr/ui/report-drawer";
+import { GenomeReportDetails } from "./report";
 import {
   Card,
   CardAction,
@@ -162,7 +164,6 @@ export function GenomeSummaryCard({
                 <dd>{numbers.format(analysis.report.findings.length)}</dd>
               </div>
             </dl>
-            <p className={styles.summary}>{analysis.report.summary.text}</p>
           </>
         )}
       </CardContent>
@@ -186,7 +187,21 @@ export function GenomeSummaryCard({
       )}
       {analysis.status === "complete" && (
         <CardFooter>
-          <p className={styles.disclaimer}>{analysis.report.disclaimer}</p>
+          <ReportDrawer
+            title="Genome report"
+            description="Your complete genome and CRISPR analysis."
+            trigger={
+              <Button variant="ghost" className="w-full justify-between">
+                View full report <span aria-hidden="true">↗</span>
+              </Button>
+            }
+          >
+            <GenomeReportDetails
+              report={analysis.report}
+              file={analysis.file}
+              progress={analysis.progress}
+            />
+          </ReportDrawer>
         </CardFooter>
       )}
     </Card>

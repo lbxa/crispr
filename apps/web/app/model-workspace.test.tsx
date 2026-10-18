@@ -80,8 +80,18 @@ vi.mock("next/dynamic", () => ({
     },
 }));
 vi.mock("./genome-explorer", () => ({
-  GenomeExplorer: ({ active }: { active: boolean }) => (
-    <div aria-label="Genome explorer" data-active={active} />
+  GenomeExplorer: ({
+    active,
+    loading,
+  }: {
+    active: boolean;
+    loading: boolean;
+  }) => (
+    <div
+      aria-label="Genome explorer"
+      data-active={active}
+      data-loading={loading}
+    />
   ),
 }));
 
@@ -131,7 +141,7 @@ function openLeftPane() {
 }
 
 describe("workspace widget grids", () => {
-  it("shows HG001's PKU carrier association in red with an explicit carrier label", async () => {
+  it("keeps HG001's PKU carrier association red without an avatar overlay", async () => {
     vi.stubGlobal(
       "fetch",
       mockUploadFetch({
@@ -158,8 +168,8 @@ describe("workspace widget grids", () => {
       screen.getByTestId("human-model").getAttribute("data-highlights"),
     ).toContain('"association":"carrier"');
     expect(
-      screen.getByText(/Carrier finding · Associated region shown in red/),
-    ).toBeTruthy();
+      screen.queryByText(/Carrier finding · Associated region shown in red/),
+    ).toBeNull();
     expect(
       screen
         .getByRole("region", { name: "3D anatomy workspace" })
@@ -438,9 +448,13 @@ describe("workspace widget grids", () => {
         target: { files: [new File(["VCF"], "carrier.vcf")] },
       });
     });
-    expect(screen.getByText(carrierReport.summary.text)).toBeTruthy();
-    expect(screen.getByText(carrierReport.disclaimer)).toBeTruthy();
     expect(screen.getByText("Genome-only analysis")).toBeTruthy();
+    expect(screen.queryByText(carrierReport.summary.text)).toBeNull();
+    openLeftPane();
+    fireEvent.click(screen.getByRole("button", { name: "View full report" }));
+    const drawer = await screen.findByRole("dialog", { name: "Genome report" });
+    expect(within(drawer).getByText(carrierReport.summary.text)).toBeTruthy();
+    expect(within(drawer).getByText(carrierReport.disclaimer)).toBeTruthy();
   });
   it("keeps the file and scene mounted across independent pane switches", async () => {
     render(
@@ -463,7 +477,6 @@ describe("workspace widget grids", () => {
       });
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Right pane" }));
     const rightPane = screen.getByRole("region", {
       name: "Right workspace pane",
     });
@@ -478,7 +491,9 @@ describe("workspace widget grids", () => {
     fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
     expect(screen.getByText("sample.vcf")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Replace file" })).toBeTruthy();
-    expect(screen.getByText(report.summary.text)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "View full report" }),
+    ).toBeTruthy();
     const widgets = within(leftPane)
       .getAllByRole("group")
       .filter((item) => item.hasAttribute("data-widget-id"));
@@ -489,10 +504,18 @@ describe("workspace widget grids", () => {
     ]);
   });
 
-  it("opens the genome explorer once when a new genome finishes analysis", async () => {
+  it("opens the genome explorer on selection and respects closing it before analysis completes", async () => {
+    let finishAnalysis!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      finishAnalysis = resolve;
+    });
+    const respond = mockUploadFetch({ ...report, genome_view: genomeView });
     vi.stubGlobal(
       "fetch",
-      mockUploadFetch({ ...report, genome_view: genomeView }),
+      vi.fn(async (url: string, options?: RequestInit) => {
+        if (url.includes(`/uploads/${uploadSession.id}`)) await pending;
+        return respond(url, options);
+      }),
     );
     render(
       <ModelWorkspace
@@ -516,11 +539,26 @@ describe("workspace widget grids", () => {
         .getByLabelText("Genome explorer")
         .getAttribute("data-active"),
     ).toBe("true");
+    expect(
+      within(rightPane)
+        .getByLabelText("Genome explorer")
+        .getAttribute("data-loading"),
+    ).toBe("true");
 
-    // Closing it sticks: the same analysis does not reopen it.
+    // Completion must not steal focus or reopen a pane the user closed while waiting.
     fireEvent.click(screen.getByRole("button", { name: "Right pane" }));
     expect(rightPane.getAttribute("aria-hidden")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await act(async () => {
+      finishAnalysis();
+    });
+    await waitFor(() =>
+      expect(
+        within(rightPane)
+          .getByLabelText("Genome explorer")
+          .getAttribute("data-loading"),
+      ).toBe("false"),
+    );
+    openLeftPane();
     expect(rightPane.getAttribute("aria-hidden")).toBe("true");
 
     // A replacement genome is new, so it opens again.
@@ -528,7 +566,7 @@ describe("workspace widget grids", () => {
     expect(rightPane.getAttribute("aria-hidden")).toBe("false");
   });
 
-  it("does not open the explorer for a genome without a region map", async () => {
+  it("opens on selection even when the final report has no region map", async () => {
     render(
       <ModelWorkspace
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
@@ -544,7 +582,7 @@ describe("workspace widget grids", () => {
       document
         .getElementById("workspace-pane-right")!
         .getAttribute("aria-hidden"),
-    ).toBe("true");
+    ).toBe("false");
   });
 
   it("dims the avatar and says why once a genome yields no predicted symptoms", async () => {
@@ -588,7 +626,10 @@ describe("workspace widget grids", () => {
         target: { files: [new File(["VCF"], "sample.vcf")] },
       });
     });
-    expect(screen.getByText(report.summary.text)).toBeTruthy();
+    openLeftPane();
+    expect(
+      screen.getByRole("button", { name: "View full report" }),
+    ).toBeTruthy();
     expect(
       screen
         .getByRole("region", { name: "3D anatomy workspace" })
@@ -612,11 +653,14 @@ describe("workspace widget grids", () => {
         target: { files: [new File(["VCF"], "retry.vcf")] },
       });
     });
+    openLeftPane();
     expect(screen.getByRole("alert").textContent).toContain("unavailable");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     });
-    expect(screen.getByText(report.summary.text)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "View full report" }),
+    ).toBeTruthy();
     expect(fetch).toHaveBeenCalledTimes(4);
     expect(screen.getByText("retry.vcf")).toBeTruthy();
   });

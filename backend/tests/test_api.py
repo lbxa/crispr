@@ -89,7 +89,7 @@ def test_orders_are_capped_while_others_are_processing(database, monkeypatch):
 
 def test_cors_allows_the_website_and_local_development(database):
     with TestClient(app) as client:
-        for origin in ("https://crispr.team-account.workers.dev", "http://localhost:3000"):
+        for origin in ("https://genome.lbxa.net", "https://crispr.team-account.workers.dev", "http://localhost:3000"):
             response = client.get("/health", headers={"Origin": origin})
             assert response.headers.get("access-control-allow-origin") == origin
         assert (

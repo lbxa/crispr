@@ -49,7 +49,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         o.strip()
-        for o in os.environ.get("CRISPR_CORS_ORIGINS", "http://localhost:3000,https://crispr.lbxa.net").split(",")
+        for o in os.environ.get("CRISPR_CORS_ORIGINS", "http://localhost:3000,https://genome.lbxa.net").split(",")
     ],
     # The website is served from crispr.<account>.workers.dev.
     allow_origin_regex=os.environ.get("CRISPR_CORS_ORIGIN_REGEX", r"https://crispr\.[a-z0-9-]+\.workers\.dev"),

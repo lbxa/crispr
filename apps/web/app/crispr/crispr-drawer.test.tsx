@@ -7,7 +7,8 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { CrisprDialog } from "./crispr-dialog";
+import { StrictMode } from "react";
+import { CrisprDrawer } from "./crispr-drawer";
 import { loadGenePlan } from "./client";
 import { planFailure } from "./contract";
 import { notAdvisablePlan, plan } from "./plan.fixture";
@@ -39,7 +40,7 @@ afterEach(() => {
 
 function open(initialGene = "MEFV", onOpenChange = vi.fn()) {
   render(
-    <CrisprDialog
+    <CrisprDrawer
       open
       onOpenChange={onOpenChange}
       genes={genes}
@@ -48,6 +49,22 @@ function open(initialGene = "MEFV", onOpenChange = vi.fn()) {
   );
   return onOpenChange;
 }
+
+it.each([
+  [false, "right"],
+  [true, "down"],
+] as const)("opens with mobile=%s from %s", async (mobile, direction) => {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: query.includes("max-width") ? mobile : true,
+    addEventListener() {},
+    removeEventListener() {},
+  }));
+  open();
+  const drawer = await screen.findByRole("dialog", {
+    name: "CRISPR gene editing",
+  });
+  expect(drawer.getAttribute("data-swipe-direction")).toBe(direction);
+});
 
 it("opens on the gene it was launched from and shows the plain-language verdict first", async () => {
   open("MEFV");
@@ -100,6 +117,25 @@ it("offers only the identified genes and loads each one once", async () => {
     ),
   );
   expect(loadGenePlan).toHaveBeenCalledTimes(2); // MEFV was already loaded
+});
+
+it("cancels the development effect replay and displays the surviving request", async () => {
+  render(
+    <StrictMode>
+      <CrisprDrawer
+        open
+        onOpenChange={vi.fn()}
+        genes={genes}
+        initialGene="MEFV"
+      />
+    </StrictMode>,
+  );
+  await screen.findByTestId("verdict");
+  expect(loadGenePlan).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(loadGenePlan).mock.calls[0]![1].aborted).toBe(true);
+  expect(screen.getByTestId("verdict").textContent).toBe(
+    "Gene editing looks promising",
+  );
 });
 
 it("explains a failure and retries it", async () => {

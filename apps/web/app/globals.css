@@ -84,6 +84,7 @@
     min-height: 100%;
   }
   body {
+    position: relative;
     color: var(--foreground);
     background: var(--background);
     font-family: var(--font-geist-sans), system-ui, sans-serif;

@@ -140,16 +140,17 @@ def test_capability_is_bound_to_exact_session_and_transfer_method(client):
         ).status_code
         == 403
     )
-    assert (
-        client.get(
-            "/internal/uploads/authorize",
-            headers={
-                "Origin": "http://localhost:3000",
-                "X-Forwarded-Method": "OPTIONS",
-            },
-        ).status_code
-        == 204
-    )
+    for origin in ("https://genome.lbxa.net", "http://localhost:3000"):
+        assert (
+            client.get(
+                "/internal/uploads/authorize",
+                headers={
+                    "Origin": origin,
+                    "X-Forwarded-Method": "OPTIONS",
+                },
+            ).status_code
+            == 204
+        )
 
 
 def test_tus_hook_claims_once_and_never_persists_untrusted_metadata(client):
@@ -377,11 +378,13 @@ def test_lease_recovery_fences_old_worker_and_prevents_parallel_claim(service):
 
 
 @pytest.mark.parametrize("compressed", [False, True])
+@pytest.mark.parametrize("sample_id", ["S1", "HG001"])
 def test_worker_streams_file_and_reports_total_variants_without_retaining_irrelevant_calls(
-    service, database, compressed
+    service, database, compressed, sample_id
 ):
-    data = vcf("S1", [(1100, "1|0"), (1200, "0|1"), (1250, "0|1")]).encode()
-    data = data.replace(b"#CHROM", b"##SAMPLE=<ID=S1,Sex=female>\n#CHROM")
+    data = vcf(sample_id, [(1100, "1|0"), (1200, "0|1"), (1250, "0|1")]).encode()
+    if sample_id == "S1":
+        data = data.replace(b"#CHROM", b"##SAMPLE=<ID=S1,Sex=female>\n#CHROM")
     content = gzip.compress(data) if compressed else data
     created = reserved(service, content, format="vcf_gzip" if compressed else "vcf")
     with db.session() as connection:

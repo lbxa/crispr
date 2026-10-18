@@ -5,6 +5,7 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-10-17",
   "compatibility_flags": ["nodejs_compat"],
+  "keep_names": false,
   "workers_dev": true,
   "routes": [
     {

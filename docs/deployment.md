@@ -66,6 +66,10 @@ hostname in the `lbxa.net` zone. The existing `workers.dev` URL remains enabled.
 Commit this route configuration before the next push to `main`; Workers Builds
 deploys the committed configuration, not local edits.
 
+The backend API, upload authorization and tusd CORS rules must allow
+`https://genome.lbxa.net` as well. Deploy the matching backend configuration when
+changing this hostname so direct browser uploads remain available.
+
 Configure Workers Builds at the repository root (`/`):
 
 | Setting                   | Value                                                                     |
@@ -88,6 +92,11 @@ Workers observability and source map uploads are enabled. Use Cloudflare logs or
 `bunx --no-install wrangler tail` from `apps/web` to inspect production. Keep the
 Node/Bun OTLP gRPC endpoint unset in Workers; this deployment uses Cloudflare's
 native log collection and does not provision a collector.
+
+Keep `keep_names: false` in Wrangler. Its default name-preservation transform
+injects an external `__name` helper into the function `next-themes` serializes
+into HTML, causing a browser error. A Next.js-only check does not exercise this
+bundling step; verify the theme in `preview:worker` before publishing.
 
 The current page does not require ISR, R2, a database, or other paid bindings.
 Configure an appropriate OpenNext cache backend when introducing runtime cache

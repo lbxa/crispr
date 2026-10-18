@@ -188,11 +188,14 @@ it("rejects malformed source data and retries without recreating the display", a
       source={{ readRange }}
       navigation={{ position: 0 }}
       active
+      loadingFallback={<span role="status">Sequence placeholder</span>}
       onPositionChange={vi.fn()}
     />,
   );
+  expect(screen.getByText("Sequence placeholder")).toBeTruthy();
   act(() => frame?.(0));
   await screen.findByText("This sequence could not be loaded.");
+  expect(screen.queryByText("Sequence placeholder")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Retry sequence" }));
   await screen.findByText("3D DNA ready");
   expect(readRange).toHaveBeenCalledTimes(2);
@@ -243,9 +246,7 @@ it("navigates by one-based coordinates, repeats a previous jump, and switches ch
   await user.click(screen.getByRole("combobox", { name: "Chromosome" }));
   // The scene test's shared frame stub also gates the portaled menu.
   act(() => frame?.(0));
-  await user.click(
-    await screen.findByRole("option", { name: "Chr Y" }),
-  );
+  await user.click(await screen.findByRole("option", { name: "Chr Y" }));
   act(() => frame?.(0));
   expect(screen.getByText("of 57,000,000")).toBeTruthy();
   expect(screen.getByLabelText("Current base").textContent).toBe(
@@ -305,9 +306,14 @@ it("maps backend regions to the minimap and jumps across chromosomes with exact 
   expect(screen.getByLabelText("Current base").textContent).toBe(
     "117,559,590 bp",
   );
-  expect(screen.getByLabelText("Selected finding").textContent).toContain(
-    "Carrier",
-  );
+  expect(
+    within(screen.getByRole("article", { name: "Cystic fibrosis" })).getByText(
+      "Carrier",
+    ),
+  ).toBeTruthy();
+  expect(
+    screen.queryByText("Carrier finding · Associated region shown in red"),
+  ).toBeNull();
   // The region in view when the explorer opens counts as seen, so it does not pulse.
   expect(scene.setHighlights).toHaveBeenLastCalledWith([
     { start: 117559589, end: 117559593, pulse: false },
@@ -338,7 +344,7 @@ it("maps backend regions to the minimap and jumps across chromosomes with exact 
   expect(screen.getByRole("slider").getAttribute("value")).toBe("3293406");
 });
 
-it("discloses a long finding list without hiding the selected mutation", async () => {
+it("shows every disease card and variant location without a findings disclosure", async () => {
   const regions = [
     ...genomeView.regions,
     ...Array.from({ length: 4 }, (_, index) => ({
@@ -356,16 +362,19 @@ it("discloses a long finding list without hiding the selected mutation", async (
   act(() => frame?.(0));
   await screen.findByText("3D DNA ready");
 
-  const summary = screen.getByText("Browse findings").closest("summary")!;
-  const disclosure = summary.closest("details")!;
-  const selected = screen.getByLabelText("Selected finding");
-  expect(disclosure.open).toBe(false);
-  expect(summary.textContent).toContain("6");
-  expect(disclosure.contains(selected)).toBe(false);
-  expect(selected.textContent).toContain("CFTR");
-
-  fireEvent.click(summary);
-  expect(disclosure.open).toBe(true);
+  const grid = screen.getByLabelText("Disease findings");
+  expect(within(grid).getAllByRole("article")).toHaveLength(2);
+  expect(
+    within(grid).getAllByRole("button", { name: /^Inspect / }),
+  ).toHaveLength(6);
+  expect(screen.queryByText("Browse findings")).toBeNull();
+  expect(grid.querySelector("details")).toBeNull();
+  expect(
+    within(grid).getByRole("button", { name: "View CFTR report" }),
+  ).toBeTruthy();
+  expect(
+    within(grid).getByRole("button", { name: "View MEFV report" }),
+  ).toBeTruthy();
   fireEvent.click(
     screen.getAllByRole("button", {
       name: "Inspect MEFV at chr16:3293406",
@@ -375,16 +384,26 @@ it("discloses a long finding list without hiding the selected mutation", async (
   expect(screen.getByLabelText("Current base").textContent).toBe(
     "3,293,406 bp",
   );
-  expect(screen.getByLabelText("Selected finding").textContent).toContain(
-    "MEFV",
-  );
+  expect(
+    screen
+      .getAllByRole("button", { name: "Inspect MEFV at chr16:3293406" })[0]!
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
 });
 
 it("shows empty and unavailable maps without inventing regions or substituting demo DNA", () => {
-  const { rerender } = render(<GenomeExplorer active hasGenome />);
+  const { rerender } = render(<GenomeExplorer active hasGenome loading />);
   expect(screen.queryByRole("slider")).toBeNull();
+  expect(
+    screen.getByLabelText("Genome explorer").getAttribute("aria-busy"),
+  ).toBe("true");
+  expect(screen.getByRole("status").textContent).toBe(
+    "Loading genome analysis",
+  );
+  expect(screen.queryByRole("combobox")).toBeNull();
+  rerender(<GenomeExplorer active hasGenome />);
   expect(screen.getByRole("status").textContent).toContain(
-    "Finish genome analysis",
+    "Genome analysis incomplete",
   );
   rerender(<GenomeExplorer active hasGenome report={report} />);
   expect(screen.getByRole("status").textContent).toContain(
@@ -399,7 +418,7 @@ it("shows empty and unavailable maps without inventing regions or substituting d
   );
   act(() => frame?.(0));
   expect(screen.getByText(/No flagged regions/)).toBeTruthy();
-  expect(screen.queryByLabelText("Regions of interest")).toBeNull();
+  expect(screen.queryByLabelText("Disease findings")).toBeNull();
 });
 
 // Two findings on chromosome 7 so one can be in view while the other has not been seen.
@@ -737,6 +756,42 @@ function openMapped() {
   render(<GenomeExplorer active hasGenome report={mappedReport} />);
   act(() => frame?.(0));
 }
+
+it("places the reviewed carrier association on its finding card", () => {
+  const finding = {
+    tier: "carrier" as const,
+    gene: "PAH",
+    disease: "Phenylketonuria",
+  };
+  render(
+    <GenomeExplorer
+      active
+      hasGenome
+      report={{
+        ...report,
+        findings: [finding],
+        genome_view: {
+          ...genomeView,
+          chromosomes: [{ id: "12", length: 133275309 }],
+          regions: [
+            {
+              // Synthetic coordinates test message placement, not clinical evidence.
+              ...genomeView.regions[0]!,
+              chromosome: "12",
+              annotations: [finding],
+            },
+          ],
+        },
+      }}
+    />,
+  );
+  const card = screen.getByRole("article", { name: "Phenylketonuria" });
+  expect(
+    within(card).getByText("Carrier finding · Associated region shown in red"),
+  ).toBeTruthy();
+  expect(within(card).getByText(": Head & brain")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "CRISPR" })).toBeNull();
+});
 
 it("floats the disease name beside the helix only while a zone is close to the focus line", () => {
   openMapped();

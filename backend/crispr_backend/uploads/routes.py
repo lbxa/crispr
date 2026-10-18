@@ -43,7 +43,7 @@ def require_origin(origin: str | None) -> None:
         value.strip()
         for value in os.environ.get(
             "CRISPR_CORS_ORIGINS",
-            "http://localhost:3000,https://crispr.lbxa.net",
+            "http://localhost:3000,https://genome.lbxa.net",
         ).split(",")
     ]
     pattern = os.environ.get("CRISPR_CORS_ORIGIN_REGEX", r"https://crispr\.[a-z0-9-]+\.workers\.dev")

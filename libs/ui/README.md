@@ -1,7 +1,7 @@
 # Crispr UI
 
 Shared shadcn/ui primitives live in `src/components`, exported as
-`@crispr/ui/components/<name>`. `dialog` is a Base UI modal (focus trap, Escape, backdrop) used by the CRISPR popup. `button` and `card` also retain their shorter
+`@crispr/ui/components/<name>`. `report-drawer` composes the Base UI Drawer with responsive direction, a fixed header, scrolling content and a close action. `button` and `card` also retain their shorter
 package import paths. App-specific widgets and file selection belong in
 `apps/web`, not this library.
 
@@ -19,8 +19,11 @@ cards have surfaces. Preserve the app's existing CSS Module layout.
 
 ### 2026-10-18
 
+- Disease cards accept `size="sm"` and app-owned location actions for two-column grids. Compact cards wrap long disease names and coordinate labels, keep full report access, and align their footers without fixed text heights. The demo disease panel also uses two columns.
+- `components/skeleton` is the official Base Nova primitive with reduced-motion animation disabled. The app owns placeholder geometry and accessible loading status; keep decorative placeholders out of the accessibility tree.
+- `report-drawer` opens from the right on desktop, capped at 30rem (480px), and the bottom below 768px, using `useSyncExternalStore` for media-query changes. Keep mobile sheets full-width. Use its real trigger for focus restoration, and leave report fetching and data policy in the app. The generated Base UI Drawer provides modal focus, gestures and dismissal; the app's body stays positioned for iOS overlays.
 - `SelectContent size="sm"` applies compact group/item spacing and bounds long menus to the available height or 18rem. The small trigger keeps its 28px target with 6px horizontal padding; other Select popups retain the default density.
-- `genome/disease-card` composes shadcn Card, Badge and Button for both genome views. Keep report adapters, artwork paths and editing eligibility in the app. The card exposes a controlled evidence disclosure; its artwork is decorative and never encodes the patient's status.
+- `genome/disease-card` composes shadcn Card, Badge, Button and the report drawer for both genome views. Keep report adapters, artwork paths, association notices and editing eligibility in the app. Its controlled report action opens details in the drawer; artwork is decorative and never encodes the patient's status.
 - Shared `Card` surfaces use app-owned `--card-shadow`, `--card-footer`, and `--card-divider` tokens for depth and neutral inset sections. Cards have no permanent outer ring; retain interactive focus outlines and structural footer dividers. Dashboard cards use the same light elevation treatment, tinted nested tiles, and darker status text.
 - Genome dashboard themes follow the app's root `.dark` class rather than system appearance, so the saved light/dark choice remains consistent across routes. Light uses the requested `rgb(250, 250, 250)` page background; the existing dashboard dark palette stays intact.
 - Added Base UI Select, Input/InputGroup and Field primitives for dense controls. The small Select uses 28px height and narrow padding; field labels use the existing muted theme, and popup colors resolve through the app's semantic tokens.

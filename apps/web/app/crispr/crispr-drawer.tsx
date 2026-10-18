@@ -1,16 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@crispr/ui/components/dialog";
+import { ReportDrawer } from "@crispr/ui/report-drawer";
 import { loadGenePlan } from "./client";
 import type { PlanResult } from "./contract";
-import { AdvancedGenomics, EditCard, OverviewPanel, Raw } from "./panels";
+import { Raw } from "./panels";
+import { CrisprReport } from "./report";
 import styles from "./crispr.module.css";
 
 export interface CrisprGene {
@@ -19,10 +14,10 @@ export interface CrisprGene {
 }
 
 /**
- * The CRISPR flow as a popup. The genome belongs to the user and the backend is fixed, so the only
+ * The CRISPR flow in the shared report drawer. The genome belongs to the user, so the only
  * choice is which of the genome's identified genes to look at.
  */
-export function CrisprDialog({
+export function CrisprDrawer({
   open,
   onOpenChange,
   genes,
@@ -34,15 +29,22 @@ export function CrisprDialog({
   initialGene: string;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-label="CRISPR gene editing">
-        <CrisprContent genes={genes} initialGene={initialGene} />
-      </DialogContent>
-    </Dialog>
+    <ReportDrawer
+      open={open}
+      onOpenChange={onOpenChange}
+      title="CRISPR gene editing"
+      description="Editing analysis, evidence and guide design."
+    >
+      <CrisprContent
+        key={initialGene}
+        genes={genes}
+        initialGene={initialGene}
+      />
+    </ReportDrawer>
   );
 }
 
-// Mounted only while the dialog is open, so each opening starts on the gene it was opened from.
+// Mounted only while the drawer is open, so each opening starts on its selected gene.
 function CrisprContent({
   genes,
   initialGene,
@@ -70,12 +72,6 @@ function CrisprContent({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>CRISPR gene editing</DialogTitle>
-        <DialogDescription>
-          How well could this condition be treated by editing the gene?
-        </DialogDescription>
-      </DialogHeader>
       <label className={styles.geneSelect}>
         <span>Gene</span>
         <select
@@ -113,24 +109,13 @@ function CrisprContent({
       )}
       {result?.ok && (
         <div data-testid="crispr-plan">
-          <OverviewPanel
+          <CrisprReport
             key={result.plan.gene}
             overview={result.plan.overview}
+            edits={result.plan.edits}
             subject={disease ? `${gene} · ${disease}` : gene}
           />
-          <AdvancedGenomics overview={result.plan.overview}>
-            <article className={styles.finding}>
-              {result.plan.edits.map((edit) => (
-                <div key={edit.variation_id}>
-                  {edit.disease && (
-                    <p className={styles.muted}>{edit.disease}</p>
-                  )}
-                  <EditCard edit={edit} />
-                </div>
-              ))}
-            </article>
-            <Raw value={result.plan} />
-          </AdvancedGenomics>
+          <Raw value={result.plan} />
           <p className={styles.muted}>{result.plan.disclaimer}</p>
         </div>
       )}

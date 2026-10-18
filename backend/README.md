@@ -92,7 +92,7 @@ curl -X POST https://148-100-79-183.sslip.io/genomes/3/analyze -H 'Content-Type:
   -d '{"symptoms": "macrocephaly, bowing of the legs, recurrent otitis media", "use_llm": false}'
 ```
 
-CORS allows `http://localhost:3000` and `https://crispr.<account>.workers.dev`
+CORS allows `http://localhost:3000`, `https://genome.lbxa.net` and `https://crispr.<account>.workers.dev`
 (`CRISPR_CORS_ORIGINS` and `CRISPR_CORS_ORIGIN_REGEX` override them).
 
 ## Large genome workflow
@@ -305,6 +305,8 @@ base model that cannot follow instructions.
 
 ### 2026-10-18
 
+- Avatar display metadata recognizes the exact selected-sample identifiers `HG001`, `NA12878` and `GM12878` as female, as documented in [NIST RM 8398](https://tsapps.nist.gov/srmext/certificates/8398%28QTY10%29.pdf). The HG001 v4.2.1 benchmark lacks `##SAMPLE` sex metadata. Conflicting, malformed or oversized declarations remain unknown; never infer a profile from the filename or absent Y calls, or use this display fallback as clinical sex.
+- The production browser origin is `https://genome.lbxa.net`. Keep API CORS, upload origin authorization and tusd's deployment allowlist aligned; the frontend transfers genomes directly to this backend.
 - Avatar mapping uses Gemini only after deterministic clinical findings are finalized. Restrict its schema to the avatar catalog and exact non-carrier finding indices so the model cannot add diagnoses, color carriers or change clinical tiers. Keep disease associations separate from predicted symptoms and genetic edit targets.
 - Persist `body_map` with completed upload reports; reuse it on reads and refreshes. Mapping is optional enrichment, so provider errors leave an explicit unavailable state instead of failing genome analysis. The web contract test checks catalog parity with the actual model regions.
 - Gemini's structured-output grammar rejects larger nested `maxItems` bounds. Keep the outer mapping cardinality limit in Pydantic and validate exact finding coverage locally; retain the supported-region enum in the request schema. Live acceptance covers the full 24-condition panel, not just a single finding.

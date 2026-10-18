@@ -1,11 +1,11 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
 import { Badge } from "../components/badge";
 import { Button } from "../components/button";
+import { ReportDrawer } from "../report-drawer";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -27,8 +27,11 @@ export function DiseaseCard({
   status,
   artwork,
   location,
-  expanded,
-  onExpandedChange,
+  locations,
+  notice,
+  size = "default",
+  open,
+  onOpenChange,
   children,
 }: {
   name: string;
@@ -36,14 +39,18 @@ export function DiseaseCard({
   status: keyof typeof STATUS;
   artwork?: string;
   location?: string;
-  expanded: boolean;
-  onExpandedChange: (expanded: boolean) => void;
+  locations?: ReactNode;
+  notice?: ReactNode;
+  size?: ComponentProps<typeof Card>["size"];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   children: ReactNode;
 }) {
   const id = useId();
   return (
     <Card
       className={styles.card}
+      size={size}
       data-disease={gene}
       role="article"
       aria-labelledby={`${id}-title`}
@@ -71,29 +78,42 @@ export function DiseaseCard({
         <CardTitle>
           <h3 id={`${id}-title`}>{name}</h3>
         </CardTitle>
-        {location && (
-          <CardDescription>
-            <span dir="ltr">{location}</span>
-          </CardDescription>
-        )}
+        {locations ??
+          (location && (
+            <CardDescription>
+              <span dir="ltr">{location}</span>
+            </CardDescription>
+          ))}
+        {notice && <CardDescription>{notice}</CardDescription>}
       </CardHeader>
-      {expanded && (
-        <CardContent id={`${id}-evidence`} className={styles.evidence}>
-          {children}
-        </CardContent>
-      )}
       <CardFooter>
-        <Button
-          variant="ghost"
-          className={styles.disclosure}
-          aria-expanded={expanded}
-          aria-controls={expanded ? `${id}-evidence` : undefined}
-          aria-label={`${expanded ? "Hide" : "View"} ${gene} evidence`}
-          onClick={() => onExpandedChange(!expanded)}
+        <ReportDrawer
+          open={open}
+          onOpenChange={onOpenChange}
+          title={name}
+          description={`${gene} · ${STATUS[status]}${location ? ` · ${location}` : ""}`}
+          trigger={
+            <Button
+              variant="ghost"
+              className={styles.disclosure}
+              aria-label={`View ${gene} report`}
+            >
+              View report <span aria-hidden="true">↗</span>
+            </Button>
+          }
         >
-          {expanded ? "Hide evidence" : "View evidence"}
-          <span aria-hidden="true">{expanded ? "−" : "+"}</span>
-        </Button>
+          {artwork && (
+            <img
+              className={styles.cover}
+              src={artwork}
+              width={768}
+              height={512}
+              alt=""
+              decoding="async"
+            />
+          )}
+          <div className={styles.evidence}>{children}</div>
+        </ReportDrawer>
       </CardFooter>
     </Card>
   );
