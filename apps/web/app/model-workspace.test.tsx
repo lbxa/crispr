@@ -4,13 +4,19 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModelWorkspace } from "./model-workspace";
 import { currentGenomeCache } from "./genome-analysis/cache";
 import { genomeView } from "./genome-analysis/genome-view.fixture";
-import { carrierReport, report } from "./genome-analysis/report.fixture";
+import {
+  carrierReport,
+  mappedReport,
+  report,
+} from "./genome-analysis/report.fixture";
+import type { HumanModelHighlight } from "@crispr/human-model";
 import {
   uploadConfig,
   uploadJob,
@@ -57,15 +63,18 @@ vi.mock("next/dynamic", () => ({
     function HumanModel({
       profile,
       modelUrl,
+      highlights,
     }: {
       profile: string;
       modelUrl: string;
+      highlights: readonly HumanModelHighlight[];
     }) {
       return (
         <div
           data-testid="human-model"
           data-profile={profile}
           data-model-url={modelUrl}
+          data-highlights={JSON.stringify(highlights)}
         />
       );
     },
@@ -122,6 +131,136 @@ function openLeftPane() {
 }
 
 describe("workspace widget grids", () => {
+  it("shows HG001's PKU carrier association in red with an explicit carrier label", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockUploadFetch({
+        ...carrierReport,
+        findings: [
+          { tier: "carrier", gene: "PAH", disease: "Phenylketonuria" },
+        ],
+      }),
+    );
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "HG001.vcf")] },
+      });
+    });
+
+    expect(
+      screen.getByTestId("human-model").getAttribute("data-highlights"),
+    ).toContain('"association":"carrier"');
+    expect(
+      screen.getByText(/Carrier finding · Associated region shown in red/),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("region", { name: "3D anatomy workspace" })
+        .hasAttribute("data-phenotype"),
+    ).toBe(false);
+  });
+  it("highlights disease regions in red without dimming, then clears them for a replacement", async () => {
+    vi.stubGlobal("fetch", mockUploadFetch(mappedReport));
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "affected.vcf")] },
+      });
+    });
+    const model = screen.getByTestId("human-model");
+    expect(JSON.parse(model.getAttribute("data-highlights")!)).toEqual([
+      { regionId: "digestive_tract", color: "#ef4444", strength: 1 },
+      { regionId: "major_joints", color: "#ef4444", strength: 1 },
+    ]);
+    expect(
+      screen
+        .getByRole("region", { name: "3D anatomy workspace" })
+        .hasAttribute("data-phenotype"),
+    ).toBe(false);
+    expect(
+      screen.getByText("Disease-associated regions shown in red"),
+    ).toBeTruthy();
+    expect(screen.getByText(/Digestive tract, Major joints/)).toBeTruthy();
+    vi.stubGlobal("fetch", mockUploadFetch(carrierReport));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "carrier.vcf")] },
+      });
+    });
+    expect(model.getAttribute("data-highlights")).toBe("[]");
+    expect(
+      screen.queryByText("Disease-associated regions shown in red"),
+    ).toBeNull();
+  });
+
+  // The workspace starts fresh (a saved genome is discarded on load), so highlights come
+  // from a completed analysis rather than from the device cache.
+  it("highlights mapped findings after analysis and clears them on removal", async () => {
+    vi.stubGlobal("fetch", mockUploadFetch(mappedReport));
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "mapped.vcf")] },
+      });
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("human-model").getAttribute("data-highlights"),
+      ).toContain("#ef4444"),
+    );
+    expect(fetch).toHaveBeenCalled();
+    // The file pane starts open and the first toggle closed it, so reopen it to remove the file.
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Remove genome" }));
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("human-model").getAttribute("data-highlights"),
+      ).toBe("[]"),
+    );
+  });
+
+  it("distinguishes unavailable mappings from no findings", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockUploadFetch({ ...mappedReport, body_map: undefined }),
+    );
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "legacy.vcf")] },
+      });
+    });
+    expect(
+      screen.getByText(
+        "Body region mapping unavailable. Analyze this genome again.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("No phenotypic symptoms predicted")).toBeNull();
+  });
   it("keeps both panes and the scene mounted on a wide workspace", () => {
     resizeWorkspace(true);
     render(

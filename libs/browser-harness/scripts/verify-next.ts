@@ -42,7 +42,7 @@ try {
       "Interactive realistic male human model",
     ) ||
     initialSnapshot.accessibilityTree.includes('group "Body profile"') ||
-    initialSnapshot.accessibilityTree.includes('link "Crispr home"') ||
+    !initialSnapshot.accessibilityTree.includes('link "Genome home"') ||
     initialSnapshot.accessibilityTree.includes('button "Regions"')
   ) {
     throw new Error(
@@ -148,9 +148,9 @@ try {
         throw new Error(`Date widget is missing; inspect ${evidenceDir}`);
       }
       // Drag across the sidebar's clipping edge and capture the live top layer.
-      await harness.pointer({ action: "move", x: 100, y: 42 });
+      await harness.pointer({ action: "move", x: 100, y: 86 });
       await harness.pointer({ action: "down" });
-      await harness.pointer({ action: "move", x: 110, y: 42 });
+      await harness.pointer({ action: "move", x: 110, y: 86 });
       await harness.waitForText({ text: "Files picked up." });
       await harness.pointer({ action: "move", x: 620, y: 220, steps: 12 });
       await harness.screenshot({

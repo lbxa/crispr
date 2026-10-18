@@ -26,13 +26,13 @@
   margin: 12px 0;
 }
 .gauge[data-band="high"] {
-  --band: #7fd6a3;
+  --band: var(--status-positive);
 }
 .gauge[data-band="moderate"] {
-  --band: #e8c66a;
+  --band: var(--status-warning);
 }
 .gauge[data-band="low"] {
-  --band: #f08c7c;
+  --band: var(--status-negative);
 }
 .gaugeScore {
   min-width: 96px;
@@ -139,7 +139,7 @@
   color: var(--foreground);
 }
 .ctxPam {
-  color: #e8c66a;
+  color: var(--status-warning);
 }
 .raw {
   margin: 16px 0;
@@ -161,10 +161,10 @@
   border-radius: 12px;
 }
 .overview[data-verdict="recommended"] {
-  --verdict: #7fd6a3;
+  --verdict: var(--status-positive);
 }
 .overview[data-verdict="not_recommended"] {
-  --verdict: #f08c7c;
+  --verdict: var(--status-negative);
 }
 .overviewTop {
   display: flex;

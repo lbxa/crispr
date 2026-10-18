@@ -722,6 +722,39 @@ it("slides to an animated navigation without letting the scroll echo cancel it",
   expect(changed).toHaveBeenLastCalledWith(90_000_005);
 });
 
+it("continues scrolling from the visible DNA when a jump is interrupted", () => {
+  const changed = vi.fn();
+  const { rerender } = render(
+    <DnaHelix
+      chromosome={chromosome}
+      source={DEMO_GENOME}
+      navigation={{ position: 1_024_000 }}
+      active
+      onPositionChange={changed}
+    />,
+  );
+  act(() => frame?.(0));
+  scene.instantGlide = false;
+  rerender(
+    <DnaHelix
+      chromosome={chromosome}
+      source={DEMO_GENOME}
+      navigation={{ position: 90_000_000, animate: true }}
+      active
+      onPositionChange={changed}
+    />,
+  );
+  act(() => scene.instances.at(-1)?.onGlide?.(40_000_000));
+
+  const viewport = screen.getByRole("region", { name: "DNA sequence" });
+  fireEvent.scroll(viewport); // A frame's own scroll write must not cancel the jump.
+  expect(changed).not.toHaveBeenCalled();
+  viewport.scrollTop += 100;
+  fireEvent.scroll(viewport);
+
+  expect(changed).toHaveBeenLastCalledWith(40_000_005);
+});
+
 // CFTR is only a carrier finding; MEFV is a possible disease and so an editing target.
 const mappedReport = {
   ...report,
@@ -778,12 +811,10 @@ it("offers CRISPR beside an editing target and opens the popup on that gene", as
   fireEvent.click(within(tag).getByRole("button", { name: "CRISPR" }));
   const dialog = await screen.findByRole("dialog");
   expect(
-    (
-      within(dialog).getByRole("combobox", {
-        name: "Gene",
-      }) as HTMLSelectElement
-    ).value,
-  ).toBe("MEFV");
+    within(dialog).getByRole("combobox", {
+      name: "Gene",
+    }),
+  ).toHaveProperty("value", "MEFV");
   // Only genes with a likely or possible finding can be chosen; the carrier gene cannot.
   expect(
     within(dialog)

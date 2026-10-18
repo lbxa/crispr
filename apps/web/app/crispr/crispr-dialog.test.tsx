@@ -56,12 +56,10 @@ it("opens on the gene it was launched from and shows the plain-language verdict 
     "Predicting how well MEFV can be edited",
   );
   expect(
-    (
-      within(dialog).getByRole("combobox", {
-        name: "Gene",
-      }) as HTMLSelectElement
-    ).value,
-  ).toBe("MEFV");
+    within(dialog).getByRole("combobox", {
+      name: "Gene",
+    }),
+  ).toHaveProperty("value", "MEFV");
   await waitFor(() =>
     expect(within(dialog).getByTestId("verdict").textContent).toBe(
       "Gene editing looks promising",

@@ -114,6 +114,7 @@
   font-size: 24px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   letter-spacing: -0.04em;
 }
 .disclaimer {

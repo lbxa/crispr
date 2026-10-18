@@ -2,6 +2,9 @@
 
 import dynamic from "next/dynamic";
 import { useMemo, useState, type CSSProperties } from "react";
+import { flushSync } from "react-dom";
+import { Button } from "@crispr/ui/components/button";
+import { DiseaseCard } from "@crispr/ui/genome/disease-card";
 import {
   BASE_PIXELS,
   DNA_BASES,
@@ -10,6 +13,7 @@ import {
   type DnaViewMode,
 } from "@crispr/human-model/dna-sequence";
 import { DEMO_CHROMOSOMES, DEMO_GENOME } from "./demo-genome";
+import { DISEASE_ARTWORK } from "./disease-artwork";
 import { CrisprDialog, type CrisprGene } from "./crispr/crispr-dialog";
 import type { GenomeReport } from "./genome-analysis/contract";
 import {
@@ -105,6 +109,7 @@ function GenomeExplorerContent({
   // Findings the user has not looked at pulse until their region has been in view.
   const [viewed, setViewed] = useState<ReadonlySet<string>>(() => new Set());
   const [crisprGene, setCrisprGene] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<string | null>(null);
   // Carriers are not candidates for editing, so only genes with a likely or possible finding.
   const crisprGenes = useMemo(() => {
     const byGene = new Map<string, CrisprGene>();
@@ -255,19 +260,27 @@ function GenomeExplorerContent({
               {view ? "GRCh38 · Reference context" : "Demo genome"}
             </span>
           </div>
-          <button
+          <Button
             type="button"
-            className={styles.modeToggle}
+            variant="ghost"
+            size="icon"
+            className={`size-11 rounded-xl ${styles.modeToggle}`}
             aria-label={
               mode === "helix" ? "Unwind double helix" : "Rewind double helix"
             }
-            data-mode={mode}
+            title={
+              mode === "helix" ? "Unwind double helix" : "Rewind double helix"
+            }
             onClick={() =>
               setMode((current) => (current === "helix" ? "ladder" : "helix"))
             }
           >
-            {mode === "helix" ? "Unwind" : "Rewind"}
-          </button>
+            <span
+              className={styles.modeIcon}
+              data-mode={mode}
+              aria-hidden="true"
+            />
+          </Button>
         </header>
         <div
           className={styles.body}
@@ -284,7 +297,12 @@ function GenomeExplorerContent({
                 active={active}
                 mode={mode}
                 onPositionChange={setPosition}
-                onGlide={setGlide}
+                onGlide={(next) => {
+                  // Frame positions must reach the DOM before WebGL paints. Completion
+                  // can also come from an Effect (reduced motion), so only flush frames.
+                  if (next === null) setGlide(null);
+                  else flushSync(() => setGlide(next));
+                }}
               />
               {zone && (
                 <div
@@ -378,35 +396,43 @@ function GenomeExplorerContent({
           {view && regions.length > 0 && (
             <aside className={styles.inspector} aria-label="Mutation details">
               {selected && (
-                <section className={styles.site} aria-label="Selected finding">
-                  <div className={styles.siteHeading}>
-                    <strong>{selected.annotations[0]!.gene}</strong>
-                    <span dir="ltr">
-                      Chr {selected.chromosome}:
-                      {format.format(selected.start + 1)}
-                      {selected.end > selected.start + 1
-                        ? `–${format.format(selected.end)}`
-                        : ""}
-                    </span>
-                  </div>
-                  <p>
-                    {selected.annotations
-                      .map(
-                        ({ disease, tier }) =>
-                          `${disease}${tier === "carrier" ? " · Carrier" : ""}`,
-                      )
-                      .join("; ")}
-                  </p>
-                  <dl className={styles.alleles}>
-                    <div>
-                      <dt>Reference</dt>
-                      <dd dir="ltr">{selected.reference}</dd>
-                    </div>
-                    <div>
-                      <dt>Alternate</dt>
-                      <dd dir="ltr">{selected.alternate}</dd>
-                    </div>
-                  </dl>
+                <section
+                  className={styles.diseaseCards}
+                  aria-label="Selected finding"
+                >
+                  {selected.annotations.map(({ gene, disease, tier }) => {
+                    const evidenceKey = `${selected.id}:${gene}:${disease}`;
+                    return (
+                      <DiseaseCard
+                        key={evidenceKey}
+                        gene={gene}
+                        name={disease}
+                        status={tier}
+                        artwork={DISEASE_ARTWORK[gene]}
+                        location={`Chr ${selected.chromosome}:${format.format(selected.start + 1)}${selected.end > selected.start + 1 ? `–${format.format(selected.end)}` : ""}`}
+                        expanded={evidence === evidenceKey}
+                        onExpandedChange={(open) =>
+                          setEvidence(open ? evidenceKey : null)
+                        }
+                      >
+                        <dl>
+                          <dt>Reference allele</dt>
+                          <dd dir="ltr">{selected.reference}</dd>
+                          <dt>Alternate allele</dt>
+                          <dd dir="ltr">{selected.alternate}</dd>
+                        </dl>
+                        {tier !== "carrier" &&
+                          crisprGenes.some((item) => item.gene === gene) && (
+                            <Button
+                              variant="secondary"
+                              onClick={() => setCrisprGene(gene)}
+                            >
+                              Open editing studio
+                            </Button>
+                          )}
+                      </DiseaseCard>
+                    );
+                  })}
                 </section>
               )}
               <details

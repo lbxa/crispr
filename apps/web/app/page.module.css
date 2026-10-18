@@ -14,7 +14,7 @@
   overflow: clip;
   background: radial-gradient(
     ellipse at 50% 40%,
-    #29312f,
+    var(--workspace-glow),
     var(--background) 70%
   );
 }
@@ -31,7 +31,7 @@
   transition: filter 700ms ease;
 }
 .stage[data-phenotype="none"] > :not(.phenotypeNotice) {
-  filter: grayscale(0.85) brightness(0.7);
+  filter: grayscale(0.85) brightness(var(--avatar-muted-brightness));
 }
 .phenotypeNotice {
   position: absolute;
@@ -141,9 +141,10 @@
   display: none;
 }
 .pane[data-side="left"] {
-  left: var(--pane-inset);
-  width: var(--left-pane-width);
-  padding-block: 32px;
+  left: calc(var(--pane-inset) - var(--card-shadow-gutter));
+  width: calc(var(--left-pane-width) + 2 * var(--card-shadow-gutter));
+  padding-inline: var(--card-shadow-gutter);
+  padding-block: max(76px, calc(env(safe-area-inset-top) + 64px)) 32px;
   transform: translateX(-24px);
 }
 .pane[data-side="right"] {

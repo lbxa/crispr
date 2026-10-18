@@ -2,12 +2,15 @@
 @import "@crispr/widget-grid/styles.css";
 @source "../../../libs/ui/src";
 @source "../../../libs/widget-grid/src";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--surface);
   --color-card-foreground: var(--foreground);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--foreground);
   --color-primary: var(--accent);
   --color-primary-foreground: var(--background);
   --color-secondary: var(--surface-hover);
@@ -28,8 +31,33 @@
 
 @layer base {
   :root {
+    color-scheme: light;
+    --background: rgb(250, 250, 250);
+    --workspace-glow: var(--background);
+    --avatar-filter: brightness(1.1);
+    --avatar-muted-brightness: 1;
+    --foreground: #202725;
+    --surface: #ffffff;
+    --surface-hover: #eef2f0;
+    --border: #d0d9d4;
+    --muted: #5c6b64;
+    --accent: #246b5a;
+    --destructive: #a6332d;
+    --status-positive: #267346;
+    --status-warning: #80600d;
+    --status-negative: #a74132;
+    --card-shadow: 0 1px 2px -1px #0000000f, 0 2px 4px #0000000a;
+    --card-shadow-hover: 0 1px 2px -1px #00000014, 0 2px 4px #0000000f;
+    --card-footer: #f7f8f8;
+    --card-divider: #e5e9e7;
+    --card-shadow-gutter: 6px;
+  }
+  :root.dark {
     color-scheme: dark;
     --background: #141918;
+    --workspace-glow: #29312f;
+    --avatar-filter: none;
+    --avatar-muted-brightness: 0.7;
     --foreground: #edf1ef;
     --surface: #202725;
     --surface-hover: #2e3834;
@@ -37,6 +65,14 @@
     --muted: #a2aeaa;
     --accent: #a9e1d3;
     --destructive: #f0aaa2;
+    --status-positive: #7fd6a3;
+    --status-warning: #e8c66a;
+    --status-negative: #f08c7c;
+    --card-shadow: 0 0 #0000;
+    --card-shadow-hover: var(--card-shadow);
+    --card-footer: color-mix(in oklab, var(--surface-hover) 50%, transparent);
+    --card-divider: var(--border);
+    --card-shadow-gutter: 0px;
   }
   * {
     box-sizing: border-box;

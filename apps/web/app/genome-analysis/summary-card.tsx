@@ -16,6 +16,10 @@ import { formatGenomeBytes } from "./contract";
 import styles from "./summary-card.module.css";
 
 const numbers = new Intl.NumberFormat("en");
+const compactNumbers = new Intl.NumberFormat("en", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 
 export function GenomeSummaryCard({
   analysis,
@@ -134,8 +138,17 @@ export function GenomeSummaryCard({
             <dl className={styles.metrics}>
               <div>
                 <dt>Variants</dt>
-                <dd>
-                  {numbers.format(analysis.report.genome.variants_checked)}
+                <dd
+                  title={numbers.format(
+                    analysis.report.genome.variants_checked,
+                  )}
+                  aria-label={numbers.format(
+                    analysis.report.genome.variants_checked,
+                  )}
+                >
+                  {compactNumbers
+                    .format(analysis.report.genome.variants_checked)
+                    .replace("K", "k")}
                 </dd>
               </div>
               <div>

@@ -9,6 +9,9 @@
   text-align: center;
   color: var(--accent);
 }
+:global(:root:not(.dark)) .header {
+  color: var(--foreground);
+}
 .content {
   display: grid;
   flex: 1;

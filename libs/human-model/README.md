@@ -179,6 +179,12 @@ anatomy. See `docs/blender-segmentation.md` for the export contract.
 
 ## Changelog
 
+### 2026-10-18
+
+- The anatomy canvas accepts the host's `--avatar-filter` (default `none`) for theme-specific tone adjustments without reloading assets or recreating the WebGL scene. Keep this separate from app-owned phenotype presentation and leave canonical model materials intact.
+- The display atlas maps phenylketonuria to `head_brain`, its primary neurological association ([MedlinePlus](https://medlineplus.gov/genetics/condition/phenylketonuria/)). Keep this distinct from a diagnosis or treatment target. The app owns finding tiers and must explicitly label carrier associations when showing them.
+- Animated DNA positions also update the bounded native scroll window, so wheel, drag, or keyboard input resumes from the visible bases when a jump is interrupted. Ignore scroll echoes from those writes, and report the final destination before glide completion so dropped frames cannot leave the scroll window behind.
+
 ### 2026-10-17
 
 - The anatomy viewer and canvas fill their host without a fixed minimum height. The app owns viewport sizing and pane movement; avoid scaling the canvas element during pane transitions because that pulls its top and bottom away from the viewport edges.

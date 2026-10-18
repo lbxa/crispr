@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { Window } from "happy-dom";
 import * as THREE from "three";
-import { DnaScene } from "../src/dna-scene";
+import { DnaScene, glideDuration } from "../src/dna-scene";
 import { DNA_BASES, DNA_FINDING_COLOR } from "../src/dna-sequence";
 
 let browser: Window;
@@ -341,6 +341,21 @@ test("a glide that is interrupted hands control back to the new target", () => {
   const before = seen.length;
   settleFrames();
   expect(seen.length).toBe(before); // no further glide reports after the interruption
+});
+
+test("reports the destination before completing a glide when frames skip its end", () => {
+  const { runtime } = fixture();
+  const seen: (number | null)[] = [];
+  runtime.onGlide = (position) => seen.push(position);
+  runtime.setActive(true);
+  runtime.setPosition(1000, true);
+  renderFrame(0);
+  runtime.glideTo(5000);
+
+  renderFrame(16);
+  renderFrame(16 + glideDuration(4000));
+
+  expect(seen).toEqual([1000, 5000, null]);
 });
 
 test("reduced motion jumps instead of gliding", () => {

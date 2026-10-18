@@ -23,6 +23,7 @@
     "verify:next": "bun scripts/verify-next.ts",
     "verify:upload": "bun scripts/verify-genome-upload.ts",
     "verify:regions": "bun scripts/verify-genome-upload.ts --findings",
+    "verify:body": "bun scripts/verify-body-map.ts",
     "test": "bun test"
   },
   "dependencies": {

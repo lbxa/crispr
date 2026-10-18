@@ -24,6 +24,7 @@ from functools import cache
 from typing import Protocol
 
 import requests
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
@@ -34,6 +35,24 @@ class LLM(Protocol):
     name: str
 
     def chat(self, system: str, user: str, max_tokens: int = 400, json_output: bool = False) -> str: ...
+
+
+class _GeminiPart(BaseModel):
+    model_config = ConfigDict(strict=True)
+    text: str = ""
+    thought: bool = False
+
+
+class _GeminiContent(BaseModel):
+    parts: list[_GeminiPart] = []
+
+
+class _GeminiCandidate(BaseModel):
+    content: _GeminiContent | None = None
+
+
+class _GeminiResponse(BaseModel):
+    candidates: list[_GeminiCandidate] = []
 
 
 def chat_json(llm: LLM, system: str, user: str, max_tokens: int = 400) -> object | None:
@@ -56,7 +75,15 @@ class Gemini:
         self._session = requests.Session()
         self._session.headers.update({"x-goog-api-key": api_key, "Content-Type": "application/json"})
 
-    def chat(self, system: str, user: str, max_tokens: int = 400, json_output: bool = False) -> str:
+    def chat(
+        self,
+        system: str,
+        user: str,
+        max_tokens: int = 400,
+        json_output: bool = False,
+        *,
+        json_schema: dict | None = None,
+    ) -> str:
         # max_tokens is not forwarded: Gemini's thinking tokens count toward the output
         # limit, and a small cap can leave no room for the answer. Temperature is
         # deprecated for Gemini 3.x and ignored, so it isn't sent either.
@@ -64,15 +91,21 @@ class Gemini:
             "systemInstruction": {"parts": [{"text": system}]},
             "contents": [{"role": "user", "parts": [{"text": user}]}],
         }
-        if json_output:
-            body["generationConfig"] = {"responseMimeType": "application/json"}
+        if json_output or json_schema is not None:
+            generation_config: dict[str, object] = {"responseMimeType": "application/json"}
+            if json_schema is not None:
+                generation_config["responseJsonSchema"] = json_schema
+            body["generationConfig"] = generation_config
         response = self._session.post(GEMINI_URL.format(model=self.model), json=body, timeout=60)
         if not response.ok:
             # Never echo the request: its headers carry the API key.
             raise RuntimeError(f"Gemini API error {response.status_code}: {response.text[:300]}")
-        candidates = response.json().get("candidates") or []
-        parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
-        return "".join(part.get("text", "") for part in parts if not part.get("thought")).strip()
+        try:
+            payload = _GeminiResponse.model_validate(response.json())
+        except (ValidationError, ValueError):
+            raise RuntimeError("Gemini returned an invalid response") from None
+        content = payload.candidates[0].content if payload.candidates else None
+        return "".join(part.text for part in content.parts if not part.thought).strip() if content else ""
 
 
 class Granite:
@@ -116,7 +149,7 @@ def _granite() -> Granite | None:
 
 
 @cache
-def get_llm() -> LLM | None:
+def get_llm(*, gemini_only: bool = False) -> LLM | None:
     provider = os.environ.get("CRISPR_LLM", "").strip().lower()
     # Docker's --env-file keeps quotes as part of the value, so strip any.
     api_key = os.environ.get("GEMINI_API_KEY", "").strip().strip("'\"")
@@ -128,4 +161,6 @@ def get_llm() -> LLM | None:
         return Gemini(api_key, os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL))
     if provider not in ("", "granite"):
         raise RuntimeError(f"Unknown CRISPR_LLM={provider!r}; use gemini, granite or none")
+    if gemini_only:
+        return None  # Body mapping must not load the large local Granite model.
     return _granite()

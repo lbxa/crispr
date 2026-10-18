@@ -41,6 +41,16 @@ backend reference contexts, cross-chromosome finding jumps, karyotype chromosome
 ends, DNA-to-karyotype-cursor synchronization and highlighted helix/ladder screenshots. The
 fixture contains no patient data; it reuses the upload journey and error policy.
 
+`bun run --cwd libs/browser-harness verify:body --app-url http://localhost:3000`
+restores a synthetic PKU report without `body_map` through the real IndexedDB
+contract. It checks accessible labels, undimmed rendering, actual red screenshot
+pixels localized to the head, refresh persistence and removal. It makes no
+Gemini or upload requests. Add `--genome <workspace-relative-vcf-path>` to replay
+an explicitly authorized genome through the configured backend, then check its
+actual saved report with the same pixel assertions. HG001 returns a PKU carrier
+finding, whose association is explicitly labelled. Backend tests cover provider
+validation and worker publication; the harness owns Chromium/CDP and evidence.
+
 ## TypeScript
 
 ```ts
@@ -125,6 +135,10 @@ configuration; the verification caller explicitly asserts errors. Shutdown
 evidence is best-effort: take an awaited snapshot before relying on saved files.
 
 ## Changelog
+
+### 2026-10-18
+
+- `verify:body` reproduces missing backend mappings with a legacy PKU report and can replay an authorized real genome via `--genome`. Assert actual red pixels in the head and neutral pixels below it, retain the carrier label for HG001, and verify refresh/removal without another analysis request. A prepared `body_map` alone missed the live data-path failure.
 
 ### 2026-10-17
 

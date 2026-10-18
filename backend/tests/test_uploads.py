@@ -404,6 +404,25 @@ def test_worker_streams_file_and_reports_total_variants_without_retaining_irrele
     assert service.complete(service.authenticate(created["token"]))["report"] == result["report"]
 
 
+def test_worker_persists_body_mapping_without_enabling_symptom_extraction(service, database, monkeypatch):
+    from test_llm import gemini_reply, gemini_with
+
+    client, session = gemini_with(
+        gemini_reply({"text": '{"mappings":[{"finding_index":0,"region_ids":["digestive_tract"]}]}'})
+    )
+    monkeypatch.setattr("crispr_backend.analysis.body_map.get_llm", lambda **_: client)
+    created = reserved(service, vcf("S1", [(1100, "1|0"), (1200, "0|1")]).encode())
+    with db.session(database) as connection:
+        worker = AnalysisWorker(service, Analyzer(connection))
+    assert worker.run_once()
+    report = service.view(service.authenticate(created["token"]))["report"]
+    assert report["body_map"]["status"] == "mapped"
+    assert report["body_map"]["mappings"] == [{"finding_index": 0, "region_ids": ["digestive_tract"]}]
+    assert len(session.calls) == 1
+    assert service.complete(service.authenticate(created["token"]))["report"] == report
+    assert not worker.run_once() and len(session.calls) == 1
+
+
 def test_invalid_vcf_is_terminal_and_never_publishes_partial_report(service, database):
     created = reserved(service, b"not a vcf")
     with db.session() as connection:

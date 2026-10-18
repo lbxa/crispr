@@ -109,6 +109,7 @@ class AnalysisWorker:
                 False,
                 variants_checked=result.variants_checked,
                 model_profile=result.model_profile,
+                map_body=True,
             )
         except VcfCancelled:
             interrupted = True

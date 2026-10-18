@@ -8,6 +8,7 @@ import requests
 
 from crispr_backend.analysis import crispr, genotype, phenotype
 from crispr_backend.analysis.advisability import overview
+from crispr_backend.analysis.body_map import build_body_map
 from crispr_backend.analysis.genome_view import build_genome_view
 from crispr_backend.efficiency import get_scorer
 from crispr_backend.llm import chat_json, get_llm
@@ -74,6 +75,7 @@ class Analyzer:
         *,
         variants_checked: int | None = None,
         model_profile: ModelProfile | None = None,
+        map_body: bool | None = None,
     ) -> dict:
         """`use_llm=False` skips the language model (keyword matching only), for fast iteration."""
         if variants_checked is not None and variants_checked < len(calls):
@@ -94,6 +96,7 @@ class Analyzer:
             "overview": self._overview(findings),
             "findings": findings,
             "genome_view": build_genome_view(findings, self.regions),
+            "body_map": build_body_map(findings, enabled=use_llm if map_body is None else map_body),
             "symptoms": {
                 "text": symptoms,
                 "extraction": extraction,

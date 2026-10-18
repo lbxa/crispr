@@ -20,7 +20,7 @@
   align-content: start;
   min-block-size: 100%;
   min-inline-size: 0;
-  gap: 24px;
+  gap: 16px;
 }
 .body,
 .visualization {
@@ -36,7 +36,15 @@
   display: grid;
   justify-items: start;
   gap: 12px;
-  padding-inline-end: 104px;
+  padding-inline-end: 152px;
+}
+.visualization {
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .header {
+    padding-block-start: 32px;
+  }
 }
 .header h2 {
   margin: 0;
@@ -50,25 +58,18 @@
   gap: 4px;
   overflow-wrap: anywhere;
 }
+/* The Unwind/Rewind icon button sits flush with the heading's start edge. */
 .modeToggle {
-  min-block-size: 44px;
-  padding: 10px 16px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--accent);
-  font-size: 12px;
-  cursor: pointer;
-  transition: background-color 180ms ease;
+  margin-inline-start: -10px;
 }
-.modeToggle:hover,
-.modeToggle[data-mode="ladder"] {
-  background: var(--surface);
+.modeIcon {
+  inline-size: 24px;
+  block-size: 24px;
+  background: currentColor;
+  mask: url("/icons/hugeicons/unfold-more.svg") center / contain no-repeat;
 }
-@media (prefers-reduced-motion: reduce) {
-  .modeToggle {
-    transition: none;
-  }
+.modeIcon[data-mode="ladder"] {
+  mask-image: url("/icons/hugeicons/unfold-less.svg");
 }
 .demo {
   color: var(--accent);
@@ -208,61 +209,10 @@
   border-color: var(--destructive);
   background: color-mix(in srgb, var(--destructive) 6%, transparent);
 }
-.site {
+.diseaseCards {
   display: grid;
-  gap: 12px;
-  min-inline-size: 0;
-  padding: 16px;
-  border-inline-start: 2px solid var(--dna-finding);
-  background: color-mix(in srgb, var(--destructive) 4%, transparent);
-  border-radius: 12px;
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-.siteHeading {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px;
-}
-.site strong {
-  font-weight: 500;
-  font-size: 14px;
-}
-.siteHeading > span {
-  color: var(--muted);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px;
-}
-.site p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.6;
-}
-.alleles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  margin: 0;
-  font:
-    11px var(--font-geist-mono),
-    monospace;
-}
-.alleles > div {
-  display: grid;
   min-inline-size: 0;
-  align-content: start;
-  gap: 8px;
-}
-.alleles dt {
-  color: var(--muted);
-}
-.alleles dd {
-  margin: 0;
-  color: var(--foreground);
-  overflow-wrap: anywhere;
-  line-height: 1.6;
-  unicode-bidi: isolate;
 }
 .legend {
   display: flex;
@@ -289,11 +239,6 @@
   color: var(--muted);
   font-size: 11px;
   line-height: 1.6;
-}
-@container genome-explorer (max-width: 20rem) {
-  .alleles {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 @container genome-explorer (min-width: 40rem) {
   .body[data-findings] {

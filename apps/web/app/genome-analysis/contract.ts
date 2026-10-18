@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { genomeViewSchema } from "./genome-view";
+import { bodyMapSchema } from "./body-map";
 
 // Matches backend/crispr_backend/api.py. Only uncompressed single-sample VCFs.
 export const MAX_GENOME_BYTES = 20 * 1024 * 1024;
@@ -9,37 +10,59 @@ export const UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024;
 
 // Project the Python report to the fields this UI uses. Raw variants and edit
 // sequences remain at the backend boundary rather than traveling to the browser.
-export const genomeReportSchema = z.object({
-  genome_view: genomeViewSchema.optional(),
-  conclusion: z.object({
-    status: z.enum([
-      "likely_genetic_cause",
-      "genetic_finding",
-      "carrier_only",
-      "no_finding",
-    ]),
-    label: z.string().min(1),
-  }),
-  summary: z.object({ text: z.string().min(1) }),
-  genome: z.object({
-    variants_checked: z.number().int().nonnegative(),
-    panel_genes: z.array(z.string().min(1)),
-    model_profile: z.enum(["male", "female"]).nullable().optional(),
-  }),
-  findings: z.array(
-    z.object({
-      tier: z.enum(["likely", "possible", "carrier"]),
-      gene: z.string().min(1),
-      disease: z.string().min(1),
+export const genomeReportSchema = z
+  .object({
+    genome_view: genomeViewSchema.optional(),
+    body_map: bodyMapSchema.optional(),
+    conclusion: z.object({
+      status: z.enum([
+        "likely_genetic_cause",
+        "genetic_finding",
+        "carrier_only",
+        "no_finding",
+      ]),
+      label: z.string().min(1),
     }),
-  ),
-  disclaimer: z.string().min(1),
-  // Symptoms the backend predicts from the genome. The backend does not send any yet; an absent or
-  // empty list means none were predicted.
-  predicted_symptoms: z
-    .array(z.object({ id: z.string().min(1), name: z.string().min(1) }))
-    .optional(),
-});
+    summary: z.object({ text: z.string().min(1) }),
+    genome: z.object({
+      variants_checked: z.number().int().nonnegative(),
+      panel_genes: z.array(z.string().min(1)),
+      model_profile: z.enum(["male", "female"]).nullable().optional(),
+    }),
+    findings: z.array(
+      z.object({
+        tier: z.enum(["likely", "possible", "carrier"]),
+        gene: z.string().min(1),
+        disease: z.string().min(1),
+      }),
+    ),
+    disclaimer: z.string().min(1),
+    // Symptoms the backend predicts from the genome. The backend does not send any yet; an absent or
+    // empty list means none were predicted.
+    predicted_symptoms: z
+      .array(z.object({ id: z.string().min(1), name: z.string().min(1) }))
+      .optional(),
+  })
+  .refine(
+    (report) => {
+      const bodyMap = report.body_map;
+      if (!bodyMap) return true; // Completed reports from older backend versions.
+      const eligible = report.findings.flatMap((finding, index) =>
+        finding.tier === "carrier" ? [] : [index],
+      );
+      if (bodyMap.status === "not_needed") return eligible.length === 0;
+      if (bodyMap.status !== "mapped") return true;
+      const indices = bodyMap.mappings.map(
+        ({ finding_index }) => finding_index,
+      );
+      return (
+        indices.length === eligible.length &&
+        new Set(indices).size === indices.length &&
+        indices.every((index) => eligible.includes(index))
+      );
+    },
+    { message: "Body mapping must refer to exactly the non-carrier findings" },
+  );
 
 export type GenomeReport = z.infer<typeof genomeReportSchema>;
 
