@@ -240,6 +240,17 @@ To try it locally without TensorFlow or the model files, run `.venv/bin/python -
 a synthetic database plus a **mock** scorer on :8001 and the API on :8000, then open the web app's
 `/advisability-test` page.
 
+### CRISPRon scorer on the LinuxONE server
+
+The server's notebook image has TensorFlow 2.18 (not 2.4.1), so the scorer runs from
+`scoring_service/Dockerfile.linuxone`: it compiles ViennaRNA 2.2.5 from source and installs
+Biopython; `model.py` falls back to the graph-mode SavedModel loader that ignores the saved optimizer
+state. Scores differ from the TF 2.4.1 reference by about 0.1 points; the CRISPRoff energies match
+exactly. Run as the `crispr-scorer` container on loopback port 8001 (`SCORER_HOST=127.0.0.1`), with
+the CRISPRon `bin/`, `data/model/` and `data/deep_models/best/` mounted at `/crispron`, and
+`CRISPRON_URL=http://127.0.0.1:8001` in the server's `backend/.env`. `deploy.sh` does not manage
+the scorer container; rebuild it by hand after changing `scoring_service/`.
+
 ## Language model
 
 The model turns customers' plain-language symptoms into clinical terms; everything else

@@ -1,0 +1,22 @@
+# CRISPRon scoring service for the LinuxONE server, on IBM's TensorFlow 2.18 notebook image.
+# (Dockerfile targets the datathon's TensorFlow 2.4.1 image; this one runs on the Python 3.12
+# image already deployed there. model.py falls back to the graph-mode SavedModel loader.)
+# Build context is backend/. Mount the prepared crispron tree (bin/, data/model/, data/deep_models/best/)
+# at /crispron.
+FROM registry.linuxone.cloud.marist.edu/l1cc/jupyterlab-image-s390x:latest
+
+USER root
+# ViennaRNA 2.2.5 is the version CRISPRoff's energies were produced with; no s390x wheel exists.
+RUN python -c "import urllib.request as u; u.urlretrieve('https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_2_x/ViennaRNA-2.2.5.tar.gz', '/tmp/vienna.tgz')" \
+ && tar -xzf /tmp/vienna.tgz -C /tmp && cd /tmp/ViennaRNA-2.2.5 \
+ && ./configure --prefix=/opt/vienna --without-perl --without-python --without-doc --without-kinfold \
+      --without-forester --without-rnalocmin >/dev/null \
+ && make -j3 >/dev/null && make install >/dev/null && rm -rf /tmp/vienna.tgz /tmp/ViennaRNA-2.2.5
+RUN python -m pip install --no-cache-dir biopython
+
+WORKDIR /app
+COPY scoring_service ./scoring_service
+ENV CRISPRON_DIR=/crispron PORT=8001 PATH=/opt/vienna/bin:$PATH
+USER 1000:1000
+EXPOSE 8001
+CMD ["python", "-m", "scoring_service.server"]

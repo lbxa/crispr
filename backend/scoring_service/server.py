@@ -62,7 +62,8 @@ def main(scorer: Optional[Scorer] = None) -> None:
 
         scorer = Ensemble(find_model_dirs()).predict
     port = int(os.environ.get("PORT", "8001"))
-    ThreadingHTTPServer(("0.0.0.0", port), make_handler(scorer)).serve_forever()
+    host = os.environ.get("SCORER_HOST", "0.0.0.0")  # the server deployment binds loopback only
+    ThreadingHTTPServer((host, port), make_handler(scorer)).serve_forever()
 
 
 if __name__ == "__main__":
