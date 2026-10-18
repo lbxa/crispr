@@ -28,8 +28,9 @@ The attached server stays running after verification.
 checks the complete synthetic file → configured IBM upload → summary journey.
 It submits the tiny, explicitly synthetic fixture in `fixtures/`, saves correlated
 browser evidence, confirms pane switching preserves the result, then reloads to
-verify IndexedDB restoration without further upload-service requests. It also
-removes the saved genome and reloads again to verify removal. The forced-ID
+verify the app starts fresh (no genome, upload prompt showing, no upload-service
+requests) and uploads again. It also removes the genome and reloads to verify the
+page is empty. The forced-ID
 tus client intentionally probes its resource before creating it; this journey
 allows one matching HEAD 404 and its matching console message, preserving both
 in raw evidence. Other failed requests and errors still fail verification.
@@ -127,7 +128,8 @@ evidence is best-effort: take an awaited snapshot before relying on saved files.
 
 ### 2026-10-17
 
-- Upload journeys wait for `data-genome-cached="true"` before refreshing and `data-genome-cache-ready="true"` afterward, because rendered results alone do not prove an IndexedDB commit. Both restoration and removal must survive reload without new upload-service requests; `verify:regions` also exercises the restored DNA findings.
+- The app now starts fresh (see `apps/web/README.md`): the left pane opens first with an upload prompt, and a saved genome is discarded on load. The upload journeys upload twice, so up to two initial tus 404 probes are allowed. The minimap's native range is keyboard-only, so the journey focuses it directly.
+- Upload journeys wait for `data-genome-cached="true"` before refreshing and `data-genome-cache-ready="true"` afterward, because rendered results alone do not prove an IndexedDB commit. A reload must start without the previous genome and without new upload-service requests; `verify:regions` also exercises the restored DNA findings.
 - App-specific Playwright assertions in `verify-genome-upload.ts` use the browser captured through `BrowserSession`'s launch seam. Keep navigation, CDP evidence and cleanup under the same `BrowserHarnessRuntime` so persistence checks do not introduce a separate browser lifecycle.
 - The desktop baseline keeps both panes visible at the app's 90rem breakpoint and closes them independently. Compact switching, resize preservation and pane-specific Escape behavior are covered by `apps/web/app/model-workspace.test.tsx`.
 - The baseline checks the default avatar and absence of manual profile/region controls. Report-driven avatar selection is covered by app tests; library tests retain both model profiles and highlight lifecycle coverage while developer region controls are disabled.

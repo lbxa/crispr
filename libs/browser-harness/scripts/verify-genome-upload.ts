@@ -110,9 +110,8 @@ try {
     await harness.screenshot({ name: "cftr-deletion-map", fullPage: true });
     await harness.click({ selector: 'button[aria-label^="Inspect HBB at "]' });
     await harness.waitForText({ text: "5,227,002 bp" });
-    await harness.click({
-      selector: 'input[aria-label="Position in chromosome"]',
-    });
+    // The native range is keyboard-only (pointer input belongs to the track), so focus it directly.
+    await page.locator('input[aria-label="Position in chromosome"]').focus();
     await harness.press({ key: "End" });
     await harness.waitForText({ text: "135,086,622 bp" });
     await harness.press({ key: "Home" });
