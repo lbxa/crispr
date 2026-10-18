@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { genomeViewSchema } from "./genome-view";
 import { bodyMapSchema } from "./body-map";
-import { editSchema, overviewSchema } from "../crispr/contract";
+import { editSchema, genePlanSchema, overviewSchema } from "../crispr/contract";
 
 // Matches backend/crispr_backend/api.py. Only uncompressed single-sample VCFs.
 export const MAX_GENOME_BYTES = 20 * 1024 * 1024;
@@ -26,6 +26,7 @@ export const genomeReportSchema = z
     }),
     summary: z.object({ text: z.string().min(1) }),
     overview: overviewSchema.optional(),
+    gene_plans: z.array(genePlanSchema).optional(),
     genome: z.object({
       variants_checked: z.number().int().nonnegative(),
       panel_genes: z.array(z.string().min(1)),

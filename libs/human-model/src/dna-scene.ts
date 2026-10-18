@@ -12,7 +12,8 @@ const PAIRS = 96;
 const SPACING = 0.42;
 const RADIUS = 2.05;
 const TUBE_RADIUS = 0.036;
-const TURN = (Math.PI * 2) / 10.5;
+// Presentation pitch: longer turns make individual base pairs easier to read.
+const TURN = (Math.PI * 2) / 21;
 const SEGMENTS = 5;
 // Unseen findings breathe about once a second; rungs swell and brighten toward white.
 const PULSE_HZ = 0.9;

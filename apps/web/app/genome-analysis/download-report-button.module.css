@@ -1,0 +1,7 @@
+.pdfIcon {
+  inline-size: 20px;
+  block-size: 20px;
+  flex-shrink: 0;
+  background: currentColor;
+  mask: url("/icons/hugeicons/pdf-01.svg") center / contain no-repeat;
+}

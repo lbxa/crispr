@@ -19,6 +19,11 @@ class UploadFailure extends Error {
   }
 }
 
+export class LabReportDownloadError extends Error {}
+
+export type DownloadLabReport = (signal: AbortSignal) => Promise<Blob>;
+const MAX_REPORT_BYTES = 8 * 1024 * 1024;
+
 function failure(code: keyof typeof UPLOAD_ERRORS, retryable = true) {
   return new UploadFailure({ code, message: UPLOAD_ERRORS[code], retryable });
 }
@@ -281,6 +286,75 @@ export class GenomeUpload {
         /* The server's session expiry reclaims an unreachable upload. */
       }
     }
+  }
+
+  async downloadReport(signal: AbortSignal): Promise<Blob> {
+    if (
+      !this.config ||
+      !this.session ||
+      this.request.signal.aborted ||
+      this.lastJob?.status !== "complete"
+    )
+      throw new LabReportDownloadError(
+        "The lab report is available for the genome analyzed in this session.",
+      );
+    let response: Response;
+    try {
+      response = await fetch(
+        `${this.config.api_url.replace(/\/$/, "")}/uploads/${this.session.id}/report.pdf`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.session.token}`,
+            Accept: "application/pdf",
+          },
+          credentials: "omit",
+          redirect: "error",
+          cache: "no-store",
+          signal: AbortSignal.any([
+            signal,
+            this.request.signal,
+            AbortSignal.timeout(45_000),
+          ]),
+        },
+      );
+    } catch {
+      throw new LabReportDownloadError(
+        "The lab report could not be downloaded. Try again shortly.",
+      );
+    }
+    if ([401, 410].includes(response.status))
+      throw new LabReportDownloadError(
+        "Access to this saved analysis has expired. Analyze the genome again for a new report.",
+      );
+    if (!response.ok)
+      throw new LabReportDownloadError(
+        "The lab report service is unavailable. Try again shortly.",
+      );
+    const length = Number(response.headers.get("Content-Length"));
+    if (
+      response.headers
+        .get("Content-Type")
+        ?.split(";")[0]
+        ?.trim()
+        .toLowerCase() !== "application/pdf" ||
+      !Number.isSafeInteger(length) ||
+      length < 5 ||
+      length > MAX_REPORT_BYTES
+    ) {
+      await response.body?.cancel();
+      throw new LabReportDownloadError(
+        "The lab report service returned an invalid PDF.",
+      );
+    }
+    const pdf = await response.blob();
+    if (
+      pdf.size > MAX_REPORT_BYTES ||
+      (await pdf.slice(0, 5).text()) !== "%PDF-"
+    )
+      throw new LabReportDownloadError(
+        "The lab report service returned an invalid PDF.",
+      );
+    return pdf;
   }
 
   private emit(state: GenomeAnalysisState) {

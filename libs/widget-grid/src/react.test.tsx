@@ -6,6 +6,14 @@ import { describe, expect, it, vi } from "vitest";
 import { WidgetCard, WidgetGrid } from "./react";
 
 describe("WidgetCard", () => {
+  it("previews a wide card with a rectangular aspect ratio", () => {
+    render(<WidgetCard.Preview size="wide" aria-label="Symptoms preview" />);
+
+    expect(screen.getByLabelText("Symptoms preview")).toHaveClass(
+      "aspect-[2/1]",
+    );
+  });
+
   it("requires a widget item or preview container", () => {
     // Arrange
     const renderWithoutContainer = () =>

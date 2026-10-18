@@ -38,7 +38,7 @@
   padding-inline-end: 152px;
 }
 .visualization {
-  gap: 12px;
+  gap: 24px;
 }
 @media (max-width: 600px) {
   .header {
@@ -76,19 +76,11 @@
   block-size: var(--dna-scene-min-height);
   margin-inline: -16px;
 }
-.viewerToolbar {
-  position: absolute;
-  z-index: 2;
-  inset-block-start: 16px;
-  inset-inline-start: 16px;
+.viewerControls {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  backdrop-filter: blur(12px);
+  align-items: center;
+  min-inline-size: 0;
+  gap: 12px;
 }
 .sceneSkeleton,
 .scenePlaceholder {
@@ -104,38 +96,29 @@
   border-radius: 12px;
 }
 .footer {
-  display: grid;
-  gap: 12px;
-}
-.location {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  font-family: var(--font-geist-mono), monospace;
+  justify-content: flex-end;
+  align-items: center;
+  min-inline-size: 0;
+  gap: 16px;
 }
-.location output {
-  font-size: 16px;
-  letter-spacing: -0.6px;
-}
-.location > span,
-.location output span {
+.guideTrigger {
   color: var(--muted);
-  font-size: 11px;
-  letter-spacing: 0;
-}
-/* The karyotype has no text, so the readout names the chromosome on show. */
-.location > .chromosomeName {
-  color: var(--accent);
   font-size: 12px;
-  font-weight: 600;
 }
 .inspector {
   display: grid;
   min-inline-size: 0;
   align-content: start;
   gap: 24px;
+}
+.findingsHeading {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  text-wrap: balance;
 }
 .locationButtons {
   display: grid;
@@ -186,30 +169,53 @@
   min-inline-size: 0;
 }
 .legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.legend li {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  color: var(--muted);
+  flex-direction: column;
+  justify-content: space-between;
+  min-inline-size: 0;
+  min-block-size: 112px;
+  aspect-ratio: 3 / 2;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  color: #141918;
+}
+.legend li[data-base="N"] {
+  color: #ffffff;
+}
+.legend li > span {
+  font-weight: 500;
+  line-height: 1.3;
+}
+.legend strong {
+  align-self: flex-end;
   font:
-    11px var(--font-geist-mono),
+    500 40px / 1 var(--font-geist-mono),
     monospace;
+  letter-spacing: -2px;
 }
-.legend > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+.guideKey {
+  display: grid;
+  gap: 20px;
 }
-.legend i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
+.guideKey h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
 }
-.disclaimer {
+.sequenceNote {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
-  line-height: 1.6;
+  font-size: 13px;
 }
 @container genome-explorer (min-width: 36rem) {
   .diseaseCards {
@@ -218,7 +224,8 @@
   }
 }
 /* The label that floats beside the helix when a disease zone scrolls into view. */
-.zoneTag {
+.zoneTag,
+.cutTool {
   position: absolute;
   z-index: 2;
   top: clamp(
@@ -226,6 +233,9 @@
     calc(50% + var(--zone-offset, 0px)),
     calc(100% - 2.25rem)
   );
+  transition: top 140ms linear;
+}
+.zoneTag {
   inset-inline-start: calc(50% + 6.5rem);
   inset-inline-end: 24px;
   display: grid;
@@ -241,7 +251,6 @@
   font-size: 12px;
   line-height: 1.3;
   transform: translateY(-50%);
-  transition: top 140ms linear;
   animation: zone-in 280ms var(--workspace-ease, ease-out) backwards;
 }
 .zoneTag::before {
@@ -262,22 +271,34 @@
   font-style: normal;
   overflow-wrap: anywhere;
 }
-.zoneAction {
-  margin-block-start: 4px;
-  min-block-size: 28px;
-  padding: 4px 12px;
-  color: var(--background);
-  background: var(--accent);
-  border: 0;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: filter 140ms ease;
+@container genome-explorer (max-width: 28rem) {
+  .zoneTag {
+    inset-inline-start: calc(50% + 4rem);
+    inset-inline-end: 16px;
+    min-inline-size: 0;
+  }
 }
-.zoneAction:hover {
-  filter: brightness(1.12);
+.cutTool {
+  inset-inline-start: 50%;
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: 12px;
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 4px 16px #00000026,
+    0 0 0 4px color-mix(in srgb, var(--background) 80%, transparent);
+  cursor: pointer;
+}
+.cutTool:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+}
+.scissorsIcon {
+  inline-size: 24px;
+  block-size: 24px;
+  pointer-events: none;
+  background: currentColor;
+  mask: url("/icons/hugeicons/scissor.svg") center / contain no-repeat;
 }
 @keyframes zone-in {
   from {
@@ -290,7 +311,7 @@
     animation: none;
     transition: none;
   }
-  .zoneAction {
+  .cutTool {
     transition: none;
   }
 }

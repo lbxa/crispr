@@ -59,6 +59,14 @@ it("moves the completed analysis, genotype and full CRISPR results into its repo
       "Synthetic variants are on opposite copies of the gene.",
     ),
   ).toBeTruthy();
-  expect(within(drawer).getByText("ACGTACGT")).toBeTruthy();
+  expect(within(drawer).queryByText("ACGTACGT")).toBeNull();
   expect(within(drawer).getByText(detailedReport.disclaimer)).toBeTruthy();
+  fireEvent.click(
+    within(drawer).getByRole("button", { name: /Advanced genomics/ }),
+  );
+  const advanced = await screen.findByRole("dialog", {
+    name: "Advanced genomics",
+  });
+  expect(within(advanced).getByText("ACGTACGT")).toBeTruthy();
+  expect(drawer.isConnected).toBe(true);
 });

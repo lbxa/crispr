@@ -1,0 +1,46 @@
+.card {
+  flex: 1;
+  min-block-size: 0;
+  min-inline-size: 0;
+  gap: 8px;
+  border-radius: var(--widget-corner-radius, 32px);
+}
+.header {
+  padding-block-end: 0;
+}
+.content {
+  min-inline-size: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.content::-webkit-scrollbar {
+  display: none;
+}
+.list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.option {
+  inline-size: 100%;
+  min-inline-size: 0;
+  block-size: auto;
+  min-block-size: 44px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 8px 4px;
+  text-align: start;
+  white-space: normal;
+}
+.fileName {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.error {
+  margin: 8px 0 0;
+  color: var(--destructive);
+  font-size: 11px;
+  line-height: 1.4;
+}

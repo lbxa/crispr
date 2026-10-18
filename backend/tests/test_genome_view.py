@@ -44,7 +44,9 @@ def test_analyzed_upload_exposes_exact_coordinates_context_and_carrier_tier(data
     assert context["end"] - context["start"] == len(context["bases"])
     assert context["bases"] == SEQUENCE[: context["end"] - context["start"]]
     assert context["bases"][region["start"] - context["start"]] == region["reference"]
-    assert "symptoms" not in projected and "variants" not in projected["findings"][0]
+    assert "symptoms" not in projected
+    assert projected["findings"][0]["variants"][0]["pos"] == 1100
+    assert projected["gene_plans"] == []  # Carrier evidence is available, but is never an edit target.
     assert "PRIVATE_SAMPLE" not in str(projected)
 
 

@@ -17,6 +17,32 @@ const widgets = [
 ] as const satisfies readonly WidgetDescriptor[];
 
 describe("packLayout", () => {
+  it("packs rectangular cards across two cells and leaves the following row available", () => {
+    const items = [
+      { id: "files", size: "small" },
+      { id: "date", size: "small" },
+      { id: "symptoms", size: "wide" },
+      { id: "summary", size: "normal" },
+    ] as const;
+
+    const layout = packLayout(
+      items,
+      items.map(({ id }) => id),
+      2,
+    );
+
+    expect(layout.placements).toMatchObject([
+      { id: "files", column: 0, row: 0 },
+      { id: "date", column: 1, row: 0 },
+      { id: "symptoms", column: 0, row: 1, columnSpan: 2, rowSpan: 1 },
+      { id: "summary", column: 0, row: 2 },
+    ]);
+    const targets = buildDropTargets(items, layout.order, "symptoms", 2);
+    expect(targets.every(({ placement }) => placement.rowSpan === 1)).toBe(
+      true,
+    );
+  });
+
   it.each([2, 4])(
     "places a large card directly after a filled small-card row in %i columns",
     (columnCount) => {

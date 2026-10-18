@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import type { WidgetId, WidgetSize } from "./index";
+import { WIDGET_FOOTPRINTS, type WidgetId, type WidgetSize } from "./index";
 
 type GridItemElementProps = Readonly<{
   id: WidgetId;
@@ -40,6 +40,7 @@ export function isGridItemElement(
     typeof candidate.id === "string" &&
     candidate.id.length > 0 &&
     typeof candidate.label === "string" &&
-    (candidate.size === "normal" || candidate.size === "small")
+    typeof candidate.size === "string" &&
+    Object.hasOwn(WIDGET_FOOTPRINTS, candidate.size)
   );
 }

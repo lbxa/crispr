@@ -47,6 +47,7 @@ analysis never reads it.
 | `crispr_backend/llm.py`                                       | Gemini or Granite, chosen in `.env`; `None` when unavailable                         |
 | `crispr_backend/api.py`                                       | FastAPI app                                                                          |
 | `crispr_backend/uploads/`                                     | Upload admission/capabilities, tus receipts, durable SQLite jobs and separate worker |
+| `crispr_backend/reporting.py`, `lab_pdf.py`                   | Saved-analysis projections and paginated laboratory PDF; no catalog substitution or rescoring |
 | `scripts/validate_large_genome.py`                            | Isolated-process memory measurement and resumability/integrity acceptance            |
 | `scripts/validate_database_genomes.py`                        | Read-only streaming/parity acceptance for compressed demo-genome SQLite BLOBs        |
 | `Dockerfile.tusd`, `Caddyfile`                                | Native s390x tusd build and authenticated streaming HTTPS proxy                      |
@@ -76,6 +77,7 @@ only backend code opens the database.
 | POST   | `/analyze`                 | Legacy small-file JSON analysis, limited to 20 MiB                                                                   |
 | POST   | `/uploads`                 | Reserve a large genome upload; returns bearer capability and direct tus endpoint                                     |
 | GET    | `/uploads/{id}`            | Authorized transfer/analysis progress and final report                                                               |
+| GET    | `/uploads/{id}/report.pdf` | Capability-authorized laboratory PDF from the completed saved analysis                                               |
 | POST   | `/uploads/{id}/complete`   | Verify durable upload and enqueue analysis idempotently                                                              |
 | POST   | `/uploads/{id}/retry`      | Retry a retryable analysis without retransferring the genome                                                         |
 | DELETE | `/uploads/{id}`            | Cancel unfinished transfer/analysis                                                                                  |

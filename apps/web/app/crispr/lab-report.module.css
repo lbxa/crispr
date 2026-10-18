@@ -1,0 +1,205 @@
+.target {
+  display: grid;
+  min-inline-size: 0;
+  gap: 24px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.target + .target {
+  padding-block-start: 28px;
+  border-block-start: 1px solid var(--border);
+}
+.target h3,
+.target h4,
+.target h5,
+.target h6,
+.target p {
+  margin: 0;
+}
+.target h3 {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.target h4,
+.comparison caption {
+  font-size: 14px;
+  font-weight: 600;
+  text-align: start;
+}
+.target .eyebrow,
+.target .disease,
+.target .annotation,
+.target .missing {
+  color: var(--muted);
+  font-size: 12px;
+}
+.targetHeader,
+.section {
+  display: grid;
+  min-inline-size: 0;
+  gap: 8px;
+}
+.target .strategy {
+  font-weight: 500;
+}
+.target .activity,
+.target .metrics,
+.target .sequences {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+.target .activity {
+  margin-block: 8px;
+}
+.target .sequences {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.target dt {
+  margin-block-end: 3px;
+  font-size: 11px;
+}
+.target dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.activity dd {
+  font-size: 17px;
+  font-weight: 500;
+}
+.comparisonScroll {
+  min-inline-size: 0;
+  overflow-x: auto;
+  border-radius: 4px;
+}
+.comparisonScroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.comparison {
+  inline-size: 100%;
+  min-inline-size: 18rem;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.comparison caption {
+  padding-block-end: 12px;
+}
+.comparison th,
+.comparison td {
+  padding: 10px 6px;
+  border-block-end: 1px solid var(--border);
+  text-align: start;
+  white-space: nowrap;
+}
+.comparison thead th {
+  color: var(--muted);
+  font-weight: 400;
+}
+.comparison thead span {
+  display: block;
+  font-size: 10px;
+}
+.comparison th:first-child {
+  padding-inline-start: 0;
+}
+.comparison th:last-child,
+.comparison td:last-child {
+  padding-inline-end: 0;
+}
+.comparison td:nth-child(2),
+.comparison td:nth-child(3),
+.comparison th:nth-child(2),
+.comparison th:nth-child(3) {
+  text-align: end;
+}
+.comparison [data-best="true"] th,
+.comparison [data-best="true"] td:nth-child(3) {
+  font-weight: 600;
+}
+.evidence,
+.guide {
+  display: grid;
+  min-inline-size: 0;
+  gap: 16px;
+}
+.guide + .guide {
+  padding-block-start: 20px;
+  border-block-start: 1px solid var(--border);
+}
+.guideHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.guide h5 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.evidenceBlock {
+  display: grid;
+  min-inline-size: 0;
+  gap: 8px;
+}
+.evidenceBlock h6 {
+  font-size: 12px;
+  font-weight: 500;
+}
+.target code {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.context,
+.template {
+  display: block;
+  white-space: pre-wrap;
+  line-height: 1.8;
+}
+.target .models {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+  gap: 12px 16px;
+}
+.models dt {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.models dd {
+  font-size: 16px;
+}
+.target .energies {
+  display: grid;
+  gap: 6px;
+}
+.energies > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.energies dt {
+  font-size: 12px;
+}
+.energies dd {
+  flex-shrink: 0;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+}
+.notes {
+  margin: 0;
+  padding-inline-start: 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.unit {
+  margin-inline-start: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}

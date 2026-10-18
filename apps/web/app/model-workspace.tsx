@@ -2,12 +2,16 @@
 
 import dynamic from "next/dynamic";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { PhoneIcon } from "lucide-react";
+import { toast } from "@crispr/ui/components/sonner";
 import { getAnatomyRegion } from "@crispr/human-model/anatomy";
 import type { ModelProfile } from "@crispr/human-model/profiles";
 import { ManagedWidgetGrid } from "@crispr/widget-grid/managed-react";
 import { WidgetGrid } from "@crispr/widget-grid/react";
 import { FileDropCard } from "./file-drop-card";
 import { DateCard } from "./date-card";
+import { GenomeLibraryCard } from "./genome-library/card";
+import { SymptomsCard } from "./symptoms-card";
 import { GenomeExplorer } from "./genome-explorer";
 import { GenomeSummaryCard } from "./genome-analysis/summary-card";
 import { useGenomeAnalysis } from "./genome-analysis/use-genome-analysis";
@@ -55,6 +59,9 @@ export function ModelWorkspace({
   const {
     analysis,
     analyze,
+    prepareLibraryGenome,
+    libraryLoading,
+    libraryError,
     retry,
     pause,
     resume,
@@ -63,6 +70,7 @@ export function ModelWorkspace({
     cacheError,
     cacheSaved,
     cacheReady,
+    downloadReport,
   } = useGenomeAnalysis();
   const genomeFile = analysis.status === "idle" ? null : analysis.file;
   const profile: ModelProfile =
@@ -110,6 +118,17 @@ export function ModelWorkspace({
     left: null,
     right: null,
   });
+
+  function selectGenome(file: File) {
+    setGenomeSelection((current) => current + 1);
+    setGenomeOpened(true);
+    setOpenPanes((current) =>
+      sharedWorkspace
+        ? [...current.filter((pane) => pane !== "right"), "right"]
+        : ["right"],
+    );
+    void analyze(file);
+  }
 
   return (
     <div
@@ -219,6 +238,7 @@ export function ModelWorkspace({
           id={`workspace-pane-${side}`}
           className={styles.pane}
           data-side={side}
+          data-open={visiblePanes.includes(side)}
           aria-label={`${side === "left" ? "Left" : "Right"} workspace pane`}
           aria-hidden={!visiblePanes.includes(side)}
           inert={!visiblePanes.includes(side)}
@@ -232,7 +252,16 @@ export function ModelWorkspace({
               )}
               <ManagedWidgetGrid
                 defaultOrder={
-                  genomeFile ? ["files", "date", "summary"] : ["files", "date"]
+                  genomeFile
+                    ? [
+                        "files",
+                        "library",
+                        "symptoms",
+                        "call-doctor",
+                        "date",
+                        "summary",
+                      ]
+                    : ["files", "library", "symptoms", "call-doctor", "date"]
                 }
                 disabled={!visiblePanes.includes(side)}
                 aria-label="Left widgets"
@@ -245,22 +274,54 @@ export function ModelWorkspace({
                   className={styles.widget}
                 >
                   <span className={styles.widgetGrip} aria-hidden="true" />
-                  <FileDropCard
-                    file={genomeFile}
-                    onFileSelect={(file) => {
-                      setGenomeSelection((current) => current + 1);
-                      setGenomeOpened(true);
-                      setOpenPanes((current) =>
-                        sharedWorkspace
-                          ? [
-                              ...current.filter((pane) => pane !== "right"),
-                              "right",
-                            ]
-                          : ["right"],
-                      );
-                      void analyze(file);
+                  <FileDropCard file={genomeFile} onFileSelect={selectGenome} />
+                </WidgetGrid.Item>
+                <WidgetGrid.Item
+                  id="library"
+                  size="small"
+                  label="Genome library"
+                  className={styles.widget}
+                >
+                  <span className={styles.widgetGrip} aria-hidden="true" />
+                  <GenomeLibraryCard
+                    loading={libraryLoading}
+                    error={libraryError}
+                    selectedFileName={genomeFile?.name}
+                    onSelect={async (genome) => {
+                      const file = await prepareLibraryGenome(genome);
+                      if (file) selectGenome(file);
                     }}
                   />
+                </WidgetGrid.Item>
+                <WidgetGrid.Item
+                  id="symptoms"
+                  size="wide"
+                  label="Symptoms"
+                  className={styles.widget}
+                >
+                  <span className={styles.widgetGrip} aria-hidden="true" />
+                  <SymptomsCard />
+                </WidgetGrid.Item>
+                <WidgetGrid.Item
+                  id="call-doctor"
+                  size="small"
+                  label="Doctor contact"
+                  className={styles.widget}
+                >
+                  <span className={styles.widgetGrip} aria-hidden="true" />
+                  <button
+                    type="button"
+                    className={styles.callDoctor}
+                    onClick={() =>
+                      toast.info("Doctor calls are coming soon.", {
+                        id: "call-doctor",
+                        position: "top-center",
+                      })
+                    }
+                  >
+                    <PhoneIcon size={28} strokeWidth={1.5} aria-hidden="true" />
+                    <span>Call doctor</span>
+                  </button>
                 </WidgetGrid.Item>
                 <WidgetGrid.Item
                   id="date"
@@ -281,6 +342,7 @@ export function ModelWorkspace({
                     <span className={styles.widgetGrip} aria-hidden="true" />
                     <GenomeSummaryCard
                       analysis={analysis}
+                      onDownloadReport={downloadReport}
                       onRetry={retry}
                       onPause={pause}
                       onResume={resume}
@@ -309,6 +371,7 @@ export function ModelWorkspace({
               report={
                 analysis.status === "complete" ? analysis.report : undefined
               }
+              onDownloadReport={downloadReport}
             />
           )}
         </section>

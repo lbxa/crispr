@@ -398,7 +398,9 @@ def test_worker_streams_file_and_reports_total_variants_without_retaining_irrele
     assert "symptoms" not in result["report"]
     assert "source" not in result["report"]["summary"]
     for finding in result["report"]["findings"]:
-        assert set(finding) == {"tier", "gene", "disease"}
+        assert {"tier", "gene", "disease", "variants", "genotype"} <= set(finding)
+        assert "symptoms" not in finding and "genome_truth" not in finding
+    assert {edit["variation_id"] for edit in result["report"]["gene_plans"][0]["edits"]} == {1, 3}
     assert result["sha256"] == hashlib.sha256(content).hexdigest()
     assert result["uncompressed_bytes"] == len(data)
     assert not worker.run_once()

@@ -103,6 +103,8 @@ function clickChromosome(
 
 const cursor = () =>
   screen.getByTestId("karyotype-cursor").getAttribute("data-position");
+const basePair = () =>
+  screen.getByRole<HTMLInputElement>("spinbutton", { name: "Base pair" });
 
 it("waits for activation and ignores aborted ranges after a large jump", async () => {
   const requests: {
@@ -257,15 +259,11 @@ it("slides to a clicked point on a chromosome and switches chromosomes from the 
   // 80% of the way down chromosome 1 (demo length 248,000,000).
   clickChromosome("1", "paternal", 0.8);
   expect(scene.glideTo).toHaveBeenLastCalledWith(198_399_999);
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "198,400,000 bp",
-  );
+  expect(basePair().value).toBe("198400000");
   const viewport = screen.getByRole("region", { name: "DNA sequence" });
   viewport.scrollTop += 200;
   fireEvent.scroll(viewport);
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "198,400,010 bp",
-  );
+  expect(basePair().value).toBe("198400010");
   // Either copy of a pair navigates the same chromosome.
   clickChromosome("1", "maternal", 0.8);
   expect(scene.glideTo).toHaveBeenLastCalledWith(198_399_999);
@@ -274,11 +272,7 @@ it("slides to a clicked point on a chromosome and switches chromosomes from the 
   clickChromosome("Y", "paternal", 0.5);
   act(() => frame?.(0));
   expect(scene.glideTo).not.toHaveBeenCalled();
-  expect(screen.getByText("of 57,000,000")).toBeTruthy();
-  expect(screen.getByText("Chr Y")).toBeTruthy();
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "28,500,001 bp",
-  );
+  expect(basePair().value).toBe("28500001");
   expect(
     screen
       .getByRole("button", { name: "Chromosome Y" })
@@ -288,18 +282,137 @@ it("slides to a clicked point on a chromosome and switches chromosomes from the 
   const seven = screen.getByRole("button", { name: "Chromosome 7" });
   fireEvent.keyDown(seven, { key: "Enter" });
   act(() => frame?.(0));
-  expect(screen.getByText("of 200,000,000")).toBeTruthy();
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "1,024,001 bp",
-  );
+  expect(basePair().value).toBe("1024001");
   fireEvent.keyDown(seven, { key: "End" });
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "200,000,000 bp",
-  );
+  expect(basePair().value).toBe("200000000");
   fireEvent.keyDown(seven, { key: "Home" });
-  expect(screen.getByLabelText("Current base").textContent).toBe("1 bp");
+  expect(basePair().value).toBe("1");
   expect(cursor()).toBe("0");
   await screen.findByText("3D DNA ready");
+});
+
+it("searches exact one-based coordinates without replacing the DNA viewer", async () => {
+  render(<GenomeExplorer active />);
+  act(() => frame?.(0));
+  await screen.findByText("3D DNA ready");
+  const input = screen.getByRole("spinbutton", { name: "Base pair" });
+  const search = screen.getByRole("search", { name: "Base pair search" });
+  const viewport = screen.getByRole("region", { name: "DNA sequence" });
+  const disposals = scene.dispose.mock.calls.length;
+
+  for (const base of [90_000_000, 1, chromosome.length]) {
+    fireEvent.change(input, { target: { value: String(base) } });
+    fireEvent.submit(search);
+    expect(scene.glideTo).toHaveBeenLastCalledWith(base - 1);
+    expect(basePair().value).toBe(String(base));
+    expect(cursor()).toBe(String(base - 1));
+  }
+
+  expect(screen.getByRole("region", { name: "DNA sequence" })).toBe(viewport);
+  expect(scene.dispose).toHaveBeenCalledTimes(disposals);
+  expect(screen.queryByText("Chr 1")).toBeNull();
+});
+
+it("keeps base-pair searches within the selected chromosome", async () => {
+  render(<GenomeExplorer active />);
+  act(() => frame?.(0));
+  await screen.findByText("3D DNA ready");
+  clickChromosome("Y", "paternal", 0.5);
+  act(() => frame?.(0));
+  const input = screen.getByRole("spinbutton", { name: "Base pair" });
+  const search = screen.getByRole("search", { name: "Base pair search" });
+  const before = cursor();
+  scene.glideTo.mockClear();
+
+  for (const value of ["", "0", "-1", "1.5", "57000001"]) {
+    fireEvent.change(input, { target: { value } });
+    fireEvent.submit(search);
+    expect(scene.glideTo).not.toHaveBeenCalled();
+    expect(cursor()).toBe(before);
+  }
+
+  fireEvent.change(input, { target: { value: "57000000" } });
+  fireEvent.click(screen.getByRole("button", { name: "Go to base pair" }));
+  expect(scene.glideTo).toHaveBeenLastCalledWith(56_999_999);
+  expect(cursor()).toBe("56999999");
+});
+
+it("uses the live position as its editable value and follows every glide frame", async () => {
+  scene.instantGlide = false;
+  const { rerender } = render(<GenomeExplorer active />);
+  act(() => frame?.(0));
+  await screen.findByText("3D DNA ready");
+  const input = basePair();
+  const search = screen.getByRole("search", { name: "Base pair search" });
+  expect(input.value).toBe("1024001");
+  expect(screen.queryByLabelText("Current base")).toBeNull();
+  fireEvent.change(input, { target: { value: "90000000" } });
+  rerender(<GenomeExplorer active />);
+  expect(input.value).toBe("90000000");
+  expect(scene.glideTo).not.toHaveBeenCalled();
+
+  fireEvent.submit(search);
+  expect(scene.glideTo).toHaveBeenLastCalledWith(89_999_999);
+  // After submitting, show the moving scene rather than flashing the destination.
+  expect(input.value).toBe("1024001");
+  const helix = scene.instances.at(-1)!;
+  act(() => helix.onGlide?.(40_000_000));
+  expect(input.value).toBe("40000001");
+  expect(cursor()).toBe("40000000");
+  act(() => helix.onGlide?.(null));
+  expect(input.value).toBe("90000000");
+});
+
+it("discards unsubmitted edits on blur or navigation without losing a Go click", async () => {
+  render(<GenomeExplorer active />);
+  act(() => frame?.(0));
+  await screen.findByText("3D DNA ready");
+  const input = basePair();
+  const go = screen.getByRole("button", { name: "Go to base pair" });
+  const guide = screen.getByRole("button", { name: "Sequence guide" });
+  fireEvent.change(input, { target: { value: "" } });
+  fireEvent.blur(input, { relatedTarget: guide });
+  expect(input.value).toBe("1024001");
+
+  fireEvent.change(input, { target: { value: "17" } });
+  fireEvent.blur(input, { relatedTarget: go });
+  fireEvent.click(go);
+  expect(scene.glideTo).toHaveBeenLastCalledWith(16);
+  expect(input.value).toBe("17");
+
+  fireEvent.change(input, { target: { value: "100" } });
+  fireEvent.keyDown(screen.getByRole("region", { name: "DNA sequence" }), {
+    key: "Home",
+  });
+  expect(input.value).toBe("1");
+  clickChromosome("Y", "paternal", 0.5);
+  act(() => frame?.(0));
+  expect(input.value).toBe("28500001");
+  // Returning to an old coordinate must not resurrect its abandoned draft.
+  clickChromosome("1", "maternal", 16 / (chromosome.length - 1));
+  act(() => frame?.(0));
+  expect(input.value).toBe("17");
+});
+
+it("keeps the exact position visible while the sequence key and context live in a drawer", async () => {
+  render(<GenomeExplorer active />);
+  act(() => frame?.(0));
+  await screen.findByText("3D DNA ready");
+  clickChromosome("Y", "paternal", 0.5);
+  const position = basePair().value;
+  const disposals = scene.dispose.mock.calls.length;
+  expect(screen.queryByLabelText("Base colors")).toBeNull();
+  expect(screen.queryByText(/Synthetic sequence/)).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Sequence guide" }));
+  const guide = await screen.findByRole("dialog", { name: "Sequence guide" });
+  expect(within(guide).getByLabelText("Base colors")).toBeTruthy();
+  expect(within(guide).getByText(/Synthetic sequence/)).toBeTruthy();
+  expect(within(guide).getByText("57,000,000 bp")).toBeTruthy();
+  fireEvent.click(within(guide).getByRole("button", { name: "Close" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(basePair().value).toBe(position);
+  expect(scene.dispose).toHaveBeenCalledTimes(disposals);
 });
 
 it("unwinds and rewinds without losing the position, reloading sequence, or replacing the canvas", async () => {
@@ -312,17 +425,19 @@ it("unwinds and rewinds without losing the position, reloading sequence, or repl
   clickChromosome("1", "maternal", 0.8);
   await waitFor(() => expect(readRange.mock.calls.length).toBe(reads + 1));
   fireEvent.click(screen.getByRole("button", { name: "Unwind double helix" }));
-  expect(screen.getByRole("heading", { name: "Flat ladder" })).toBeTruthy();
+  expect(
+    screen.getByRole("heading", { name: "Double helix (expanded)" }),
+  ).toBeTruthy();
   expect(scene.setMode).toHaveBeenLastCalledWith("ladder");
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "198,400,000 bp",
-  );
+  expect(basePair().value).toBe("198400000");
   expect(document.querySelector("canvas")).toBe(canvas);
   expect(scene.dispose).not.toHaveBeenCalled();
   expect(readRange.mock.calls.length).toBe(reads + 1);
   rerender(<GenomeExplorer active={false} />);
   rerender(<GenomeExplorer active />);
-  expect(screen.getByRole("heading", { name: "Flat ladder" })).toBeTruthy();
+  expect(
+    screen.getByRole("heading", { name: "Double helix (expanded)" }),
+  ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Rewind double helix" }));
   expect(scene.setMode).toHaveBeenLastCalledWith("helix");
   expect(screen.getByRole("heading", { name: "Double helix" })).toBeTruthy();
@@ -342,9 +457,7 @@ it("maps backend regions to pinging karyotype dots and jumps across chromosomes 
   act(() => frame?.(0));
   await screen.findByText("3D DNA ready");
   expect(screen.queryByText("Demo genome")).toBeNull();
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "117,559,590 bp",
-  );
+  expect(basePair().value).toBe("117559590");
   expect(
     within(screen.getByRole("article", { name: "Cystic fibrosis" })).getByText(
       "Carrier",
@@ -389,7 +502,11 @@ it("maps backend regions to pinging karyotype dots and jumps across chromosomes 
     key: "End",
   });
   expect(scene.setPosition).toHaveBeenLastCalledWith(90338344, true);
-  expect(screen.getByText(/Reference unavailable here/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Sequence guide" }));
+  const guide = await screen.findByRole("dialog", { name: "Sequence guide" });
+  expect(within(guide).getByText(/Reference unavailable here/)).toBeTruthy();
+  fireEvent.click(within(guide).getByRole("button", { name: "Close" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   fireEvent.click(
     screen.getByRole("button", { name: "Jump to MEFV at chr16:3293406" }),
   );
@@ -544,9 +661,7 @@ it("shows every disease card and variant location without a findings disclosure"
     })[0]!,
   );
 
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "3,293,406 bp",
-  );
+  expect(basePair().value).toBe("3293406");
   expect(
     screen
       .getAllByRole("button", { name: "Inspect MEFV at chr16:3293406" })[0]!
@@ -593,8 +708,11 @@ it("keeps incomplete genome states out of the viewer and reports them as toasts"
     />,
   );
   act(() => frame?.(0));
-  expect(screen.getByText(/No flagged regions/)).toBeTruthy();
+  expect(screen.queryByText(/No flagged regions/)).toBeNull();
   expect(screen.queryByLabelText("Disease findings")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Sequence guide" }));
+  const guide = await screen.findByRole("dialog", { name: "Sequence guide" });
+  expect(within(guide).getByText(/No flagged regions/)).toBeTruthy();
 });
 
 // Two findings on chromosome 7 so one can be in view while the other has not been seen.
@@ -692,19 +810,13 @@ it("slides to a clicked finding and keeps the readout and karyotype cursor movin
   expect(scene.setPosition).not.toHaveBeenCalledWith(120_000_000, true);
   // Until the helix reports its first animated frame the readout stays where it was, with no
   // one-frame flash of the destination.
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "117,559,590 bp",
-  );
+  expect(basePair().value).toBe("117559590");
   const helix = scene.instances.at(-1)!;
   act(() => helix.onGlide?.(60_000_000));
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "60,000,001 bp",
-  );
+  expect(basePair().value).toBe("60000001");
   expect(cursor()).toBe("60000000");
   act(() => helix.onGlide?.(null));
-  expect(screen.getByLabelText("Current base").textContent).toBe(
-    "120,000,001 bp",
-  );
+  expect(basePair().value).toBe("120000001");
 });
 
 it("selects a finding from its dot without also jumping to the clicked chromosome point", () => {
@@ -879,7 +991,9 @@ it("places the reviewed carrier association on its finding card", () => {
     within(card).getByText("Carrier finding · Associated region shown in red"),
   ).toBeTruthy();
   expect(within(card).getByText(": Head & brain")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "CRISPR" })).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: /Open CRISPR editor/ }),
+  ).toBeNull();
 });
 
 it("floats the disease name beside the helix only while a zone is close to the focus line", () => {
@@ -889,7 +1003,9 @@ it("floats the disease name beside the helix only while a zone is close to the f
   expect(tag.textContent).toContain("CFTR");
   expect(tag.textContent).toContain("Cystic fibrosis");
   expect(tag.textContent).toContain("Carrier · not an editing target");
-  expect(within(tag).queryByRole("button", { name: "CRISPR" })).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: /Open CRISPR editor/ }),
+  ).toBeNull();
   expect(tag.style.getPropertyValue("--zone-offset")).toBe("0px");
 
   // Moving away removes it, and coming back brings it back where the zone now sits.
@@ -906,7 +1022,7 @@ it("floats the disease name beside the helix only while a zone is close to the f
   expect(screen.queryByTestId("zone-tag")).toBeNull();
 });
 
-it("offers CRISPR beside an editing target and opens the popup on that gene", async () => {
+it("floats scissors on an editing target and opens the popup on that gene", async () => {
   openMapped();
   fireEvent.click(
     screen.getByRole("button", { name: "Inspect MEFV at chr16:3293406" }),
@@ -916,16 +1032,23 @@ it("offers CRISPR beside an editing target and opens the popup on that gene", as
   expect(tag.textContent).toContain("Familial Mediterranean fever");
   vi.mocked(loadGenePlan).mockResolvedValue({ ok: true, plan });
 
-  fireEvent.click(within(tag).getByRole("button", { name: "CRISPR" }));
+  const scissors = screen.getByRole("button", {
+    name: "Open CRISPR editor for MEFV",
+  });
+  expect(tag.contains(scissors)).toBe(false);
+  expect(scissors.getAttribute("aria-haspopup")).toBe("dialog");
+  fireEvent.click(scissors);
   const dialog = await screen.findByRole("dialog");
-  expect(
-    within(dialog).getByRole("combobox", {
-      name: "Gene",
-    }),
-  ).toHaveProperty("value", "MEFV");
+  const geneSelect = within(dialog).getByRole("combobox", { name: "Gene" });
+  expect(geneSelect.textContent).toContain(
+    "MEFV · Familial Mediterranean fever",
+  );
   // Only genes with a likely or possible finding can be chosen; the carrier gene cannot.
+  fireEvent.click(geneSelect);
+  act(() => frame?.(0));
+  const options = await screen.findByRole("listbox");
   expect(
-    within(dialog)
+    within(options)
       .getAllByRole("option")
       .map((option) => option.textContent),
   ).toEqual(["MEFV · Familial Mediterranean fever"]);
@@ -933,9 +1056,11 @@ it("offers CRISPR beside an editing target and opens the popup on that gene", as
   expect(vi.mocked(loadGenePlan).mock.calls[0]![0]).toBe("MEFV");
 });
 
-it("shows no tag or CRISPR button in the demo genome", () => {
+it("shows no tag or scissors tool in the demo genome", () => {
   render(<GenomeExplorer active />);
   act(() => frame?.(0));
   expect(screen.queryByTestId("zone-tag")).toBeNull();
-  expect(screen.queryByRole("button", { name: "CRISPR" })).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: /Open CRISPR editor/ }),
+  ).toBeNull();
 });
