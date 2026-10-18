@@ -8,7 +8,7 @@
   "workers_dev": true,
   "routes": [
     {
-      "pattern": "crispr.lbxa.net",
+      "pattern": "genome.lbxa.net",
       "custom_domain": true,
     },
   ],

@@ -205,7 +205,7 @@ describe("workspace widget grids", () => {
     ).toBeNull();
   });
 
-  it("restores saved highlights without a new analysis call and clears them on removal", async () => {
+  it("starts fresh and discards a saved genome without contacting the backend", async () => {
     await currentGenomeCache.remember({
       status: "complete",
       file: new File(["VCF"], "saved.vcf"),
@@ -217,26 +217,23 @@ describe("workspace widget grids", () => {
         uncompressed_bytes: 100,
       },
     });
-    render(
+    const { container } = render(
       <ModelWorkspace
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
       />,
     );
     await waitFor(() =>
       expect(
-        screen.getByTestId("human-model").getAttribute("data-highlights"),
-      ).toContain("#ef4444"),
+        container.firstElementChild?.getAttribute("data-genome-cache-ready"),
+      ).toBe("true"),
     );
     expect(fetch).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Remove genome" }));
-    });
-    await waitFor(() =>
-      expect(
-        screen.getByTestId("human-model").getAttribute("data-highlights"),
-      ).toBe("[]"),
-    );
+    expect(
+      screen.getByTestId("human-model").getAttribute("data-highlights"),
+    ).toBe("[]");
+    expect(screen.getByText("Drop your genome")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Remove genome" })).toBeNull();
+    expect(await currentGenomeCache.restore()).toBeNull();
   });
 
   it("distinguishes unavailable mappings from no findings", async () => {

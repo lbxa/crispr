@@ -159,6 +159,7 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-18
 
+- Cloudflare's verification tests the fresh-start cache policy: loading the workspace discards a saved genome without contacting the backend. Wait for cache initialization before asserting that state; restoring cached highlights is no longer the default behavior.
 - Widget cards use surface contrast and soft shadows without a permanent outer border. Retain keyboard-focus, file-drop and error outlines so interaction states remain visible.
 - DNA navigation uses a compact Select popup capped at 18rem, with 24px option rows and 6px field insets. Keep its chromosome trigger and base-pair input joined at 28px high; dense spacing should preserve keyboard selection, focus and validation while the mobile viewer title clears the floating header.
 - Light mode brightens the avatar by 10% and keeps no-symptom desaturation without darkening it. The `--avatar-filter` and `--avatar-muted-brightness` tokens preserve the original material and dark-mode appearance across both routes.
@@ -188,7 +189,7 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 - The genome explorer's Unwind/Rewind button switches between the double helix and a flat ladder without resetting position or fetching sequence again. Mode stays selected across chromosome and pane changes; the library owns the reversible deformation and reduced-motion behavior.
 
-- Production uses `https://crispr.lbxa.net`, declared as a Worker Custom Domain in `wrangler.jsonc` so subsequent releases preserve Cloudflare-managed DNS and TLS.
+- Production uses `https://genome.lbxa.net`, declared as a Worker Custom Domain in `wrangler.jsonc` so subsequent releases preserve Cloudflare-managed DNS and TLS.
 
 - The right pane is a full-height genome explorer rather than a reorderable widget. It loads `@crispr/human-model/dna` on first opening and retains its position across pane switches; inactive scenes pause. Chromosome selection, one-based position entry, and the chromosome overview live in the app, while rendering stays in the library.
 - Before file selection, the DNA viewer uses a clearly labeled synthetic genome. Analyzed uploads replace it with real GRCh38 finding coordinates and the backend's bounded reference contexts; a VCF is never treated as a complete nucleotide sequence.
