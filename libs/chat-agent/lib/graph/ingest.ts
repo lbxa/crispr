@@ -32,9 +32,9 @@ export const PatientFindingSchema = z.object({
         disease: z.string(),
         status: z.enum(["affected", "carrier", "unlikely"]),
         tier: z.enum(["likely", "possible"]).nullable(),
-        geneticScore: z.number().min(0).max(1),
-        phenotypeScore: z.number().min(0).max(1),
-        combinedScore: z.number().min(0).max(1),
+        geneticScore: z.number().min(0).max(1).nullable(),
+        phenotypeScore: z.number().min(0).max(1).nullable(),
+        combinedScore: z.number().min(0).max(1).nullable(),
       }),
     )
     .optional(),

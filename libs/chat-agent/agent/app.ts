@@ -8,11 +8,14 @@ import {
   type SequenceProvider,
   type SequenceWindow,
 } from "../lib/sequence/provider";
+import { loadGraph, type DataStatus } from "./data";
 import { resolveModel } from "./model";
 
 /** Everything a request needs that outlives a single turn. */
 export interface AppContext {
   graph: KnowledgeGraph;
+  /** Where the graph came from; the UI shows it, so seed data is never shown as real. */
+  data: DataStatus;
   sequences: SequenceProvider;
   papers: PaperStore;
   fetch: typeof fetch;
@@ -28,6 +31,10 @@ export function createApp(overrides: Partial<AppContext> = {}): AppContext {
   const resolved = overrides.model ? null : resolveModel();
   return {
     graph,
+    data: overrides.data ?? {
+      source: "seed",
+      reason: "Test or fixture app built on the illustrative seed graph.",
+    },
     sequences: overrides.sequences ?? new SyntheticSequenceProvider(),
     papers: overrides.papers ?? new PaperStore(graph),
     fetch: overrides.fetch ?? fetch,
@@ -51,7 +58,8 @@ export function getApp(): AppContext {
       process.env.CRISPR_SEQUENCE === "ensembl"
         ? new EnsemblSequenceProvider()
         : new SyntheticSequenceProvider();
-    singleton = createApp({ sequences });
+    const { graph, data } = loadGraph();
+    singleton = createApp({ graph, data, sequences });
   }
   return singleton;
 }

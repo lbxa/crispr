@@ -531,7 +531,7 @@ export function buildSeedGraph(): KnowledgeGraph {
         `gene:${gene.symbol}`,
         gene.symbol,
         { ...rest, assembly: "GRCh38" },
-        { aliases: [gene.name, ...aliases] },
+        { aliases: [...(gene.name ? [gene.name] : []), ...aliases] },
       ),
     );
   }

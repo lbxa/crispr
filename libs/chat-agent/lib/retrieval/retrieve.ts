@@ -61,6 +61,7 @@ const INHERITANCE_TEXT: Record<Inheritance, string> = {
 };
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
+const roundOrNull = (x: number | null) => (x === null ? null : round2(x));
 const list = (xs: string[]) => (xs.length ? xs.join(", ") : "none");
 
 export async function retrieve(
@@ -86,11 +87,21 @@ export async function retrieve(
   const variantFacts = (vid: string) => {
     const v = g.mustTyped(vid, "Variant");
     const rs = v.props.rsid ? `, ${v.props.rsid}` : "";
-    add(
-      `${v.label} (${v.props.hgvsc}${rs}) has significance "${v.props.clinvarSignificance}" (${v.props.reviewStars === null ? "review status n/a" : `${v.props.reviewStars}-star review`}); consequence ${v.props.consequence.replace(/_/g, " ")}; gnomAD allele frequency ${v.props.gnomadAf ?? "not loaded"}.`,
-      [vid],
-      v.prov,
-    );
+    const cv = v.props.clinvar;
+    if (cv) {
+      // Quoted as ClinVar reports it: classification, review status and date, never a diagnosis.
+      add(
+        `ClinVar (release ${cv.release}) lists ${cv.accession} (${cv.name}${rs}) as "${cv.significance}" for ${list(cv.conditions)}; review status "${cv.reviewStatus}" (${cv.stars === null ? "not on ClinVar's star scale" : `${cv.stars} of 4 stars`}), ${cv.submitters ?? "unknown number of"} submitter(s), last evaluated ${cv.lastEvaluated ?? "not given"}${cv.rcv.length ? `; RCV ${cv.rcv.slice(0, 3).join(", ")}${cv.rcv.length > 3 ? ` and ${cv.rcv.length - 3} more` : ""}` : ""}. Consequence, gnomAD frequency and protein length are not loaded.`,
+        [vid],
+        v.prov,
+      );
+    } else {
+      add(
+        `${v.label} (${v.props.hgvsc}${rs}) has significance "${v.props.clinvarSignificance}" (${v.props.reviewStars === null ? "review status n/a" : `${v.props.reviewStars}-star review`}); consequence ${v.props.consequence?.replace(/_/g, " ") ?? "not loaded"}; gnomAD allele frequency ${v.props.gnomadAf ?? "not loaded"}.`,
+        [vid],
+        v.prov,
+      );
+    }
     const l = v.props.locus;
     if (l) {
       add(
@@ -116,7 +127,7 @@ export async function retrieve(
       .sources(gid, "IN_GENE")
       .filter((n) => n.type === "Variant").length;
     add(
-      `${gene.props.symbol} (${gene.props.name}) is on chromosome ${gene.props.chrom}, ${gene.props.strand} strand${gene.props.proteinLength ? `, protein length ${gene.props.proteinLength} aa` : ""}; ${nVariants} variant(s) loaded; expressed in: ${list(expr)}.`,
+      `${gene.props.symbol}${gene.props.name ? ` (${gene.props.name})` : ""} is on chromosome ${gene.props.chrom}, ${gene.props.strand ? `${gene.props.strand} strand` : "strand not loaded"}${gene.props.proteinLength ? `, protein length ${gene.props.proteinLength} aa` : ""}; ${nVariants} variant(s) loaded; expressed in: ${expr.length ? list(expr) : "not loaded"}.`,
       [gid],
       gene.prov,
     );
@@ -178,7 +189,7 @@ export async function retrieve(
     for (const f of g.outEdges(pid, "HAS_FINDING")) {
       const m = matchPatientToDisease(g, pid, f.to);
       add(
-        `Finding for ${p.label}: ${label(f.to)}, status ${f.props.status}${f.props.tier ? `, tier ${f.props.tier}` : ""} (combined ${round2(f.props.combinedScore)}: genetic ${round2(f.props.geneticScore)}, phenotype ${round2(f.props.phenotypeScore)}; scorer ${f.props.scoring}). Symptom coverage ${pct(m.coverage)}, key-feature recall ${pct(m.recall)}${m.unexplained.length ? `; not explained by this disease: ${list(m.unexplained.map(label))}` : ""}.`,
+        `Finding for ${p.label}: ${label(f.to)}, status ${f.props.status}${f.props.tier ? `, tier ${f.props.tier}` : ""} (${f.props.combinedScore === null ? `no score reported; source ${f.props.scoring}` : `combined ${round2(f.props.combinedScore)}: genetic ${roundOrNull(f.props.geneticScore)}, phenotype ${roundOrNull(f.props.phenotypeScore)}; scorer ${f.props.scoring}`}). Symptom coverage ${pct(m.coverage)}, key-feature recall ${pct(m.recall)}${m.unexplained.length ? `; not explained by this disease: ${list(m.unexplained.map(label))}` : ""}.`,
         [pid, f.to],
         f.prov,
       );
@@ -215,7 +226,7 @@ export async function retrieve(
       )
       .map((v) => ({
         id: v.id,
-        label: v.props.hgvsp,
+        label: v.props.hgvsp || v.label,
         position: v.props.proteinPos ?? null,
         significance: v.props.clinvarSignificance,
         consequence: v.props.consequence,
@@ -271,9 +282,9 @@ export async function retrieve(
         label: label(e.to),
         status: e.props.status,
         tier: e.props.tier,
-        genetic: round2(e.props.geneticScore),
-        phenotype: round2(e.props.phenotypeScore),
-        combined: round2(e.props.combinedScore),
+        genetic: roundOrNull(e.props.geneticScore),
+        phenotype: roundOrNull(e.props.phenotypeScore),
+        combined: roundOrNull(e.props.combinedScore),
       })),
     },
   });
@@ -595,6 +606,16 @@ export async function retrieve(
   const notices: string[] = [];
   if ([...touched].some((id) => g.node(id)?.prov === "illustrative-seed"))
     notices.push(SEED_NOTICE);
+  const releases = new Set(
+    [...touched].flatMap((id) => {
+      const v = g.typed(id, "Variant");
+      return v?.props.clinvar ? [v.props.clinvar.release] : [];
+    }),
+  );
+  if (releases.size)
+    notices.push(
+      `Variant facts: NCBI ClinVar, release ${[...releases].join(", ")}.`,
+    );
   if (helix?.sequenceSource === "synthetic")
     notices.push("Sequence shown is synthetic, not the real genome.");
 

@@ -16,6 +16,7 @@ import {
   DEFAULT_PANEL,
   importVariantSummary,
 } from "./import-clinvar";
+import { HEADER, row } from "./fixtures/synthetic-variant-summary";
 
 const panel = parsePanelPy(await readFile(DEFAULT_PANEL, "utf8"));
 
@@ -51,72 +52,6 @@ test("review status maps to ClinVar's star scale; unknown is null", () => {
   assert.equal(reviewStars("no assertion provided"), 0);
   assert.equal(reviewStars("something ClinVar adds next year"), null);
 });
-
-// Format fixture for the parser's rules. The values are synthetic (VariationIDs in the
-// 9xxxxxxxx range, made-up names); they are not ClinVar records and never reach the graph.
-const HEADER = [
-  "#AlleleID",
-  "Type",
-  "Name",
-  "GeneID",
-  "GeneSymbol",
-  "HGNC_ID",
-  "ClinicalSignificance",
-  "ClinSigSimple",
-  "LastEvaluated",
-  "RS# (dbSNP)",
-  "nsv/esv (dbVar)",
-  "RCVaccession",
-  "PhenotypeIDS",
-  "PhenotypeList",
-  "Origin",
-  "OriginSimple",
-  "Assembly",
-  "ChromosomeAccession",
-  "Chromosome",
-  "Start",
-  "Stop",
-  "ReferenceAllele",
-  "AlternateAllele",
-  "Cytogenetic",
-  "ReviewStatus",
-  "NumberSubmitters",
-  "Guidelines",
-  "TestedInGTR",
-  "OtherIDs",
-  "SubmitterCategories",
-  "VariationID",
-  "PositionVCF",
-  "ReferenceAlleleVCF",
-  "AlternateAlleleVCF",
-].join("\t");
-
-function row(o: Partial<Record<string, string>>): string {
-  const v: Record<string, string> = {
-    Type: "single nucleotide variant",
-    Name: "SYNTHETIC(CFTR):c.1A>G (p.Met1Val)",
-    GeneSymbol: "CFTR",
-    ClinicalSignificance: "Pathogenic",
-    LastEvaluated: "Jan 01, 2024",
-    "RS# (dbSNP)": "-1",
-    RCVaccession: "RCV900000001",
-    PhenotypeIDS: "MONDO:MONDO:0009061,MedGen:C0010674,OMIM:219700",
-    PhenotypeList: "Cystic fibrosis",
-    Assembly: "GRCh38",
-    Chromosome: "7",
-    ReviewStatus: "criteria provided, multiple submitters, no conflicts",
-    NumberSubmitters: "3",
-    VariationID: "900000001",
-    PositionVCF: "100",
-    ReferenceAlleleVCF: "A",
-    AlternateAlleleVCF: "G",
-    ...o,
-  };
-  return HEADER.replace(/^#/, "")
-    .split("\t")
-    .map((h) => v[h] ?? "-")
-    .join("\t");
-}
 
 const col = indexHeader(HEADER);
 

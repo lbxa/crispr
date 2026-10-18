@@ -126,7 +126,14 @@ export function geneticEvidence(
   return [...byDisease.values()];
 }
 
-export interface Finding extends FindingProps {
+/** The reference scorer always produces numbers, unlike tiers reported without scores. */
+export interface Finding extends Omit<
+  FindingProps,
+  "geneticScore" | "phenotypeScore" | "combinedScore"
+> {
+  geneticScore: number;
+  phenotypeScore: number;
+  combinedScore: number;
   diseaseId: string;
   match: PhenotypeMatch;
   evidence: GeneticEvidence;

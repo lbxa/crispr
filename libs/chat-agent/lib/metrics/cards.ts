@@ -54,7 +54,10 @@ export function buildMetrics(
         label: `Diagnosis: ${disease.label}`,
         value: p.status === "affected" ? (p.tier ?? "affected") : p.status,
         status: p.tier === "likely" ? "ok" : "warn",
-        detail: `combined ${round2(p.combinedScore)} (genetic ${round2(p.geneticScore)}, phenotype ${round2(p.phenotypeScore)}); scorer: ${p.scoring}`,
+        detail:
+          p.combinedScore === null
+            ? `tier and status as reported by the ${p.scoring}; no score reported`
+            : `combined ${round2(p.combinedScore)} (genetic ${p.geneticScore === null ? "n/a" : round2(p.geneticScore)}, phenotype ${p.phenotypeScore === null ? "n/a" : round2(p.phenotypeScore)}); scorer: ${p.scoring}`,
         provenance: edge.prov,
       });
     }
@@ -79,16 +82,19 @@ export function buildMetrics(
         ? g.outEdges(focus.patientId, "HAS_VARIANT").find((e) => e.to === v.id)
             ?.props.zygosity
         : undefined;
+      const cv = v.props.clinvar;
       cards.push({
         id: "variant",
         label: `Variant: ${v.label}`,
-        value: v.props.clinvarSignificance,
+        value: cv ? cv.significance : v.props.clinvarSignificance,
         status:
           v.props.clinvarSignificance === "Pathogenic" ||
           v.props.clinvarSignificance === "Likely pathogenic"
             ? "ok"
             : "warn",
-        detail: `${stars(v.props.reviewStars)}; gnomAD AF ${v.props.gnomadAf ?? "not loaded"}${zyg ? `; zygosity ${zyg}` : ""}`,
+        detail: cv
+          ? `ClinVar ${cv.accession}, release ${cv.release}: ${cv.reviewStatus}; ${cv.submitters ?? "?"} submitter(s); last evaluated ${cv.lastEvaluated ?? "not given"}; gnomAD AF not loaded${zyg ? `; zygosity ${zyg}` : ""}`
+          : `${stars(v.props.reviewStars)}; gnomAD AF ${v.props.gnomadAf ?? "not loaded"}${zyg ? `; zygosity ${zyg}` : ""}`,
         provenance: v.prov,
       });
     }

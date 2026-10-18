@@ -60,7 +60,7 @@ export function resolveFocus(g: KnowledgeGraph, entityIds: string[]): Focus {
       (a, b) =>
         Number(b.props.status === "affected") -
           Number(a.props.status === "affected") ||
-        b.props.combinedScore - a.props.combinedScore,
+        (b.props.combinedScore ?? -1) - (a.props.combinedScore ?? -1),
     );
     focus.diseaseId ??= findings[0]?.to;
     if (!focus.variantId) {

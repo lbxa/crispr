@@ -62,7 +62,7 @@ export interface LollipopData {
     label: string;
     position: number | null;
     significance: string;
-    consequence: string;
+    consequence: string | null;
     highlight: boolean;
   }>;
 }
@@ -81,9 +81,10 @@ export interface ScoreBreakdownData {
     label: string;
     status: string;
     tier: string | null;
-    genetic: number;
-    phenotype: number;
-    combined: number;
+    /** Null when the source reports a tier without a score. */
+    genetic: number | null;
+    phenotype: number | null;
+    combined: number | null;
   }>;
 }
 
@@ -182,6 +183,9 @@ export interface GroundingPayload {
   /** Citation handles in the answer that were never issued this turn. */
   unknown: string[];
   offTarget: "not_assessed";
+  /** Text behind every handle issued this turn, so the UI can show it on hover. */
+  facts: Record<string, string>;
+  papers: Record<string, string>;
 }
 
 export type CrisprDataParts = {

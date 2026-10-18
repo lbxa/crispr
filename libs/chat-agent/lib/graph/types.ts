@@ -22,7 +22,7 @@ export type EdgeType =
 
 /** Where a node/edge came from. The UI must surface anything that is not 'pipeline'. */
 export type Provenance =
-  "illustrative-seed" | "pipeline" | "europepmc" | "derived";
+  "illustrative-seed" | "pipeline" | "clinvar" | "europepmc" | "derived";
 
 export type Significance =
   | "Pathogenic"
@@ -45,9 +45,10 @@ export type StudyType =
 
 export interface GeneProps {
   symbol: string;
-  name: string;
+  /** Null when no source for the full name is loaded (ClinVar gives only the symbol). */
+  name: string | null;
   chrom: string;
-  strand: "+" | "-";
+  strand: "+" | "-" | null;
   assembly: "GRCh38";
   proteinLength?: number;
 }
@@ -65,18 +66,43 @@ export interface VariantLocus {
   verified: boolean;
 }
 
+/** A ClinVar record quoted as ClinVar reports it; never reinterpreted. */
+export interface ClinVarAssertion {
+  variationId: number;
+  accession: string;
+  rcv: string[];
+  name: string;
+  significance: string;
+  reviewStatus: string;
+  stars: number | null;
+  submitters: number | null;
+  lastEvaluated: string | null;
+  conditions: string[];
+  /** ClinVar release date, YYYY-MM-DD. */
+  release: string;
+}
+
 export interface VariantProps {
   hgvsc: string;
+  /** Empty when the variant has no protein-level name. */
   hgvsp: string;
   legacyName?: string;
   rsid?: string;
   proteinPos?: number;
+  /** Null when no consequence source is loaded (ClinVar's summary has none). */
   consequence:
-    "missense" | "nonsense" | "frameshift" | "inframe_deletion" | "splice";
+    | "missense"
+    | "nonsense"
+    | "frameshift"
+    | "inframe_deletion"
+    | "splice"
+    | null;
+  /** Normalised class used by the reference scorer; display text comes from `clinvar`. */
   clinvarSignificance: Significance;
   reviewStars: number | null;
   gnomadAf: number | null;
   locus: VariantLocus | null;
+  clinvar?: ClinVarAssertion;
 }
 
 export interface DiseaseProps {
@@ -128,9 +154,10 @@ export interface FindingProps {
   status: "affected" | "carrier" | "unlikely";
   /** Null for carriers and unlikely findings. */
   tier: "likely" | "possible" | null;
-  geneticScore: number;
-  phenotypeScore: number;
-  combinedScore: number;
+  /** Null when the source gives a tier but no score (the backend report has none). */
+  geneticScore: number | null;
+  phenotypeScore: number | null;
+  combinedScore: number | null;
   /** Which scorer produced these numbers. 'pipeline' = your production scorer. */
   scoring: "graph-reference-v0" | "pipeline";
 }

@@ -30,5 +30,9 @@ export function checkGrounding(
     citedPapers: [...citedPapers],
     unknown: [...unknown],
     offTarget: "not_assessed",
+    facts: Object.fromEntries(registry.allFacts().map((f) => [f.id, f.text])),
+    papers: Object.fromEntries(
+      registry.allPapers().map((p) => [p.ref, p.title]),
+    ),
   };
 }
