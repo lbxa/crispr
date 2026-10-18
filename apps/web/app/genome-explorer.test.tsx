@@ -432,6 +432,27 @@ it("numbers the chromosomes and shows a tooltip the moment the pointer is over o
   expect(tooltip()).toBeUndefined();
 });
 
+it("marks the location only on the chromosome copy that was clicked", () => {
+  render(<GenomeExplorer active />);
+  act(() => frame?.(0));
+  const marker = () =>
+    [...screen.getByTestId("karyotype-cursor").querySelectorAll("line")].map(
+      (line) => line.getAttribute("data-copy"),
+    );
+  expect(marker()).toEqual(["maternal"]); // one copy, never the pair
+  clickChromosome("1", "paternal", 0.5);
+  expect(marker()).toEqual(["paternal"]);
+  clickChromosome("1", "maternal", 0.25);
+  expect(marker()).toEqual(["maternal"]);
+  // In a male, Y exists only as the paternal copy, whichever copy was last chosen.
+  clickChromosome("Y", "paternal", 0.5);
+  expect(marker()).toEqual(["paternal"]);
+  fireEvent.keyDown(screen.getByRole("button", { name: "Chromosome 7" }), {
+    key: "Enter",
+  });
+  expect(marker()).toEqual(["paternal"]); // keyboard keeps the last chosen copy
+});
+
 it("draws 46,XX or 46,XY from the reported sex", () => {
   const { rerender } = render(
     <GenomeExplorer
