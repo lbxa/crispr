@@ -236,6 +236,39 @@ describe("workspace widget grids", () => {
     expect(await currentGenomeCache.restore()).toBeNull();
   });
 
+  // The workspace starts fresh (a saved genome is discarded on load), so highlights come
+  // from a completed analysis rather than from the device cache.
+  it("highlights mapped findings after analysis and clears them on removal", async () => {
+    vi.stubGlobal("fetch", mockUploadFetch(mappedReport));
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "mapped.vcf")] },
+      });
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("human-model").getAttribute("data-highlights"),
+      ).toContain("#ef4444"),
+    );
+    expect(fetch).toHaveBeenCalled();
+    // The file pane starts open and the first toggle closed it, so reopen it to remove the file.
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Remove genome" }));
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("human-model").getAttribute("data-highlights"),
+      ).toBe("[]"),
+    );
+  });
+
   it("distinguishes unavailable mappings from no findings", async () => {
     vi.stubGlobal(
       "fetch",

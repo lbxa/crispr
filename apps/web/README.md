@@ -13,7 +13,7 @@ operations and workflow policy should be added at the application boundary.
 | `app/genome-analysis/body-map.ts`                   | Supported-region validation and non-carrier red highlight policy                                   |
 | `app/file-drop-card.tsx`                            | Single-file VCF selection, size/type checks, and replacement                                       |
 | `app/genome-explorer.tsx`, `app/demo-genome.ts`     | Right-pane DNA navigation and a position-addressable synthetic genome                              |
-| `app/genome-minimap.tsx`                            | Chromosome minimap, accessible scrubbing and exact finding jumps                                   |
+| `app/karyotype/karyotype-navigator.tsx`             | Scrollable 46-chromosome karyotype: click-to-jump, pinging finding dots                            |
 | `app/genome-analysis/genome-view.ts`                | Validated BED-compatible map and bounded reference-context source                                  |
 | `app/genome-analysis/client.ts`                     | Capability-bound IBM tus transfers, pause/resume, and job polling                                  |
 | `app/genome-analysis/use-genome-analysis.ts`        | Workspace upload ownership, cancellation, and latest-file state                                    |
@@ -111,10 +111,13 @@ the frontend never opens the database or invents findings.
 
 Completed reports expose `genome_view`: versioned GRCh38, zero-based half-open
 intervals, reference/alternate alleles, tiered annotations and bounded forward
-reference contexts. The right pane uses that map for red minimap markers and
-matching 3D base highlights. Marker clicks or finding entries switch chromosome
-and jump directly; native minimap scrubbing and DNA scrolling synchronize in
-both directions. Displayed coordinates are one-based. See
+reference contexts. The right pane uses that map for pinging dots on a
+horizontally scrolling karyotype (46,XY or 46,XX from `model_profile`) and
+matching 3D base highlights. Clicking any point on a chromosome slides the helix
+there (or opens that chromosome there); dots and finding entries jump exactly.
+Heterozygous findings mark one copy and homozygous findings both, since
+`genome_view` carries no phase. A cursor on the karyotype follows DNA scrolling.
+Focused chromosomes take Enter (open), Home and End. Displayed coordinates are one-based. See
 [the coordinate and ownership contract](../../docs/genome-regions.md).
 
 A VCF is not a full DNA sequence. The scene displays backend reference context
@@ -160,6 +163,7 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 ### 2026-10-18
 
 - Cloudflare's verification tests the fresh-start cache policy: loading the workspace discards a saved genome without contacting the backend. Wait for cache initialization before asserting that state; restoring cached highlights is no longer the default behavior.
+- The karyotype navigator (`app/karyotype/`) replaces the chromosome Select, the base-pair input and the minimap scrollbar, so the 2026-10-18 notes on those controls below no longer apply; the displayed-position rule carries over to the karyotype cursor. Unwind/Rewind keeps the Hugeicons icon button but sits under the viewer heading rather than in an in-scene toolbar. The karyotype sits beneath the helix with "Chr." captions, numbers and instant hover tooltips (native SVG tooltips wait about a second).
 - Widget cards use surface contrast and soft shadows without a permanent outer border. Retain keyboard-focus, file-drop and error outlines so interaction states remain visible.
 - DNA navigation uses a compact Select popup capped at 18rem, with 24px option rows and 6px field insets. Keep its chromosome trigger and base-pair input joined at 28px high; dense spacing should preserve keyboard selection, focus and validation while the mobile viewer title clears the floating header.
 - Light mode brightens the avatar by 10% and keeps no-symptom desaturation without darkening it. The `--avatar-filter` and `--avatar-muted-brightness` tokens preserve the original material and dark-mode appearance across both routes.

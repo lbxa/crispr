@@ -98,9 +98,29 @@ try {
           `DNA scrolling did not advance; inspect ${evidenceDir}`,
         );
       }
-      await harness.type({ selector: "#genome-position", text: "200000001" });
-      await harness.click({ selector: 'button[aria-label="Go to base"]' });
-      await harness.waitForText({ text: "200,000,001" });
+      // Click the middle of chromosome 1 on the karyotype; the helix slides there.
+      await harness.click({ selector: '[data-testid="karyotype-1-maternal"]' });
+      // The readout passes through intermediate values while the helix slides, so wait for
+      // the same mid-chromosome position on two consecutive reads.
+      const middle = /\b1[12]\d,\d{3},\d{3} bp/;
+      let reached: string | undefined;
+      let previous: string | undefined;
+      for (let attempt = 0; attempt < 60; attempt++) {
+        await harness.wait({ timeoutMs: 150 });
+        const current = middle.exec(
+          (await harness.snapshot()).visibleText,
+        )?.[0];
+        if (current && current === previous) {
+          reached = current;
+          break;
+        }
+        previous = current;
+      }
+      if (!reached) {
+        throw new Error(
+          `Clicking the karyotype did not move the helix; inspect ${evidenceDir}`,
+        );
+      }
       await harness.click({
         selector: 'button[aria-label="Unwind double helix"]',
       });
@@ -108,7 +128,7 @@ try {
       await harness.wait({ timeoutMs: 1400 });
       await harness.screenshot({ name: "dna-flat-ladder", fullPage: true });
       const ladder = await harness.snapshot();
-      if (!ladder.visibleText.includes("200,000,001 bp")) {
+      if (!ladder.visibleText.includes(reached)) {
         throw new Error(
           `Unwinding lost the genome position; inspect ${evidenceDir}`,
         );
