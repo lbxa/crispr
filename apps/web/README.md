@@ -33,6 +33,7 @@ operations and workflow policy should be added at the application boundary.
 | `scripts/sync-model-assets.ts`                      | Copies the library's generated assets into Next's public directory                                 |
 | `../../libs/human-model/src/scene.ts`               | Three.js scene lifecycle, not app policy                                                           |
 | `app/genome/page.tsx`                               | Genome results route: server shell and top navigation                                              |
+| `app/chat/page.tsx`                                 | `/chat`: iframe of the static workbench (`public/workbench/`; source `prototypes/chat-workbench`)  |
 | `app/genome/genome-workspace.tsx`                   | Body-system rail, `HumanModel` highlights, panel filters, ask bar                                  |
 | `@crispr/ui/genome/*` (`libs/ui`)                   | Summary/edit-plan cards, icons, report types + demo data, styles                                   |
 
