@@ -141,17 +141,6 @@
 .ctxPam {
   color: var(--status-warning);
 }
-.raw {
-  margin: 16px 0;
-}
-.raw pre {
-  max-height: 360px;
-  padding: 12px;
-  overflow: auto;
-  background: var(--surface);
-  border-radius: 8px;
-  font-size: 12px;
-}
 .overview {
   --verdict: var(--muted);
   margin: 24px 0 16px;

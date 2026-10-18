@@ -352,12 +352,3 @@ export function AdvancedGenomics({
     </details>
   );
 }
-
-export function Raw({ value }: { value: unknown }) {
-  return (
-    <details className={styles.raw}>
-      <summary>Raw API response</summary>
-      <pre>{JSON.stringify(value, null, 2)}</pre>
-    </details>
-  );
-}

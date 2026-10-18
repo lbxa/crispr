@@ -10,7 +10,7 @@ import {
 } from "@crispr/ui/components/dialog";
 import { loadGenePlan } from "./client";
 import type { PlanResult } from "./contract";
-import { AdvancedGenomics, EditCard, OverviewPanel, Raw } from "./panels";
+import { AdvancedGenomics, EditCard, OverviewPanel } from "./panels";
 import styles from "./crispr.module.css";
 
 export interface CrisprGene {
@@ -129,7 +129,6 @@ function CrisprContent({
                 </div>
               ))}
             </article>
-            <Raw value={result.plan} />
           </AdvancedGenomics>
           <p className={styles.muted}>{result.plan.disclaimer}</p>
         </div>
