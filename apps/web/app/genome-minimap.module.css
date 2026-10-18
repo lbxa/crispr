@@ -25,7 +25,7 @@
   margin-inline: 10px;
   border-radius: 8px;
   direction: ltr;
-  cursor: pointer;
+  cursor: grab;
   touch-action: none;
   user-select: none;
 }
@@ -105,7 +105,8 @@
   border-radius: 5px;
   background: color-mix(in srgb, var(--accent) 22%, var(--background, #141918));
   transform: translateX(-50%);
-  cursor: grab;
+  /* Never intercepts the pointer: the track grabs it, so markers beneath stay clickable. */
+  pointer-events: none;
   transition:
     background-color 120ms ease,
     box-shadow 120ms ease;
@@ -117,13 +118,10 @@
   border-inline: 1px solid var(--accent);
   opacity: 0.8;
 }
-.cursor:hover,
+.map:hover .cursor,
 .map[data-dragging] .cursor {
   background: color-mix(in srgb, var(--accent) 45%, var(--background, #141918));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
-}
-.map[data-dragging] .cursor {
-  cursor: grabbing;
 }
 /* Findings the user has not looked at yet breathe until they are viewed. */
 .marker[data-unseen]::after {

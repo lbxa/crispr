@@ -6,6 +6,8 @@ import type { GenomeRegion } from "./genome-analysis/genome-view";
 import styles from "./genome-minimap.module.css";
 
 const format = new Intl.NumberFormat("en-US");
+const HANDLE_GRAB_PX = 10; // a press this close to the handle grabs it instead of jumping
+const DRAG_THRESHOLD_PX = 4; // a press on a marker only becomes a drag after this much travel
 
 export function GenomeMinimap({
   chromosome,
@@ -29,16 +31,42 @@ export function GenomeMinimap({
 }) {
   const map = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
+  // `pending` presses started on a finding marker: a click selects it, a drag scrubs instead.
+  const press = useRef<{
+    id: number;
+    x: number;
+    offset: number;
+    pending: boolean;
+  } | null>(null);
   const current = regions.filter(
     (region) => region.chromosome === chromosome.id,
   );
   const span = Math.max(1, chromosome.length - 1);
 
-  function fromPointer(event: PointerEvent) {
+  function track() {
     const rect = map.current?.getBoundingClientRect();
-    if (!rect || rect.width === 0) return position;
-    const fraction = (event.clientX - rect.left) / rect.width;
+    return rect && rect.width > 0 ? rect : null;
+  }
+
+  function atX(clientX: number) {
+    const rect = track();
+    if (!rect) return position;
+    const fraction = (clientX - rect.left) / rect.width;
     return Math.round(Math.min(1, Math.max(0, fraction)) * span);
+  }
+
+  function beginDrag(event: PointerEvent, jump: boolean) {
+    const state = press.current;
+    if (!state) return;
+    state.pending = false;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setDragging(true);
+    if (jump) onNavigate(atX(event.clientX + state.offset));
+  }
+
+  function endDrag() {
+    press.current = null;
+    setDragging(false);
   }
 
   return (
@@ -53,20 +81,35 @@ export function GenomeMinimap({
         ref={map}
         className={styles.map}
         data-dragging={dragging || undefined}
-        // Pressing the track or the handle grabs it; pressing a marker still selects that region.
+        // Pressing the track or the handle grabs it, keeping the grab point on the handle; a
+        // finding marker still selects on click but scrubs if it is dragged instead.
         onPointerDown={(event) => {
-          if (event.button !== 0 || event.target instanceof HTMLButtonElement)
-            return;
-          event.currentTarget.setPointerCapture?.(event.pointerId);
-          setDragging(true);
-          onNavigate(fromPointer(event));
+          if (event.button !== 0) return;
+          const rect = track();
+          const handleX = rect
+            ? rect.left + (displayPosition / span) * rect.width
+            : event.clientX;
+          const onHandle = Math.abs(event.clientX - handleX) <= HANDLE_GRAB_PX;
+          press.current = {
+            id: event.pointerId,
+            x: event.clientX,
+            offset: onHandle ? handleX - event.clientX : 0,
+            pending: event.target instanceof HTMLButtonElement,
+          };
+          if (!press.current.pending) beginDrag(event, !onHandle);
         }}
         onPointerMove={(event) => {
-          if (dragging) onNavigate(fromPointer(event));
+          const state = press.current;
+          if (state?.id !== event.pointerId) return;
+          if (state.pending) {
+            if (Math.abs(event.clientX - state.x) < DRAG_THRESHOLD_PX) return;
+            beginDrag(event, false);
+          }
+          onNavigate(atX(event.clientX + state.offset));
         }}
-        onPointerUp={() => setDragging(false)}
-        onPointerCancel={() => setDragging(false)}
-        onLostPointerCapture={() => setDragging(false)}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
       >
         <div className={styles.rail} aria-hidden="true" />
         {/* Keyboard and screen-reader control; pointer input is handled by the track above. */}

@@ -531,16 +531,66 @@ it("lets the slider handle be grabbed and dragged along the chromosome", () => {
   expect(scene.setPosition).toHaveBeenLastCalledWith(0, true);
 });
 
-it("leaves a finding marker as a click target rather than starting a drag", () => {
+function mockTrack(track: HTMLElement) {
+  vi.spyOn(track, "getBoundingClientRect").mockReturnValue({
+    left: 100,
+    width: 1000,
+    top: 0,
+    height: 44,
+    right: 1100,
+    bottom: 44,
+    x: 100,
+    y: 0,
+    toJSON: () => ({}),
+  });
+}
+const span = 159345972; // chromosome 7 length - 1
+const regionStart = 117559589;
+const handleX = 100 + (regionStart / span) * 1000;
+
+it("keeps the grab point when the handle itself is pressed, instead of jumping", () => {
   openTwoFindings();
   const track = screen.getByTestId("minimap-handle").parentElement!;
+  mockTrack(track);
   scene.setPosition.mockClear();
-  fireEvent.pointerDown(
-    screen.getByRole("button", { name: "Jump to CFTR at chr7:120000001" }),
-    { button: 0, pointerId: 1, clientX: 400 },
-  );
-  fireEvent.pointerMove(track, { pointerId: 1, clientX: 800 });
+  // Pressing 3px to the right of the handle's centre must not move it.
+  fireEvent.pointerDown(track, {
+    button: 0,
+    pointerId: 1,
+    clientX: handleX + 3,
+  });
   expect(scene.setPosition).not.toHaveBeenCalled();
+  fireEvent.pointerMove(track, { pointerId: 1, clientX: handleX + 103 });
+  expect(scene.setPosition).toHaveBeenLastCalledWith(
+    Math.round(((handleX + 100 - 100) / 1000) * span),
+    true,
+  );
+});
+
+it("clicks a finding marker but scrubs when it is dragged", () => {
+  openTwoFindings();
+  const track = screen.getByTestId("minimap-handle").parentElement!;
+  mockTrack(track);
+  const marker = screen.getByRole("button", {
+    name: "Jump to CFTR at chr7:120000001",
+  });
+  scene.setPosition.mockClear();
+  // A press that barely moves is still a click, so it slides to the finding.
+  fireEvent.pointerDown(marker, { button: 0, pointerId: 1, clientX: 400 });
+  fireEvent.pointerMove(track, { pointerId: 1, clientX: 402 });
+  fireEvent.pointerUp(track, { pointerId: 1 });
+  expect(scene.setPosition).not.toHaveBeenCalled();
+  fireEvent.click(marker);
+  expect(scene.glideTo).toHaveBeenLastCalledWith(120_000_000);
+  // Dragging from the same marker scrubs along the chromosome instead.
+  scene.glideTo.mockClear();
+  fireEvent.pointerDown(marker, { button: 0, pointerId: 2, clientX: 400 });
+  fireEvent.pointerMove(track, { pointerId: 2, clientX: 700 });
+  expect(scene.setPosition).toHaveBeenLastCalledWith(
+    Math.round(((700 - 100) / 1000) * span),
+    true,
+  );
+  expect(scene.glideTo).not.toHaveBeenCalled();
 });
 
 it("drags the helix with a mouse to scroll it, and leaves touch to native scrolling", () => {
