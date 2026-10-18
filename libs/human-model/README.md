@@ -12,8 +12,8 @@ bun run setup # from the repository root
 bun run dev   # Next.js is the UI driver
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Drag to orbit, scroll to zoom,
-and use arrow keys to pan. `apps/web/app/model-workspace.tsx` demonstrates the
+Open [http://localhost:3000](http://localhost:3000). Drag left or right to turn the model; zoom, panning and the vertical
+angle are fixed. `apps/web/app/model-workspace.tsx` demonstrates the
 public API with a lazy client import; no Vite server or iframe is involved.
 
 ```tsx

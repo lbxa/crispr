@@ -8,6 +8,8 @@
     "./hooks/*": "./src/hooks/*.ts",
     "./button": "./src/components/button.tsx",
     "./card": "./src/components/card.tsx",
+    "./genome/report": "./src/genome/report.ts",
+    "./genome/genome.module.css": "./src/genome/genome.module.css",
     "./*": "./src/*.tsx"
   },
   "scripts": {
@@ -28,6 +30,7 @@
     "@base-ui/react": "1.9.0",
     "class-variance-authority": "0.7.1",
     "cn": "0.5.0",
+    "@crispr/human-model": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   }

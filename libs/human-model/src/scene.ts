@@ -71,7 +71,10 @@ export class HumanModelScene {
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.06;
-    this.controls.screenSpacePanning = true;
+    // Turn-only viewer: no zoom (wheel/pinch) and no panning; the vertical
+    // angle and distance are pinned in fitCameraToObject.
+    this.controls.enableZoom = false;
+    this.controls.enablePan = false;
     this.controls.listenToKeyEvents(canvas);
     this.controls.addEventListener("change", this.invalidate);
 
