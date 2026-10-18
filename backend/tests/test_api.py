@@ -138,3 +138,21 @@ def test_concurrent_analyses_are_capped(database, monkeypatch):
     with TestClient(app) as client, cap:  # another analysis holds the only slot
         response = client.post("/genomes/1/analyze", json={"symptoms": "fever", "use_llm": False})
     assert response.status_code == 429
+
+
+def test_demo_genome_files_declare_their_sex_for_uploads(database):
+    import io
+
+    from crispr_backend.vcf import scan_vcf
+
+    with TestClient(app) as client:
+        female = client.get("/genomes/1/genome.vcf").text
+        male = client.get("/genomes/2/genome.vcf").text
+        report = client.post("/genomes/2/analyze", json={"symptoms": "", "use_llm": False}).json()
+    assert "##SAMPLE=<ID=HG00001,Sex=female>" in female.splitlines()
+    assert female.index("##SAMPLE=") < female.index("#CHROM")
+    # Uploading a served file gives the avatar and karyotype an explicit sex.
+    for text, sex in ((female, "female"), (male, "male")):
+        scanned = scan_vcf(io.BytesIO(text.encode()), relevant_loci=set())
+        assert scanned.model_profile == sex
+    assert report["genome"]["model_profile"] == "male"

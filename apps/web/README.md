@@ -165,6 +165,7 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-18
 
+- The karyotype draws 46,XX or 46,XY from the report's explicit `model_profile`; without it, it follows the avatar's default male profile so the two always agree (it no longer guesses from whether the file has chrY records).
 - Production responses carry a Content-Security-Policy (`next.config.js`): scripts and styles from this origin plus inline (Next.js bootstrap, next-themes) and `'wasm-unsafe-eval'` for the meshopt decoder; connections only to this origin and the upload backend (`CRISPR_API_URL`); no framing, plugins or foreign form targets. Add new external origins there before using them. HSTS, nosniff, frame, referrer and permissions headers apply in every phase; `X-Powered-By` is off. The dev server omits the CSP for hot reload.
 - After an upload, positions outside the backend's finding contexts show the GRCh38 reference instead of `N`. This shows reference DNA, not the person's sequence (a VCF lists only differences), so it is not fabricated patient DNA; finding contexts still take precedence and alternate alleles stay separate. The synthetic demo sequence is still never used for uploaded genomes.
 - The CRISPR popup no longer has a "Raw API response" disclosure; the plan's JSON stays out of the customer-facing UI (use the network panel or `/api/crispr/{gene}` when debugging).

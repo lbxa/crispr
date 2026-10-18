@@ -28,7 +28,7 @@ from crispr_backend.uploads.routes import upload_error_response
 from crispr_backend.uploads.service import UploadService
 from crispr_backend.uploads.settings import UploadSettings
 from crispr_backend.uploads.store import UploadError
-from crispr_backend.vcf import read_calls, read_calls_gz
+from crispr_backend.vcf import read_calls, read_calls_gz, with_sample_sex
 
 MAX_VCF_BYTES = 20 * 1024 * 1024
 MAX_REFERENCE_BASES = 16_384  # per request; the web app fetches 4,096-base blocks
@@ -174,8 +174,9 @@ def list_genomes() -> list[dict]:
 def get_genome_vcf(genome_id: int) -> Response:
     with db.session() as connection:
         genome = genome_row(connection, genome_id)
+    vcf = with_sample_sex(gzip.decompress(genome["vcf_gz"]).decode(), genome["sample_id"], genome["sex"])
     return Response(
-        gzip.decompress(genome["vcf_gz"]),
+        vcf,
         media_type="text/plain",
         headers={"Content-Disposition": f'attachment; filename="{genome["sample_id"]}-panel.vcf"'},
     )
@@ -189,7 +190,10 @@ def analyze_genome(genome_id: int, request: GenomeAnalyzeRequest, http: Request)
         genome = genome_row(connection, genome_id)
     calls = read_calls_gz(genome["vcf_gz"])
     with ACTIVE_ANALYSES:
-        return app.state.analyzer.analyze(calls, request.symptoms, genome["sex"], request.use_llm)
+        # A demo genome's sex is known metadata, so the report can name the profile explicitly.
+        return app.state.analyzer.analyze(
+            calls, request.symptoms, genome["sex"], request.use_llm, model_profile=genome["sex"]
+        )
 
 
 @app.post("/orders", status_code=202)
