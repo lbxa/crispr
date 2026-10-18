@@ -121,6 +121,20 @@ def _sample_model_profile(headers: Iterable[str], sample_id: str) -> ModelProfil
     return profile or reference_profile
 
 
+def with_sample_sex(text: str, sample_id: str, sex: str) -> str:
+    """Add `##SAMPLE=<ID=…,Sex=…>` before the column header, unless the file already has SAMPLE
+    metadata. That is the explicit sex scan_vcf reads, so uploads of demo genomes show the right
+    avatar and karyotype."""
+    lines = text.split("\n")
+    if any(line.startswith("##SAMPLE=") for line in lines):
+        return text
+    columns = next((index for index, line in enumerate(lines) if line.startswith("#CHROM")), None)
+    if columns is None:
+        return text
+    lines.insert(columns, f"##SAMPLE=<ID={sample_id},Sex={sex}>")
+    return "\n".join(lines)
+
+
 def normalize_chrom(chrom: str) -> str:
     return chrom.removeprefix("chr")
 

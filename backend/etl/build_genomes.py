@@ -112,12 +112,13 @@ def plant(connection, rng: random.Random, sex: str) -> tuple[str, list[dict], li
     return disease["omim_id"], [dict(v) for v in chosen], genotypes
 
 
-def render_vcf(sample: str, calls: list[tuple]) -> bytes:
+def render_vcf(sample: str, sex: str, calls: list[tuple]) -> bytes:
     header = [
         "##fileformat=VCFv4.2",
         "##reference=GRCh38",
         "##source=crispr-demo: 1000 Genomes 30x phased panel, panel genes only",
         '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
+        f"##SAMPLE=<ID={sample},Sex={sex}>",
         "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + sample,
     ]
     chrom_order = {str(n): n for n in range(1, 23)} | {"X": 23}
@@ -160,7 +161,7 @@ def main() -> None:
                 ]
             genome_id = connection.execute(
                 "INSERT INTO genomes (sample_id, sex, vcf_gz) VALUES (?, ?, ?)",
-                (sample, sex, render_vcf(sample, sample_calls)),
+                (sample, sex, render_vcf(sample, sex, sample_calls)),
             ).lastrowid
             connection.execute(
                 "INSERT INTO genome_truth VALUES (?, ?, ?)",

@@ -9,8 +9,8 @@
     "#hooks/*": "./hooks/*.ts"
   },
   "scripts": {
-    "dev": "bun scripts/sync-model-assets.ts && next dev",
-    "build": "bun scripts/sync-model-assets.ts && next build",
+    "dev": "bun scripts/sync-model-assets.ts && bun scripts/sync-workbench.ts && next dev",
+    "build": "bun scripts/sync-model-assets.ts && bun scripts/sync-workbench.ts && next build",
     "build:worker": "opennextjs-cloudflare build --skipNextBuild",
     "preview": "wrangler dev",
     "deploy": "opennextjs-cloudflare deploy",
@@ -22,6 +22,7 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@crispr/chat-agent": "workspace:*",
     "@crispr/human-model": "workspace:*",
     "@crispr/observability": "workspace:*",
     "@crispr/ui": "workspace:*",

@@ -1,7 +1,13 @@
 {
   "extends": ["//"],
   "tasks": {
-    "build": { "outputs": ["$TURBO_EXTENDS$", "public/models/human/**"] },
+    "build": {
+      "outputs": [
+        "$TURBO_EXTENDS$",
+        "public/models/human/**",
+        "public/workbench/**"
+      ]
+    },
     "check-types": { "dependsOn": ["build"] }
   }
 }
