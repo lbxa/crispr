@@ -33,7 +33,8 @@ operations and workflow policy should be added at the application boundary.
 | `scripts/sync-model-assets.ts`                      | Copies the library's generated assets into Next's public directory                                 |
 | `../../libs/human-model/src/scene.ts`               | Three.js scene lifecycle, not app policy                                                           |
 | `app/genome/page.tsx`                               | Genome results route: server shell and top navigation                                              |
-| `app/chat/page.tsx`                                 | `/chat`: iframe of the static workbench (`public/workbench/`; source `prototypes/chat-workbench`)  |
+| `app/chat/page.tsx`                                 | `/chat`: iframe of the workbench built by `@crispr/chat-agent` (copied to `public/workbench/`)     |
+| `app/api/chat/route.ts`, `app/api/state/route.ts`   | Chat stream and first-view state from `@crispr/chat-agent`; logs status and latency only           |
 | `app/genome/genome-workspace.tsx`                   | Body-system rail, `HumanModel` highlights, panel filters, ask bar                                  |
 | `@crispr/ui/genome/*` (`libs/ui`)                   | Summary/edit-plan cards, icons, report types + demo data, styles                                   |
 
@@ -163,6 +164,8 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-18
 
+- `/chat` is now served by `/api/chat` (streamed AI SDK UI message chunks) and `/api/state` from `@crispr/chat-agent`, superseding the iframe-only entry below. The iframe stays: the workbench's CSS and render loop are still self-contained. Its page is built by the package (`bun run --cwd libs/chat-agent build`) and copied into `public/workbench/` by `dev`/`build` through `scripts/sync-workbench.ts`; the generated file is ignored rather than committed. When `/api/chat` is unreachable the page answers with the in-page engine and labels the turn "demo answer: backend unavailable"; a 429 or 400 shows the server's message instead. The chat route logs status, latency and error class only, never question text (questions may describe symptoms).
+- Real variant data for `/chat` comes from an offline ClinVar import (`libs/chat-agent/README.md`). Without it the page says "Real data unavailable" and runs on the labelled seed graph. On Cloudflare Workers the import file is not readable at runtime yet, so a deployed `/chat` shows the seed fallback until the dataset is bundled.
 - The CRISPR popup no longer has a "Raw API response" disclosure; the plan's JSON stays out of the customer-facing UI (use the network panel or `/api/crispr/{gene}` when debugging).
 - `/chat` embeds the static workbench (`public/workbench/index.html`) in a same-origin iframe instead of porting it to React: its CSS and rendering loop are self-contained and would collide with app styles, and the page is still a prototype on an in-page demo engine over illustrative data, not connected to the backend. The iframe is granted `allow="microphone"` for voice input. Rebuild from `prototypes/chat-workbench` (`npm run build:web`) and copy `web/index.html` over the public file; the prototype is deliberately not a Bun workspace so it stays out of turbo and `bun.lock`.
 - Keep Wrangler's `keep_names` disabled: name-preservation helpers inside `next-themes` functions escape into its serialized inline script and fail with `__name is not defined`. Verify theme initialization in the Workers preview as well as Next.js.
