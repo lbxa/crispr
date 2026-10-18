@@ -391,6 +391,56 @@ describe("workspace widget grids", () => {
     ).toBe("true");
   });
 
+  it("dims the avatar and says why once a genome yields no predicted symptoms", async () => {
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    const stage = screen.getByRole("region", { name: "3D anatomy workspace" });
+    // Nothing has been analyzed yet, so there is nothing to say about symptoms.
+    expect(stage.hasAttribute("data-phenotype")).toBe(false);
+    expect(screen.queryByText("No phenotypic symptoms predicted")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "sample.vcf")] },
+      });
+    });
+    expect(stage.getAttribute("data-phenotype")).toBe("none");
+    expect(
+      within(stage).getByText("No phenotypic symptoms predicted"),
+    ).toBeTruthy();
+  });
+
+  it("leaves the avatar alone when symptoms are predicted", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockUploadFetch({
+        ...report,
+        predicted_symptoms: [{ id: "HP:0001945", name: "Fever" }],
+      }),
+    );
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "sample.vcf")] },
+      });
+    });
+    expect(screen.getByText(report.summary.text)).toBeTruthy();
+    expect(
+      screen
+        .getByRole("region", { name: "3D anatomy workspace" })
+        .hasAttribute("data-phenotype"),
+    ).toBe(false);
+    expect(screen.queryByText("No phenotypic symptoms predicted")).toBeNull();
+  });
+
   it("shows an analysis error and retries the same file without opening another chooser", async () => {
     const fetch = mockUploadFetch();
     fetch.mockRejectedValueOnce(new TypeError("offline"));

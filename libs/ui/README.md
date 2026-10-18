@@ -1,7 +1,7 @@
 # Crispr UI
 
 Shared shadcn/ui primitives live in `src/components`, exported as
-`@crispr/ui/components/<name>`. `button` and `card` also retain their shorter
+`@crispr/ui/components/<name>`. `dialog` is a Base UI modal (focus trap, Escape, backdrop) used by the CRISPR popup. `button` and `card` also retain their shorter
 package import paths. App-specific widgets and file selection belong in
 `apps/web`, not this library.
 

@@ -163,6 +163,8 @@ def plan_edit(
     plan = _plan_edit(region_sequence, region_start, pos, ref, alt, inheritance, mechanism, max_guides)
     if scorer is None:
         return plan
+    if not plan.guides:
+        return replace(plan, advisability=assess([]))
     contexts = [g.context for g in plan.guides if g.context]
     predictions = scorer(contexts) if contexts else None
     if predictions is None:

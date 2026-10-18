@@ -248,3 +248,32 @@ def test_report_and_gene_plan_carry_an_overview(database, monkeypatch):
     ].startswith("MEFV")
     assert carrier["overview"]["verdict"] == "no_edit"
     assert gene["overview"]["score"] == max(e["advisability"]["score"] for e in gene["edits"])
+
+
+def test_overview_says_so_when_no_guide_can_be_designed():
+    from crispr_backend.analysis.advisability import assess, overview
+
+    none = overview([("F9", {**_edit(None, "x"), "guides": []}), ("F9", {**_edit(None, "y"), "guides": []})])
+    assert none["verdict"] == "no_guide" and none["score"] is None and none["edits_considered"] == 2
+    assert "guide" in none["headline"]
+    # One variant with a guide is enough to give a real answer.
+    mixed = overview([("F9", {**_edit(None, "x"), "guides": []}), ("F9", _edit(55.0, "y"))])
+    assert mixed["verdict"] == "recommended" and mixed["target"] == "y"
+    # An edit that carries guides but no score is a scoring problem, not a design problem.
+    assert overview([("F9", {**_edit(None), "guides": [{"spacer": "A"}]})])["verdict"] == "unavailable"
+    assert assess([]).label == "No suitable CRISPR guide found"
+
+
+def test_plan_without_guides_is_flagged_even_with_a_scorer():
+    # 20 bases cannot hold a 20-nt protospacer plus PAM, so no guide can be designed.
+    plan = plan_edit(
+        "ACGTACGTACGTACGTACGT",
+        1000,
+        1010,
+        "G",
+        "T",
+        Inheritance.AUTOSOMAL_RECESSIVE,
+        Mechanism.LOSS_OF_FUNCTION,
+        scorer=fake_predictions,
+    )
+    assert plan.guides == [] and plan.advisability and plan.advisability.label == "No suitable CRISPR guide found"

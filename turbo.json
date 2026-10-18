@@ -4,6 +4,7 @@
   "globalPassThroughEnv": [
     "ENVIRONMENT",
     "CRISPR_API_URL",
+    "CRISPR_PLAN_API_URL",
     "PORT",
     "HARNESS_PORT",
     "NEXT_RUNTIME",

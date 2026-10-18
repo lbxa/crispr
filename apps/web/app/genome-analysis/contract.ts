@@ -34,6 +34,11 @@ export const genomeReportSchema = z.object({
     }),
   ),
   disclaimer: z.string().min(1),
+  // Symptoms the backend predicts from the genome. The backend does not send any yet; an absent or
+  // empty list means none were predicted.
+  predicted_symptoms: z
+    .array(z.object({ id: z.string().min(1), name: z.string().min(1) }))
+    .optional(),
 });
 
 export type GenomeReport = z.infer<typeof genomeReportSchema>;

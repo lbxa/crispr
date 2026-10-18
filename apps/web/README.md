@@ -23,7 +23,9 @@ operations and workflow policy should be added at the application boundary.
 | `app/api/analyze/route.ts`                      | Compatibility small-file multipart route and safe request telemetry   |
 | `../../libs/widget-grid/README.md`              | Grid layout, reordering, widget sizing, and interaction contracts     |
 | `app/page.module.css`, `app/globals.css`        | App layout and styling                                                |
-| `app/advisability-test/`                        | Integration test page for the backend's CRISPRon advisability score   |
+| `app/crispr/crispr-dialog.tsx`, `panels.tsx` | The CRISPR popup: gene choice, plain-language verdict, collapsed Advanced genomics |
+| `app/crispr/contract.ts`, `backend.ts`, `client.ts` | Validated CRISPR plan contract, server-only adapter for `GET /genes/{gene}/crispr`, browser client |
+| `app/api/crispr/[gene]/route.ts` | Uncached server route the popup calls; maps backend failures to statuses |
 | `app/layout.tsx`                                | Fonts and page metadata                                               |
 | `instrumentation.ts`                            | Node server observability                                             |
 | `wrangler.jsonc`, `open-next.config.ts`         | Cloudflare Worker deployment, bindings, and adapter settings          |
@@ -177,3 +179,6 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 - Next.js is the primary UI driver; `HumanModel` is a lazily loaded library component so page delivery and future research workflows are independent of WebGL startup.
 - React controls own profile and highlight selections; `libs/human-model` owns scene mechanics. This keeps product features out of the GPU lifecycle and gives agents one place to find each behavior.
 - Models are copied from the library's hashed build manifest into public assets, allowing static delivery and durable caching without runtime filesystem routes or duplicated source assets.
+- The floating label beside the helix names the disease zone once it is within `ZONE_NEAR_BASES` of the focus line, positioned from `BASE_PIXELS` per base so it tracks the zone as it scrolls past. Zones with a likely or possible finding carry a CRISPR button that opens the popup on that gene; carriers get the label only, since a carrier is not an editing target. The popup's gene list is the genome's own identified genes, so nothing else needs choosing.
+- CRISPR plans come through `/api/crispr/[gene]` and are projected by `crispr/contract.ts`, so repair-template sequences stay at the backend boundary. `CRISPR_PLAN_API_URL` points plans at a different backend than genome analysis (it defaults to `CRISPR_API_URL`), for example while the CRISPRon scoring service only runs on a developer machine.
+- After a genome finishes analysis, the avatar dims and a rounded notice reads "No phenotypic symptoms predicted" unless the report's optional `predicted_symptoms` has entries. The backend does not send that field yet, so today every analyzed genome shows the notice; it clears itself once the backend starts sending predictions.

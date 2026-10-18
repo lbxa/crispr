@@ -52,6 +52,10 @@ def band_for(score: float) -> str:
 
 def assess(guides: "list[Guide] | None", skipped: int = 0, strategy: str | None = None) -> Advisability:
     scored = [g for g in guides or [] if g.efficiency is not None]
+    if guides == []:
+        return Advisability(
+            None, "unavailable", "No suitable CRISPR guide found", None, 0, skipped, BASIS, threshold(), None
+        )
     if not scored:
         return Advisability(
             None, "unavailable", "Efficiency prediction unavailable", None, 0, skipped, BASIS, threshold(), None
@@ -73,12 +77,22 @@ def overview(edits: "list[tuple[str, dict]]") -> dict:
     """One verdict across edit plans, from the best score against the threshold.
 
     `edits` are (gene, edit) pairs, where an edit is a plan dict carrying an `advisability` entry.
-    verdict: recommended | not_recommended | unavailable (no score) | no_edit (nothing to edit).
+    verdict: recommended | not_recommended | unavailable (no score) | no_guide (no SpCas9 target near
+    any variant) | no_edit (nothing to edit).
     """
     cutoff = threshold()
     scored = [(g, e) for g, e in edits if e.get("advisability") and e["advisability"]["score"] is not None]
     if not edits:
         return _overview("no_edit", None, cutoff, None, "No CRISPR edit is proposed.", 0)
+    if all(e.get("guides") == [] for _, e in edits):
+        return _overview(
+            "no_guide",
+            None,
+            cutoff,
+            None,
+            "No standard SpCas9 guide could be designed close enough to the variant.",
+            len(edits),
+        )
     if not scored:
         return _overview("unavailable", None, cutoff, None, "CRISPR efficiency could not be predicted.", len(edits))
     gene, best = max(scored, key=lambda pair: pair[1]["advisability"]["score"])

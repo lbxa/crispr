@@ -76,6 +76,10 @@ export function ModelWorkspace({
     analysis.status === "complete"
       ? (analysis.report.genome.model_profile ?? "male")
       : "male";
+  // Once a genome has been analyzed, the avatar dims when no symptoms are predicted from it.
+  const noPredictedSymptoms =
+    analysis.status === "complete" &&
+    (analysis.report.predicted_symptoms?.length ?? 0) === 0;
   const sharedWorkspace = useSyncExternalStore(
     subscribeToWorkspaceWidth,
     getSharedWorkspace,
@@ -193,12 +197,21 @@ export function ModelWorkspace({
           </button>
         ))}
       </div>
-      <section className={styles.stage} aria-label="3D anatomy workspace">
+      <section
+        className={styles.stage}
+        aria-label="3D anatomy workspace"
+        data-phenotype={noPredictedSymptoms ? "none" : undefined}
+      >
         <HumanModel
           profile={profile}
           modelUrl={modelUrls[profile]}
           highlights={highlights}
         />
+        {noPredictedSymptoms && (
+          <p className={styles.phenotypeNotice} role="status">
+            No phenotypic symptoms predicted
+          </p>
+        )}
       </section>
       {PANES.map((side) => (
         <section

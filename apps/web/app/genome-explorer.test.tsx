@@ -5,14 +5,19 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { DnaHelix, type DnaHelixProps } from "@crispr/human-model/dna";
 import type { GenomeSequenceSource } from "@crispr/human-model/dna-sequence";
 import { DEMO_CHROMOSOMES, DEMO_GENOME } from "./demo-genome";
 import { GenomeExplorer } from "./genome-explorer";
+import { loadGenePlan } from "./crispr/client";
+import { plan } from "./crispr/plan.fixture";
 import { genomeView } from "./genome-analysis/genome-view.fixture";
 import { report } from "./genome-analysis/report.fixture";
+
+vi.mock("./crispr/client", () => ({ loadGenePlan: vi.fn() }));
 
 vi.mock("next/dynamic", () => ({
   default: () =>
@@ -673,4 +678,81 @@ it("slides to an animated navigation without letting the scroll echo cancel it",
   viewport.scrollTop += 100; // a real user scroll afterwards is honoured
   fireEvent.scroll(viewport);
   expect(changed).toHaveBeenLastCalledWith(90_000_005);
+});
+
+// CFTR is only a carrier finding; MEFV is a possible disease and so an editing target.
+const mappedReport = {
+  ...report,
+  genome_view: genomeView,
+  findings: [
+    { tier: "carrier" as const, gene: "CFTR", disease: "Cystic fibrosis" },
+    {
+      tier: "possible" as const,
+      gene: "MEFV",
+      disease: "Familial Mediterranean fever",
+    },
+  ],
+};
+
+function openMapped() {
+  render(<GenomeExplorer active hasGenome report={mappedReport} />);
+  act(() => frame?.(0));
+}
+
+it("floats the disease name beside the helix only while a zone is close to the focus line", () => {
+  openMapped();
+  // The explorer opens on CFTR, a carrier finding: named, but not an editing target.
+  const tag = screen.getByTestId("zone-tag");
+  expect(tag.textContent).toContain("CFTR");
+  expect(tag.textContent).toContain("Cystic fibrosis");
+  expect(tag.textContent).toContain("Carrier · not an editing target");
+  expect(within(tag).queryByRole("button", { name: "CRISPR" })).toBeNull();
+  expect(tag.style.getPropertyValue("--zone-offset")).toBe("0px");
+
+  // Scrolling away removes it, and scrolling back brings it back where the zone now sits.
+  const slider = screen.getByRole("slider");
+  fireEvent.change(slider, { target: { value: "100000000" } });
+  expect(screen.queryByTestId("zone-tag")).toBeNull();
+  fireEvent.change(slider, { target: { value: "117559584" } }); // 5 bases before the zone
+  expect(
+    screen.getByTestId("zone-tag").style.getPropertyValue("--zone-offset"),
+  ).toBe("100px");
+  fireEvent.change(slider, { target: { value: "117559560" } }); // 29 bases away
+  expect(screen.queryByTestId("zone-tag")).toBeNull();
+});
+
+it("offers CRISPR beside an editing target and opens the popup on that gene", async () => {
+  openMapped();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Inspect MEFV at chr16:3293406" }),
+  );
+  act(() => frame?.(0));
+  const tag = screen.getByTestId("zone-tag");
+  expect(tag.textContent).toContain("Familial Mediterranean fever");
+  vi.mocked(loadGenePlan).mockResolvedValue({ ok: true, plan });
+
+  fireEvent.click(within(tag).getByRole("button", { name: "CRISPR" }));
+  const dialog = await screen.findByRole("dialog");
+  expect(
+    (
+      within(dialog).getByRole("combobox", {
+        name: "Gene",
+      }) as HTMLSelectElement
+    ).value,
+  ).toBe("MEFV");
+  // Only genes with a likely or possible finding can be chosen; the carrier gene cannot.
+  expect(
+    within(dialog)
+      .getAllByRole("option")
+      .map((option) => option.textContent),
+  ).toEqual(["MEFV · Familial Mediterranean fever"]);
+  await waitFor(() => expect(loadGenePlan).toHaveBeenCalled());
+  expect(vi.mocked(loadGenePlan).mock.calls[0]![0]).toBe("MEFV");
+});
+
+it("shows no tag or CRISPR button in the demo genome", () => {
+  render(<GenomeExplorer active />);
+  act(() => frame?.(0));
+  expect(screen.queryByTestId("zone-tag")).toBeNull();
+  expect(screen.queryByRole("button", { name: "CRISPR" })).toBeNull();
 });

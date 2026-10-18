@@ -26,6 +26,37 @@
     transform 760ms var(--workspace-ease),
     visibility 0s var(--stage-hide-delay, 0s);
 }
+/* No symptoms predicted for the analyzed genome: the avatar recedes a little. */
+.stage > :not(.phenotypeNotice) {
+  transition: filter 700ms ease;
+}
+.stage[data-phenotype="none"] > :not(.phenotypeNotice) {
+  filter: grayscale(0.85) brightness(0.7);
+}
+.phenotypeNotice {
+  position: absolute;
+  inset-block-end: clamp(48px, 11svh, 120px);
+  inset-inline: 0;
+  inline-size: fit-content;
+  max-inline-size: calc(100% - 48px);
+  margin: 0 auto;
+  padding: 10px 20px;
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+  animation: phenotype-notice-in 520ms var(--workspace-ease) 250ms backwards;
+}
+@keyframes phenotype-notice-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
 .workspace[data-pane="left"] {
   --stage-offset: calc((var(--left-pane-width) + var(--pane-inset)) / 2);
 }
@@ -326,6 +357,11 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .stage > :not(.phenotypeNotice),
+  .phenotypeNotice {
+    transition: none;
+    animation: none;
+  }
   .stage,
   .pane,
   .paneToggle,

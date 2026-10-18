@@ -233,7 +233,7 @@ with `CRISPRON_DIR=backend/data/crispron python -m scoring_service.server`. On t
 set it reproduces the published predictions to within 0.005. Then run the API with `CRISPRON_URL=http://127.0.0.1:8001`.
 
 Reports (`overview`) and gene plans carry one verdict: the best advisability score against a threshold
-(`recommended`, `not_recommended`, `unavailable` or `no_edit`). The threshold defaults to 50 and is set with
+(`recommended`, `not_recommended`, `unavailable`, `no_guide` when no SpCas9 target lies near any variant, or `no_edit`). The threshold defaults to 50 and is set with
 `CRISPR_ADVISE_THRESHOLD`; it is provisional until real gene scores have been reviewed.
 
 To try it locally without TensorFlow or the model files, run `.venv/bin/python -m scripts.dev_stack`:

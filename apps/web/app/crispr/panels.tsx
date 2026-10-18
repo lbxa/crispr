@@ -1,27 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import styles from "./advisability-test.module.css";
-import type {
-  Advisability,
-  Edit,
-  Energy,
-  GeneInfo,
-  GenePlan,
-  GenomeInfo,
-  Guide,
-  Overview,
-  Report,
-} from "./types";
-
-const SAMPLE_SYMPTOMS = "recurrent fever, abdominal pain";
-
-async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  if (!response.ok)
-    throw new Error(`${response.status} ${response.statusText}`);
-  return (await response.json()) as T;
-}
+import styles from "./crispr.module.css";
+import type { Advisability, Edit, Energy, Guide, Overview } from "./contract";
 
 const ENERGY_TERMS: [keyof Energy, string, string][] = [
   [
@@ -190,7 +171,7 @@ function GuideRow({ guide, best }: { guide: Guide; best: boolean }) {
   );
 }
 
-function EditCard({ edit }: { edit: Edit }) {
+export function EditCard({ edit }: { edit: Edit }) {
   return (
     <section className={styles.edit}>
       <h4>{edit.variant}</h4>
@@ -199,27 +180,34 @@ function EditCard({ edit }: { edit: Edit }) {
       {edit.advisability && (
         <p className={styles.basis}>{edit.advisability.basis}</p>
       )}
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Spacer</th>
-            <th>PAM</th>
-            <th>Strand</th>
-            <th>Cut dist.</th>
-            <th>Rule score</th>
-            <th>CRISPRon</th>
-          </tr>
-        </thead>
-        <tbody>
-          {edit.guides.map((guide) => (
-            <GuideRow
-              key={`${guide.strand}${guide.cut_position}${guide.spacer}`}
-              guide={guide}
-              best={guide.spacer === edit.advisability?.best_guide}
-            />
-          ))}
-        </tbody>
-      </table>
+      {edit.guides.length === 0 ? (
+        <p className={styles.muted}>
+          No SpCas9 guide could be designed within cutting distance of this
+          variant. {edit.alternative}
+        </p>
+      ) : (
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Spacer</th>
+              <th>PAM</th>
+              <th>Strand</th>
+              <th>Cut dist.</th>
+              <th>Rule score</th>
+              <th>CRISPRon</th>
+            </tr>
+          </thead>
+          <tbody>
+            {edit.guides.map((guide) => (
+              <GuideRow
+                key={`${guide.strand}${guide.cut_position}${guide.spacer}`}
+                guide={guide}
+                best={guide.spacer === edit.advisability?.best_guide}
+              />
+            ))}
+          </tbody>
+        </table>
+      )}
     </section>
   );
 }
@@ -228,6 +216,7 @@ const VERDICT_TITLE: Record<Overview["verdict"], string> = {
   recommended: "Gene editing looks promising",
   not_recommended: "Gene editing looks unlikely to work well",
   unavailable: "We couldn't estimate this",
+  no_guide: "No suitable edit site found",
   no_edit: "No gene edit suggested",
 };
 
@@ -238,6 +227,8 @@ const VERDICT_PLAIN: Record<Overview["verdict"], string> = {
     "Based on this analysis, CRISPR gene editing is unlikely to work well for this condition. Other treatments may be a better fit.",
   unavailable:
     "We couldn't predict how well gene editing would work for this result.",
+  no_guide:
+    "No standard CRISPR guide could be designed close enough to this variant. Other editing approaches may still be possible.",
   no_edit: "This result doesn't point to a gene edit.",
 };
 
@@ -249,7 +240,9 @@ const FINAL_HUE: Partial<Record<Overview["verdict"], number>> = {
 };
 
 function prefersReducedMotion() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return (
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+  );
 }
 
 /** Eases from 0 up to `target`, or jumps straight there when the user prefers reduced motion. */
@@ -271,7 +264,7 @@ function useFillProgress(target: number) {
   return value;
 }
 
-function OverviewPanel({
+export function OverviewPanel({
   overview,
   subject,
 }: {
@@ -331,7 +324,7 @@ function OverviewPanel({
 }
 
 /** Everything a genomics specialist would want; collapsed so the consumer view stays simple. */
-function AdvancedGenomics({
+export function AdvancedGenomics({
   overview,
   children,
 }: {
@@ -360,205 +353,7 @@ function AdvancedGenomics({
   );
 }
 
-type Result =
-  { kind: "genome"; report: Report } | { kind: "gene"; plan: GenePlan };
-
-export function AdvisabilityTest({ defaultApi }: { defaultApi: string }) {
-  const [api, setApi] = useState(defaultApi);
-  const [genomes, setGenomes] = useState<GenomeInfo[]>([]);
-  const [genes, setGenes] = useState<GeneInfo[]>([]);
-  const [genomeId, setGenomeId] = useState<number | null>(null);
-  const [gene, setGene] = useState("");
-  const [symptoms, setSymptoms] = useState(SAMPLE_SYMPTOMS);
-  const [result, setResult] = useState<Result | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      getJson<GenomeInfo[]>(`${api}/genomes`),
-      getJson<GeneInfo[]>(`${api}/genes`).catch(() => []),
-    ])
-      .then(([genomeList, geneList]) => {
-        if (cancelled) return;
-        setGenomes(genomeList);
-        setGenes(geneList);
-        setGenomeId((current) => current ?? genomeList[0]?.id ?? null);
-        setGene((current) => current || (geneList[0]?.gene ?? ""));
-        setError(null);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled)
-          setError(`Cannot reach the API at ${api}: ${reason.message}`);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [api]);
-
-  async function run(task: () => Promise<Result>) {
-    setBusy(true);
-    setResult(null);
-    try {
-      setResult(await task());
-      setError(null);
-    } catch (reason) {
-      setError(`Request failed: ${(reason as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const analyzeGenome = () =>
-    run(async () => ({
-      kind: "genome",
-      report: await getJson<Report>(`${api}/genomes/${genomeId}/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symptoms, use_llm: false }),
-      }),
-    }));
-
-  const scoreGene = () =>
-    run(async () => ({
-      kind: "gene",
-      plan: await getJson<GenePlan>(
-        `${api}/genes/${encodeURIComponent(gene.trim())}/crispr`,
-      ),
-    }));
-
-  return (
-    <div className={styles.content}>
-      <div className={styles.form}>
-        <label className={styles.wide}>
-          API
-          <input
-            value={api}
-            onChange={(event) => setApi(event.target.value.replace(/\/$/, ""))}
-          />
-        </label>
-        <fieldset className={styles.group}>
-          <legend>From a genome</legend>
-          <label>
-            Genome
-            <select
-              value={genomeId ?? ""}
-              onChange={(event) => setGenomeId(Number(event.target.value))}
-            >
-              {genomes.map((genome) => (
-                <option key={genome.id} value={genome.id}>
-                  #{genome.id} · {genome.sample_id} · {genome.sex}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Symptoms
-            <textarea
-              rows={2}
-              value={symptoms}
-              onChange={(event) => setSymptoms(event.target.value)}
-            />
-          </label>
-          <button onClick={analyzeGenome} disabled={busy || genomeId === null}>
-            {busy ? "Working…" : "Analyze genome"}
-          </button>
-        </fieldset>
-        <fieldset className={styles.group}>
-          <legend>By gene name</legend>
-          <label>
-            Gene
-            <input
-              list="genes"
-              value={gene}
-              onChange={(event) => setGene(event.target.value)}
-              placeholder="e.g. MEFV"
-            />
-            <datalist id="genes">
-              {genes.map((info) => (
-                <option key={info.gene} value={info.gene}>
-                  {info.disease}
-                </option>
-              ))}
-            </datalist>
-          </label>
-          <p className={styles.muted}>
-            {genes.find((info) => info.gene === gene.trim().toUpperCase())
-              ?.disease ?? "Pick or type a gene"}
-          </p>
-          <button onClick={scoreGene} disabled={busy || gene.trim() === ""}>
-            {busy ? "Working…" : "Score gene"}
-          </button>
-        </fieldset>
-      </div>
-
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
-
-      {result?.kind === "genome" && (
-        <div data-testid="report">
-          <OverviewPanel
-            overview={result.report.overview}
-            subject={result.report.conclusion.label}
-          />
-          <p className={styles.muted}>{result.report.summary.text}</p>
-          <AdvancedGenomics overview={result.report.overview}>
-            {result.report.findings.map((finding) => (
-              <article
-                key={`${finding.gene}${finding.disease}`}
-                className={styles.finding}
-              >
-                <h3>
-                  {finding.disease}{" "}
-                  <span className={styles.muted}>
-                    ({finding.gene}) · {finding.tier}
-                  </span>
-                </h3>
-                {finding.crispr.length === 0 && (
-                  <p className={styles.muted}>No CRISPR edit proposed.</p>
-                )}
-                {finding.crispr.map((edit) => (
-                  <EditCard key={edit.variation_id} edit={edit} />
-                ))}
-              </article>
-            ))}
-            <Raw value={result.report} />
-          </AdvancedGenomics>
-          <p className={styles.muted}>{result.report.disclaimer}</p>
-        </div>
-      )}
-
-      {result?.kind === "gene" && (
-        <div data-testid="gene-plan">
-          <OverviewPanel
-            overview={result.plan.overview}
-            subject={`Gene ${result.plan.gene}`}
-          />
-          <AdvancedGenomics overview={result.plan.overview}>
-            <article className={styles.finding}>
-              {result.plan.edits.map((edit) => (
-                <div key={edit.variation_id}>
-                  {edit.disease && (
-                    <p className={styles.muted}>{edit.disease}</p>
-                  )}
-                  <EditCard edit={edit} />
-                </div>
-              ))}
-            </article>
-            <Raw value={result.plan} />
-          </AdvancedGenomics>
-          <p className={styles.muted}>{result.plan.disclaimer}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Raw({ value }: { value: unknown }) {
+export function Raw({ value }: { value: unknown }) {
   return (
     <details className={styles.raw}>
       <summary>Raw API response</summary>

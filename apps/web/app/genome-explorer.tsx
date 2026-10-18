@@ -3,12 +3,14 @@
 import dynamic from "next/dynamic";
 import { useMemo, useState, type CSSProperties } from "react";
 import {
+  BASE_PIXELS,
   DNA_BASES,
   DNA_FINDING_COLOR,
   clampGenomePosition,
   type DnaViewMode,
 } from "@crispr/human-model/dna-sequence";
 import { DEMO_CHROMOSOMES, DEMO_GENOME } from "./demo-genome";
+import { CrisprDialog, type CrisprGene } from "./crispr/crispr-dialog";
 import { GenomeMinimap } from "./genome-minimap";
 import type { GenomeReport } from "./genome-analysis/contract";
 import {
@@ -30,6 +32,9 @@ const DnaHelix = dynamic(
   },
 );
 const format = new Intl.NumberFormat("en-US");
+// A disease zone gets its floating label once it is this close to the focus line (about the
+// visible half of the helix, at BASE_PIXELS per base).
+const ZONE_NEAR_BASES = 8;
 
 export function GenomeExplorer({
   active,
@@ -57,6 +62,7 @@ export function GenomeExplorer({
       key={report ? "result" : "demo"}
       active={active}
       view={report?.genome_view}
+      findings={report?.findings}
     />
   );
 }
@@ -64,9 +70,11 @@ export function GenomeExplorer({
 function GenomeExplorerContent({
   active,
   view,
+  findings,
 }: {
   active: boolean;
   view?: GenomeView;
+  findings?: GenomeReport["findings"];
 }) {
   const chromosomes = view?.chromosomes ?? DEMO_CHROMOSOMES;
   const regions = view?.regions ?? [];
@@ -87,6 +95,15 @@ function GenomeExplorerContent({
   const shown = glide ?? position;
   // Findings the user has not looked at pulse until their region has been in view.
   const [viewed, setViewed] = useState<ReadonlySet<string>>(() => new Set());
+  const [crisprGene, setCrisprGene] = useState<string | null>(null);
+  // Carriers are not candidates for editing, so only genes with a likely or possible finding.
+  const crisprGenes = useMemo(() => {
+    const byGene = new Map<string, CrisprGene>();
+    for (const { gene, disease, tier } of findings ?? [])
+      if (tier !== "carrier" && !byGene.has(gene))
+        byGene.set(gene, { gene, disease });
+    return [...byGene.values()];
+  }, [findings]);
   const [selectedId, setSelectedId] = useState<string | null>(
     first?.id ?? null,
   );
@@ -111,6 +128,23 @@ function GenomeExplorerContent({
     : [];
   if (inView.length > 0)
     setViewed(new Set([...viewed, ...inView.map((region) => region.id)]));
+  // The finding nearest the focus line, once it is close enough to be on screen.
+  const zone = highlights
+    .map((region) => ({
+      region,
+      distance:
+        shown < region.start
+          ? region.start - shown
+          : shown >= region.end
+            ? shown - region.end + 1
+            : 0,
+    }))
+    .filter(({ distance }) => distance <= ZONE_NEAR_BASES)
+    .sort((a, b) => a.distance - b.distance)[0]?.region;
+  const zoneCrispr = zone?.annotations.find(
+    ({ tier, gene }) =>
+      tier !== "carrier" && crisprGenes.some((item) => item.gene === gene),
+  );
   const unseen = useMemo(
     () =>
       new Set(
@@ -271,6 +305,47 @@ function GenomeExplorerContent({
                 onPositionChange={setPosition}
                 onGlide={setGlide}
               />
+              {zone && (
+                <div
+                  key={zone.id}
+                  className={styles.zoneTag}
+                  role="group"
+                  aria-label="Disease zone"
+                  data-testid="zone-tag"
+                  style={
+                    {
+                      // Where the zone sits relative to the focus line; the stylesheet clamps it.
+                      "--zone-offset": `${(zone.start - shown) * BASE_PIXELS}px`,
+                    } as CSSProperties
+                  }
+                >
+                  <strong>
+                    {[
+                      ...new Set(zone.annotations.map(({ gene }) => gene)),
+                    ].join(" / ")}
+                  </strong>
+                  <span>
+                    {[
+                      ...new Set(
+                        zone.annotations.map(({ disease }) => disease),
+                      ),
+                    ].join("; ")}
+                  </span>
+                  {!zoneCrispr &&
+                    zone.annotations.every((a) => a.tier === "carrier") && (
+                      <em>Carrier · not an editing target</em>
+                    )}
+                  {zoneCrispr && (
+                    <button
+                      type="button"
+                      className={styles.zoneAction}
+                      onClick={() => setCrisprGene(zoneCrispr.gene)}
+                    >
+                      CRISPR
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <footer className={styles.footer}>
               <div className={styles.location}>
@@ -388,6 +463,14 @@ function GenomeExplorerContent({
           )}
         </div>
       </div>
+      <CrisprDialog
+        open={crisprGene !== null}
+        onOpenChange={(open) => {
+          if (!open) setCrisprGene(null);
+        }}
+        genes={crisprGenes}
+        initialGene={crisprGene ?? crisprGenes[0]?.gene ?? ""}
+      />
     </section>
   );
 }
