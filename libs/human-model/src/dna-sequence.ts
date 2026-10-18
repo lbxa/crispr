@@ -17,6 +17,8 @@ export interface GenomeSequenceSource {
 export interface DnaInterval {
   readonly start: number;
   readonly end: number;
+  /** Draw attention to a finding the user has not looked at yet. Still when motion is reduced. */
+  readonly pulse?: boolean;
 }
 
 export const DNA_FINDING_COLOR = "#f48388";

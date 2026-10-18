@@ -14,6 +14,24 @@ const RADIUS = 2.05;
 const TUBE_RADIUS = 0.036;
 const TURN = (Math.PI * 2) / 10.5;
 const SEGMENTS = 5;
+// Unseen findings breathe about once a second; rungs swell and brighten toward white.
+const PULSE_HZ = 0.9;
+const PULSE_SWELL = 1.6;
+const PULSE_BRIGHTEN = 0.55;
+const GLIDE_MIN_MS = 450;
+const GLIDE_MAX_MS = 1400;
+
+/** Long jumps take longer but never more than GLIDE_MAX_MS; the helix simply streams past faster. */
+export function glideDuration(distance: number) {
+  return Math.min(
+    GLIDE_MAX_MS,
+    GLIDE_MIN_MS + 150 * Math.log10(1 + Math.abs(distance)),
+  );
+}
+
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
 
 type DnaRenderer = Pick<
   THREE.WebGLRenderer,
@@ -77,6 +95,12 @@ export class DnaScene {
   private lost = false;
   private sequence: SequenceWindow | undefined;
   private highlights: readonly DnaInterval[] = [];
+  private glide:
+    { from: number; to: number; start?: number; duration: number } | undefined;
+  private readonly white = new THREE.Color("#ffffff");
+
+  /** Reports the animated position while gliding, then null once it settles or is interrupted. */
+  onGlide: ((position: number | null) => void) | undefined;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -114,7 +138,30 @@ export class DnaScene {
     this.resize();
   }
 
+  /** Slides to a position over a fixed time; jumps straight there when motion is reduced. */
+  glideTo(position: number) {
+    const distance = Math.abs(position - this.position);
+    if (this.motion.matches || distance < 0.5) {
+      this.setPosition(position, true);
+      return;
+    }
+    this.target = position;
+    this.glide = {
+      from: this.position,
+      to: position,
+      duration: glideDuration(distance),
+    };
+    this.invalidate();
+  }
+
+  private endGlide() {
+    if (!this.glide) return;
+    this.glide = undefined;
+    this.onGlide?.(null);
+  }
+
   setPosition(position: number, immediate = false) {
+    this.endGlide();
     this.target = position;
     if (immediate || Math.abs(position - this.position) > PAIRS) {
       this.position = position;
@@ -243,11 +290,27 @@ export class DnaScene {
       : 1 / 60;
     this.previousTime = time;
     const previousPosition = this.position;
-    this.position = this.motion.matches
-      ? this.target
-      : THREE.MathUtils.damp(this.position, this.target, 18, delta);
-    if (Math.abs(this.position - this.target) < 0.001)
-      this.position = this.target;
+    if (this.glide) {
+      this.glide.start ??= time;
+      const progress = Math.min(
+        1,
+        (time - this.glide.start) / this.glide.duration,
+      );
+      this.position =
+        this.glide.from +
+        (this.glide.to - this.glide.from) * easeInOutCubic(progress);
+      if (progress < 1) this.onGlide?.(Math.round(this.position));
+      else {
+        this.position = this.glide.to;
+        this.endGlide();
+      }
+    } else {
+      this.position = this.motion.matches
+        ? this.target
+        : THREE.MathUtils.damp(this.position, this.target, 18, delta);
+      if (Math.abs(this.position - this.target) < 0.001)
+        this.position = this.target;
+    }
     this.orientation = this.motion.matches
       ? 0.3
       : this.orientation + (this.position - previousPosition) * 0.28 * TURN;
@@ -263,26 +326,41 @@ export class DnaScene {
         Math.PI * 2,
       );
     const first = Math.floor(this.position) - PAIRS / 2;
+    const breathing = this.motion.matches
+      ? 0
+      : 0.5 + 0.5 * Math.sin((time / 1000) * Math.PI * 2 * PULSE_HZ);
+    let pulsing = false;
     let backboneSlot = 0;
     for (let slot = 0; slot < PAIRS; slot++) {
       const index = first + slot;
       const valid = index >= 0 && index < this.length;
-      const highlighted =
-        valid &&
-        this.highlights.some(({ start, end }) => index >= start && index < end);
+      const finding = valid
+        ? this.highlights.find(
+            ({ start, end }) => index >= start && index < end,
+          )
+        : undefined;
+      const highlighted = finding !== undefined;
+      const pulse = finding?.pulse ? breathing : 0;
+      if (finding?.pulse) pulsing = !this.motion.matches;
       const base = this.sequence?.bases[index - this.sequence.start] as
         DnaBase | undefined;
       for (let side = 0; side < 2; side++) {
         const instance = slot * 2 + side;
         this.point(index, side, this.from);
         this.to.set(0, this.from.y, 0);
-        this.cylinderBetween(this.bases, instance, valid ? TUBE_RADIUS : 0);
+        this.cylinderBetween(
+          this.bases,
+          instance,
+          valid ? TUBE_RADIUS * (1 + PULSE_SWELL * pulse) : 0,
+        );
         const letter = base && side === 1 ? DNA_BASES[base].complement : base;
         this.bases.setColorAt(
           instance,
-          this.color.set(
-            highlighted ? DNA_FINDING_COLOR : DNA_BASES[letter ?? "N"].color,
-          ),
+          this.color
+            .set(
+              highlighted ? DNA_FINDING_COLOR : DNA_BASES[letter ?? "N"].color,
+            )
+            .lerp(this.white, PULSE_BRIGHTEN * pulse),
         );
         for (let segment = 0; segment < SEGMENTS; segment++) {
           this.point(index + segment / SEGMENTS, side, this.from);
@@ -299,7 +377,11 @@ export class DnaScene {
       mesh.instanceMatrix.needsUpdate = true;
     if (this.bases.instanceColor) this.bases.instanceColor.needsUpdate = true;
     this.renderer.render(this.scene, this.camera);
-    if (this.position !== this.target || this.unwind !== this.unwindTarget)
+    if (
+      this.position !== this.target ||
+      this.unwind !== this.unwindTarget ||
+      pulsing
+    )
       this.invalidate();
     else this.previousTime = 0;
   };

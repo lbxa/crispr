@@ -75,10 +75,18 @@ function GenomeExplorerContent({
     first?.chromosome ?? chromosomes[0]!.id,
   );
   const [mode, setMode] = useState<DnaViewMode>("helix");
-  const [target, setTarget] = useState({
+  const [target, setTarget] = useState<{
+    position: number;
+    animate?: boolean;
+  }>({
     position: first?.start ?? (view ? 0 : 1_024_000),
   });
   const [position, setPosition] = useState(target.position);
+  // While the helix slides to a target, the readout and minimap handle follow it.
+  const [glide, setGlide] = useState<number | null>(null);
+  const shown = glide ?? position;
+  // Findings the user has not looked at pulse until their region has been in view.
+  const [viewed, setViewed] = useState<ReadonlySet<string>>(() => new Set());
   const [selectedId, setSelectedId] = useState<string | null>(
     first?.id ?? null,
   );
@@ -92,6 +100,34 @@ function GenomeExplorerContent({
       view?.regions.filter((region) => region.chromosome === chromosomeId) ??
       [],
     [view, chromosomeId],
+  );
+  const inView = active
+    ? highlights.filter(
+        (region) =>
+          position >= region.start &&
+          position < region.end &&
+          !viewed.has(region.id),
+      )
+    : [];
+  if (inView.length > 0)
+    setViewed(new Set([...viewed, ...inView.map((region) => region.id)]));
+  const unseen = useMemo(
+    () =>
+      new Set(
+        (view?.regions ?? [])
+          .filter(({ id }) => !viewed.has(id))
+          .map(({ id }) => id),
+      ),
+    [view, viewed],
+  );
+  const dnaHighlights = useMemo(
+    () =>
+      highlights.map(({ id, start, end }) => ({
+        start,
+        end,
+        pulse: !viewed.has(id),
+      })),
+    [highlights, viewed],
   );
   const selected =
     highlights.find(
@@ -110,16 +146,19 @@ function GenomeExplorerContent({
       position < region.reference_context.end,
   );
 
-  function navigate(next: number) {
+  /** Scrubbing follows the pointer; typed jumps pass `animate` to slide instead. */
+  function navigate(next: number, options?: { animate?: boolean }) {
     const clamped = clampGenomePosition(Math.round(next), chromosome.length);
-    setTarget({ position: clamped });
+    setTarget({ position: clamped, animate: options?.animate });
     setPosition(clamped);
     setSelectedId(null);
   }
 
   function selectRegion(region: GenomeRegion) {
+    // A new chromosome mounts a fresh helix, so there is nothing to slide from.
+    if (region.chromosome !== chromosomeId) setGlide(null);
     setChromosomeId(region.chromosome);
-    setTarget({ position: region.start });
+    setTarget({ position: region.start, animate: true });
     setPosition(region.start);
     setSelectedId(region.id);
   }
@@ -170,6 +209,7 @@ function GenomeExplorerContent({
                     );
                     const next = region?.start ?? (view ? 0 : 1_024_000);
                     setChromosomeId(id);
+                    setGlide(null);
                     setTarget({ position: next });
                     setPosition(next);
                     setSelectedId(region?.id ?? null);
@@ -196,7 +236,7 @@ function GenomeExplorerContent({
                     input instanceof HTMLInputElement &&
                     input.checkValidity()
                   )
-                    navigate(input.valueAsNumber - 1);
+                    navigate(input.valueAsNumber - 1, { animate: true });
                 }}
               >
                 <label htmlFor="genome-position">Go to base</label>
@@ -222,17 +262,18 @@ function GenomeExplorerContent({
                 key={chromosomeId}
                 chromosome={chromosome}
                 source={source}
-                highlights={highlights}
+                highlights={dnaHighlights}
                 navigation={target}
                 active={active}
                 mode={mode}
                 onPositionChange={setPosition}
+                onGlide={setGlide}
               />
             </div>
             <footer className={styles.footer}>
               <div className={styles.location}>
                 <output aria-label="Current base" aria-live="off">
-                  {format.format(position + 1)}
+                  {format.format(shown + 1)}
                   <span> bp</span>
                 </output>
                 <span>of {format.format(chromosome.length)}</span>
@@ -241,6 +282,8 @@ function GenomeExplorerContent({
                 chromosome={chromosome}
                 regions={regions}
                 position={position}
+                displayPosition={shown}
+                unseen={unseen}
                 onNavigate={navigate}
                 onSelect={selectRegion}
               />
@@ -320,6 +363,7 @@ function GenomeExplorerContent({
                       aria-label={`Inspect ${region.annotations.map(({ gene }) => gene).join(", ")} at chr${region.chromosome}:${region.start + 1}`}
                       onClick={() => selectRegion(region)}
                       aria-pressed={selected?.id === region.id}
+                      data-unseen={!viewed.has(region.id) || undefined}
                     >
                       <span>
                         {region.annotations

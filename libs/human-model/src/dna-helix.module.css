@@ -18,6 +18,11 @@
   scrollbar-width: none;
   touch-action: pan-y;
   outline-offset: -3px;
+  cursor: grab;
+  user-select: none;
+}
+.viewer[data-dragging] .scroll {
+  cursor: grabbing;
 }
 .scroll::-webkit-scrollbar {
   display: none;

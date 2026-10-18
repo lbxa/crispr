@@ -25,6 +25,12 @@
   margin-inline: 10px;
   border-radius: 8px;
   direction: ltr;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.map[data-dragging] {
+  cursor: grabbing;
 }
 .map:has(.scrub:focus-visible) {
   outline: 1px solid var(--accent);
@@ -53,7 +59,7 @@
   height: 44px;
   margin: 0;
   opacity: 0;
-  cursor: crosshair;
+  pointer-events: none;
 }
 .marker {
   position: absolute;
@@ -90,16 +96,59 @@
 }
 .cursor {
   position: absolute;
-  top: 7px;
-  width: 12px;
-  height: 30px;
+  top: 5px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 34px;
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 22%, var(--background, #141918));
   transform: translateX(-50%);
-  pointer-events: none;
+  cursor: grab;
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.cursor::before {
+  content: "";
+  width: 2px;
+  height: 14px;
+  border-inline: 1px solid var(--accent);
+  opacity: 0.8;
+}
+.cursor:hover,
+.map[data-dragging] .cursor {
+  background: color-mix(in srgb, var(--accent) 45%, var(--background, #141918));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.map[data-dragging] .cursor {
+  cursor: grabbing;
+}
+/* Findings the user has not looked at yet breathe until they are viewed. */
+.marker[data-unseen]::after {
+  animation: marker-pulse 1.5s ease-in-out infinite;
+}
+@keyframes marker-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--destructive) 70%, transparent);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 0 7px transparent;
+    filter: brightness(1.45);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .marker::after {
+  .marker::after,
+  .cursor {
     transition: none;
+  }
+  /* No motion, but unseen findings stay distinguishable. */
+  .marker[data-unseen]::after {
+    animation: none;
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--destructive) 55%, transparent);
   }
 }

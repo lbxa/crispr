@@ -295,3 +295,105 @@ test("reduced motion switches directly to a flat ladder without continuing an an
   expect(position.x).toBeCloseTo(1.025);
   expect(position.z).toBeCloseTo(0);
 });
+
+function reducedMotion() {
+  Object.defineProperty(browser, "matchMedia", {
+    value: () => ({
+      matches: true,
+      addEventListener() {},
+      removeEventListener() {},
+    }),
+  });
+}
+
+test("gliding slides through intermediate positions, then settles and reports completion", () => {
+  const { runtime } = fixture();
+  const seen: (number | null)[] = [];
+  runtime.onGlide = (position) => seen.push(position);
+  runtime.setActive(true);
+  runtime.setPosition(1000, true);
+  renderFrame(0);
+  runtime.glideTo(5000);
+  for (let time = 16; time <= 3000 && frames.size; time += 16)
+    renderFrame(time);
+  expect(frames.size).toBe(0);
+  const moving = seen.filter((value): value is number => value !== null);
+  expect(moving.length).toBeGreaterThan(5);
+  expect(moving[0]).toBe(1000); // the first frame starts where it was
+  expect(moving[2]).toBeGreaterThan(1000);
+  expect(moving.at(-1)).toBeLessThanOrEqual(5000);
+  expect(moving).toEqual([...moving].sort((a, b) => a - b));
+  expect(seen.at(-1)).toBeNull();
+});
+
+test("a glide that is interrupted hands control back to the new target", () => {
+  const { runtime } = fixture();
+  const seen: (number | null)[] = [];
+  runtime.onGlide = (position) => seen.push(position);
+  runtime.setActive(true);
+  runtime.setPosition(1000, true);
+  renderFrame(0);
+  runtime.glideTo(900_000);
+  renderFrame(16);
+  renderFrame(32);
+  runtime.setPosition(1010);
+  expect(seen.at(-1)).toBeNull();
+  const before = seen.length;
+  settleFrames();
+  expect(seen.length).toBe(before); // no further glide reports after the interruption
+});
+
+test("reduced motion jumps instead of gliding", () => {
+  reducedMotion();
+  const { runtime } = fixture();
+  const seen: (number | null)[] = [];
+  runtime.onGlide = (position) => seen.push(position);
+  runtime.setActive(true);
+  runtime.glideTo(250_000);
+  renderFrame();
+  expect(frames.size).toBe(0);
+  expect(seen).toEqual([]);
+});
+
+test("unseen findings breathe while seen findings stay still", () => {
+  const { runtime, renderer } = fixture();
+  runtime.setActive(true);
+  runtime.setPosition(1000, true);
+  runtime.setSequence({ start: 900, bases: "A".repeat(200) });
+  runtime.setHighlights([
+    { start: 1000, end: 1002, pulse: true },
+    { start: 1010, end: 1012 },
+  ]);
+  renderFrame(0);
+  const scene = renderer.render.mock.calls[0]![0];
+  const bases = scene.children.find(
+    (child): child is THREE.InstancedMesh =>
+      child instanceof THREE.InstancedMesh && child.count === 192,
+  )!;
+  const color = (slot: number) => {
+    const out = new THREE.Color();
+    bases.getColorAt(slot * 2, out);
+    return out;
+  };
+  const red = new THREE.Color(DNA_FINDING_COLOR);
+  renderFrame(833); // breathing is at its lowest: plain finding colour
+  expect(color(48).r).toBeCloseTo(red.r, 3);
+  expect(color(48).g).toBeCloseTo(red.g, 3);
+  renderFrame(1110); // breathing is at its peak: brightened toward white
+  expect(color(48).g).toBeGreaterThan(red.g + 0.1);
+  expect(color(58).g).toBeCloseTo(red.g, 3); // a seen finding does not pulse
+  expect(frames.size).toBe(1); // keeps animating while a pulse is on screen
+  runtime.setHighlights([{ start: 1000, end: 1002 }]);
+  renderFrame(1400);
+  expect(frames.size).toBe(0);
+});
+
+test("reduced motion keeps unseen findings static", () => {
+  reducedMotion();
+  const { runtime } = fixture();
+  runtime.setActive(true);
+  runtime.setPosition(1000, true);
+  runtime.setHighlights([{ start: 1000, end: 1002, pulse: true }]);
+  renderFrame(1110);
+  expect(frames.size).toBe(0);
+});

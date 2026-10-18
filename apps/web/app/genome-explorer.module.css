@@ -247,6 +247,27 @@
     monospace;
   color: var(--muted);
 }
+/* A finding that has not been viewed yet breathes until its region has been in view. */
+.findingList button[data-unseen] {
+  border-color: color-mix(in srgb, var(--destructive) 65%, var(--border));
+  animation: finding-pulse 1.5s ease-in-out infinite;
+}
+@keyframes finding-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--destructive) 50%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .findingList button[data-unseen] {
+    animation: none;
+    box-shadow: 0 0 0 2px
+      color-mix(in srgb, var(--destructive) 45%, transparent);
+  }
+}
 .findingList button:hover,
 .findingList button[aria-pressed="true"] {
   border-color: var(--destructive);

@@ -20,12 +20,17 @@ import styles from "./dna-helix.module.css";
 export interface DnaHelixProps {
   chromosome: GenomeChromosome;
   source: GenomeSequenceSource;
-  /** Navigation target, zero-based. Scroll updates are reported separately. */
-  navigation: { readonly position: number };
+  /**
+   * Navigation target, zero-based. Scroll updates are reported separately.
+   * With `animate`, the helix slides there instead of jumping.
+   */
+  navigation: { readonly position: number; readonly animate?: boolean };
   active: boolean;
   mode?: DnaViewMode;
   highlights?: readonly DnaInterval[];
   onPositionChange: (position: number) => void;
+  /** The animated position while sliding to a target, then null when the slide ends or is interrupted. */
+  onGlide?: (position: number | null) => void;
 }
 
 /** Key by chromosome id to give each selection an independent scroll/load lifetime. */
@@ -37,6 +42,7 @@ export function DnaHelix({
   mode = "helix",
   highlights,
   onPositionChange,
+  onGlide,
 }: DnaHelixProps) {
   const initial = clampGenomePosition(navigation.position, chromosome.length);
   const instructionsId = useId();
@@ -46,6 +52,11 @@ export function DnaHelix({
   const current = useRef(initial);
   const runway = useRef(genomeScrollWindow(initial, chromosome.length));
   const sequence = useRef<SequenceWindow>(undefined);
+  const glideListener = useRef(onGlide);
+  // The scroll offset we just wrote for an animated jump; its echo must not end the slide early.
+  const expectedScroll = useRef<number | null>(null);
+  const drag = useRef<{ id: number; y: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [scrollState, setScrollState] = useState({
     navigation,
     chunk: Math.floor(initial / SEQUENCE_CHUNK),
@@ -66,6 +77,7 @@ export function DnaHelix({
     scene.setPosition(current.current, true);
     scene.setMode(mode, true);
     scene.setHighlights(highlights ?? []);
+    scene.onGlide = (position) => glideListener.current?.(position);
     if (sequence.current) scene.setSequence(sequence.current);
     scene.setActive(active);
   });
@@ -99,6 +111,10 @@ export function DnaHelix({
   }, [chromosome.length, displayAttempt]);
 
   useEffect(() => {
+    glideListener.current = onGlide;
+  }, [onGlide]);
+
+  useEffect(() => {
     runtime.current?.setActive(active);
   }, [active]);
 
@@ -115,8 +131,14 @@ export function DnaHelix({
     const next = clampGenomePosition(navigation.position, chromosome.length);
     current.current = next;
     runway.current = genomeScrollWindow(next, chromosome.length);
-    if (viewport.current) viewport.current.scrollTop = runway.current.offset;
-    runtime.current?.setPosition(next, true);
+    if (viewport.current) {
+      expectedScroll.current = navigation.animate
+        ? runway.current.offset
+        : null;
+      viewport.current.scrollTop = runway.current.offset;
+    }
+    if (navigation.animate) runtime.current?.glideTo(next);
+    else runtime.current?.setPosition(next, true);
   }, [navigation, chromosome.length]);
 
   // Only one small range is retained; cancellation prevents old selections from winning a race.
@@ -160,12 +182,19 @@ export function DnaHelix({
     }
   }
 
+  function endDrag(event: React.PointerEvent) {
+    if (drag.current?.id !== event.pointerId) return;
+    drag.current = null;
+    setDragging(false);
+  }
+
   return (
     <div
       className={styles.viewer}
       data-dna-status={display}
       data-dna-mode={mode}
       data-dna-sequence-status={sequenceState}
+      data-dragging={dragging || undefined}
     >
       <canvas
         key={displayAttempt}
@@ -180,12 +209,33 @@ export function DnaHelix({
         aria-label="DNA sequence"
         aria-describedby={instructionsId}
         tabIndex={0}
-        onScroll={(event) =>
-          scrollToPosition(
-            runway.current.start + event.currentTarget.scrollTop / BASE_PIXELS,
-          )
-        }
+        onScroll={(event) => {
+          const top = event.currentTarget.scrollTop;
+          const expected = expectedScroll.current;
+          expectedScroll.current = null;
+          if (expected !== null && Math.abs(top - expected) < 1.5) return;
+          scrollToPosition(runway.current.start + top / BASE_PIXELS);
+        }}
+        onPointerDown={(event) => {
+          expectedScroll.current = null;
+          // Touch already pans the scroll surface natively; a mouse or pen needs to drag it.
+          if (event.pointerType === "touch" || event.button !== 0) return;
+          drag.current = { id: event.pointerId, y: event.clientY };
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+          setDragging(true);
+        }}
+        onPointerMove={(event) => {
+          const state = drag.current;
+          if (state?.id !== event.pointerId) return;
+          // Incremental, so runway recentering mid-drag cannot cause a jump.
+          event.currentTarget.scrollTop -= event.clientY - state.y;
+          state.y = event.clientY;
+        }}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
         onKeyDown={(event) => {
+          expectedScroll.current = null;
           if (event.altKey || event.ctrlKey || event.metaKey) return;
           const page = Math.max(
             1,

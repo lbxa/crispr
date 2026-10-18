@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModelWorkspace } from "./model-workspace";
 import { currentGenomeCache } from "./genome-analysis/cache";
+import { genomeView } from "./genome-analysis/genome-view.fixture";
 import { carrierReport, report } from "./genome-analysis/report.fixture";
 import {
   uploadConfig,
@@ -330,6 +331,64 @@ describe("workspace widget grids", () => {
       "date",
       "summary",
     ]);
+  });
+
+  it("opens the genome explorer once when a new genome finishes analysis", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockUploadFetch({ ...report, genome_view: genomeView }),
+    );
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    const rightPane = document.getElementById("workspace-pane-right")!;
+    const upload = async (name: string) => {
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText("Choose a file"), {
+          target: { files: [new File(["VCF"], name)] },
+        });
+      });
+    };
+    expect(rightPane.getAttribute("aria-hidden")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await upload("first.vcf");
+    expect(rightPane.getAttribute("aria-hidden")).toBe("false");
+    expect(
+      within(rightPane)
+        .getByLabelText("Genome explorer")
+        .getAttribute("data-active"),
+    ).toBe("true");
+
+    // Closing it sticks: the same analysis does not reopen it.
+    fireEvent.click(screen.getByRole("button", { name: "Right pane" }));
+    expect(rightPane.getAttribute("aria-hidden")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    expect(rightPane.getAttribute("aria-hidden")).toBe("true");
+
+    // A replacement genome is new, so it opens again.
+    await upload("second.vcf");
+    expect(rightPane.getAttribute("aria-hidden")).toBe("false");
+  });
+
+  it("does not open the explorer for a genome without a region map", async () => {
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "unmapped.vcf")] },
+      });
+    });
+    expect(
+      document
+        .getElementById("workspace-pane-right")!
+        .getAttribute("aria-hidden"),
+    ).toBe("true");
   });
 
   it("shows an analysis error and retries the same file without opening another chooser", async () => {

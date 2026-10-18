@@ -87,6 +87,25 @@ export function ModelWorkspace({
     visiblePanes.length === 2 ? "both" : (visiblePanes[0] ?? "none");
   const [genomeOpened, setGenomeOpened] = useState(false);
   const [genomeSelection, setGenomeSelection] = useState(0);
+  // The selection whose finished analysis has already opened the right pane for the user.
+  const [autoOpenedFor, setAutoOpenedFor] = useState(0);
+  // A freshly analyzed genome opens the explorer once. Restored (cached) genomes and panes the
+  // user closes afterwards are left alone because `genomeSelection` only changes on a new file.
+  if (
+    analysis.status === "complete" &&
+    analysis.report.genome_view &&
+    genomeSelection > autoOpenedFor
+  ) {
+    setAutoOpenedFor(genomeSelection);
+    setGenomeOpened(true);
+    setOpenPanes((current) =>
+      current.includes("right")
+        ? current
+        : sharedWorkspace
+          ? [...current, "right"]
+          : ["right"],
+    );
+  }
   const paneToggles = useRef<Record<Pane, HTMLButtonElement | null>>({
     left: null,
     right: null,
