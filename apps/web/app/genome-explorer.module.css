@@ -31,11 +31,10 @@
   min-inline-size: 0;
   gap: 24px;
 }
+/* Heading, then the Unwind/Rewind button beneath it. */
 .header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  justify-items: start;
   gap: 12px;
   padding-inline-end: 104px;
 }
@@ -47,7 +46,6 @@
 }
 .title {
   display: grid;
-  flex: 1 1 10rem;
   min-inline-size: 0;
   gap: 4px;
   overflow-wrap: anywhere;
@@ -76,75 +74,6 @@
   color: var(--accent);
   font-size: 11px;
   letter-spacing: 0.025em;
-}
-.navigation {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
-  align-items: end;
-  gap: 12px;
-}
-.chromosome,
-.jump {
-  display: grid;
-  min-inline-size: 0;
-  gap: 8px;
-  margin: 0;
-}
-.chromosome > span,
-.jump > label {
-  color: var(--muted);
-  font-size: 11px;
-}
-.chromosome select {
-  inline-size: 100%;
-  min-inline-size: 0;
-  min-block-size: 44px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  font-size: 13px;
-}
-.chromosome option {
-  background: var(--background);
-}
-.jump > div {
-  display: flex;
-  align-items: center;
-  min-inline-size: 0;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-}
-.jump input {
-  min-inline-size: 0;
-  inline-size: 100%;
-  min-block-size: 44px;
-  padding-inline: 12px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--foreground);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 12px;
-  appearance: textfield;
-}
-.jump input::-webkit-inner-spin-button {
-  appearance: none;
-}
-.jump button {
-  flex-shrink: 0;
-  min-inline-size: 44px;
-  min-block-size: 44px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--accent);
-  font-size: 18px;
-  cursor: pointer;
-}
-.jump button:hover {
-  background: var(--surface-hover);
 }
 .scene {
   position: relative;
@@ -179,6 +108,12 @@
   color: var(--muted);
   font-size: 11px;
   letter-spacing: 0;
+}
+/* The karyotype has no text, so the readout names the chromosome on show. */
+.location > .chromosomeName {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
 }
 .empty {
   margin: auto;
@@ -356,7 +291,6 @@
   line-height: 1.6;
 }
 @container genome-explorer (max-width: 20rem) {
-  .navigation,
   .alleles {
     grid-template-columns: minmax(0, 1fr);
   }

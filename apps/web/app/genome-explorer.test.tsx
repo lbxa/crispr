@@ -76,6 +76,30 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** Click a fraction of the way down one copy of a chromosome on the karyotype. */
+function clickChromosome(
+  id: string,
+  copy: "maternal" | "paternal",
+  fraction: number,
+) {
+  const hit = screen.getByTestId(`karyotype-${id}-${copy}`);
+  vi.spyOn(hit, "getBoundingClientRect").mockReturnValue({
+    left: 0,
+    width: 18,
+    top: 100,
+    height: 200,
+    right: 18,
+    bottom: 300,
+    x: 0,
+    y: 100,
+    toJSON: () => ({}),
+  });
+  fireEvent.click(hit, { clientY: 100 + fraction * 200 });
+}
+
+const cursor = () =>
+  screen.getByTestId("karyotype-cursor").getAttribute("data-position");
+
 it("waits for activation and ignores aborted ranges after a large jump", async () => {
   const requests: {
     start: number;
@@ -220,38 +244,54 @@ it("generates repeatable overlapping demo ranges and supports cancellation", asy
   ).rejects.toThrow();
 });
 
-it("navigates by one-based coordinates, repeats a previous jump, and switches chromosomes", async () => {
+it("slides to a clicked point on a chromosome and switches chromosomes from the karyotype", async () => {
   render(<GenomeExplorer active />);
   act(() => frame?.(0));
-  const input = screen.getByRole("spinbutton", { name: "Go to base" });
-  fireEvent.change(input, { target: { value: "200000001" } });
-  fireEvent.submit(input.closest("form")!);
+  // 80% of the way down chromosome 1 (demo length 248,000,000).
+  clickChromosome("1", "paternal", 0.8);
+  expect(scene.glideTo).toHaveBeenLastCalledWith(198_399_999);
   expect(screen.getByLabelText("Current base").textContent).toBe(
-    "200,000,001 bp",
+    "198,400,000 bp",
   );
-  expect(scene.glideTo).toHaveBeenLastCalledWith(200_000_000);
   const viewport = screen.getByRole("region", { name: "DNA sequence" });
   viewport.scrollTop += 200;
   fireEvent.scroll(viewport);
   expect(screen.getByLabelText("Current base").textContent).toBe(
-    "200,000,011 bp",
+    "198,400,010 bp",
   );
-  fireEvent.submit(screen.getByRole("spinbutton").closest("form")!);
-  expect(scene.glideTo).toHaveBeenLastCalledWith(200_000_000);
-  fireEvent.change(screen.getByRole("combobox", { name: "Chromosome" }), {
-    target: { value: "Y" },
-  });
+  // Either copy of a pair navigates the same chromosome.
+  clickChromosome("1", "maternal", 0.8);
+  expect(scene.glideTo).toHaveBeenLastCalledWith(198_399_999);
+  // A point on another chromosome opens that chromosome there, without a slide.
+  scene.glideTo.mockClear();
+  clickChromosome("Y", "paternal", 0.5);
   act(() => frame?.(0));
+  expect(scene.glideTo).not.toHaveBeenCalled();
   expect(screen.getByText("of 57,000,000")).toBeTruthy();
+  expect(screen.getByText("Chr Y")).toBeTruthy();
+  expect(screen.getByLabelText("Current base").textContent).toBe(
+    "28,500,001 bp",
+  );
+  expect(
+    screen
+      .getByRole("button", { name: "Chromosome Y" })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
+  // From the keyboard, Enter opens a chromosome and Home/End reach its ends.
+  const seven = screen.getByRole("button", { name: "Chromosome 7" });
+  fireEvent.keyDown(seven, { key: "Enter" });
+  act(() => frame?.(0));
+  expect(screen.getByText("of 200,000,000")).toBeTruthy();
   expect(screen.getByLabelText("Current base").textContent).toBe(
     "1,024,001 bp",
   );
-  const nextInput = screen.getByRole("spinbutton");
-  fireEvent.change(nextInput, { target: { value: "999999999" } });
-  fireEvent.submit(nextInput.closest("form")!);
+  fireEvent.keyDown(seven, { key: "End" });
   expect(screen.getByLabelText("Current base").textContent).toBe(
-    "1,024,001 bp",
+    "200,000,000 bp",
   );
+  fireEvent.keyDown(seven, { key: "Home" });
+  expect(screen.getByLabelText("Current base").textContent).toBe("1 bp");
+  expect(cursor()).toBe("0");
   await screen.findByText("3D DNA ready");
 });
 
@@ -262,15 +302,13 @@ it("unwinds and rewinds without losing the position, reloading sequence, or repl
   await screen.findByText("3D DNA ready");
   const canvas = document.querySelector("canvas");
   const reads = readRange.mock.calls.length;
-  const input = screen.getByRole("spinbutton");
-  fireEvent.change(input, { target: { value: "200000001" } });
-  fireEvent.submit(input.closest("form")!);
+  clickChromosome("1", "maternal", 0.8);
   await waitFor(() => expect(readRange.mock.calls.length).toBe(reads + 1));
   fireEvent.click(screen.getByRole("button", { name: "Unwind double helix" }));
   expect(screen.getByRole("heading", { name: "Flat ladder" })).toBeTruthy();
   expect(scene.setMode).toHaveBeenLastCalledWith("ladder");
   expect(screen.getByLabelText("Current base").textContent).toBe(
-    "200,000,001 bp",
+    "198,400,000 bp",
   );
   expect(document.querySelector("canvas")).toBe(canvas);
   expect(scene.dispose).not.toHaveBeenCalled();
@@ -286,7 +324,7 @@ it("unwinds and rewinds without losing the position, reloading sequence, or repl
   readRange.mockRestore();
 });
 
-it("maps backend regions to the minimap and jumps across chromosomes with exact reference context", async () => {
+it("maps backend regions to pinging karyotype dots and jumps across chromosomes with exact reference context", async () => {
   render(
     <GenomeExplorer
       active
@@ -310,20 +348,33 @@ it("maps backend regions to the minimap and jumps across chromosomes with exact 
   expect(scene.setSequence.mock.calls.at(-1)![0].bases).toContain(
     "ACGTATCTGGCA",
   );
+  // A heterozygous finding marks one copy; a homozygous one marks both.
+  const copies = (id: string) =>
+    [...document.querySelectorAll(`[data-region="${id}"]`)].map((dot) =>
+      dot.getAttribute("data-copy"),
+    );
+  expect(copies("fixture-cftr")).toEqual(["maternal"]);
+  expect(copies("fixture-mefv")).toEqual(["maternal", "paternal"]);
+  // Chromosomes absent from the genome are drawn but cannot be chosen.
+  expect(
+    screen
+      .getByRole("button", { name: "Chromosome 1" })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  expect(screen.queryByTestId("karyotype-1-maternal")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Inspect MEFV at chr16:3293406" }),
   );
   act(() => frame?.(0));
   expect(
     screen
-      .getByRole("combobox")
-      .querySelector("option:checked")
-      ?.getAttribute("value"),
-  ).toBe("16");
+      .getByRole("button", { name: "Chromosome 16" })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
   expect(scene.setPosition).toHaveBeenLastCalledWith(3293405, true);
-  expect(screen.getByRole("slider").getAttribute("value")).toBe("3293405");
-  fireEvent.change(screen.getByRole("slider"), {
-    target: { value: "90338344" },
+  expect(cursor()).toBe("3293405");
+  fireEvent.keyDown(screen.getByRole("button", { name: "Chromosome 16" }), {
+    key: "End",
   });
   expect(scene.setPosition).toHaveBeenLastCalledWith(90338344, true);
   expect(screen.getByText(/Reference unavailable here/)).toBeTruthy();
@@ -333,7 +384,81 @@ it("maps backend regions to the minimap and jumps across chromosomes with exact 
   expect(scene.glideTo).toHaveBeenLastCalledWith(3293405);
   const viewport = screen.getByRole("region", { name: "DNA sequence" });
   fireEvent.keyDown(viewport, { key: "ArrowDown" });
-  expect(screen.getByRole("slider").getAttribute("value")).toBe("3293406");
+  expect(cursor()).toBe("3293406");
+});
+
+it("numbers the chromosomes and shows a tooltip the moment the pointer is over one", () => {
+  render(
+    <GenomeExplorer
+      active
+      hasGenome
+      report={{
+        ...report,
+        genome: { ...report.genome, model_profile: "male" },
+        genome_view: genomeView,
+      }}
+    />,
+  );
+  const labels = [...document.querySelectorAll("svg text")].map(
+    ({ textContent }) => textContent,
+  );
+  // One "Chr." caption per pair (the X/Y pair shares one), each above its number(s).
+  expect(labels.filter((text) => text === "Chr.")).toHaveLength(23);
+  expect(labels.filter((text) => text !== "Chr.")).toEqual([
+    ...Array.from({ length: 22 }, (_, index) => String(index + 1)),
+    "X",
+    "Y",
+  ]);
+  const tooltip = () => screen.queryByTestId("karyotype-tooltip")?.textContent;
+  const copy = (id: string) =>
+    document.querySelector(`[data-homolog="${id}"]`)!;
+  // No pause: the label appears on the first pointer event over the chromosome.
+  fireEvent.pointerEnter(copy("7-maternal"), { clientX: 120, clientY: 40 });
+  expect(tooltip()).toBe("Chromosome 7, maternal");
+  fireEvent.pointerMove(copy("3-paternal"), { clientX: 60, clientY: 40 });
+  expect(tooltip()).toBe("Chromosome 3, paternal · not in this genome");
+  fireEvent.pointerLeave(copy("3-paternal"));
+  expect(tooltip()).toBeUndefined();
+  // Mutation dots get the same instant label.
+  fireEvent.pointerEnter(
+    screen.getByRole("button", { name: "Jump to CFTR at chr7:117559590" }),
+    { clientX: 120, clientY: 90 },
+  );
+  expect(tooltip()).toBe("CFTR · Cystic fibrosis · chr7:117559590");
+  // Scrolling the strip hides it, since the label would no longer sit under the pointer.
+  fireEvent.scroll(
+    screen.getByRole("group", { name: "Karyotype, 46,XY" }).parentElement!,
+  );
+  expect(tooltip()).toBeUndefined();
+});
+
+it("draws 46,XX or 46,XY from the reported sex", () => {
+  const { rerender } = render(
+    <GenomeExplorer
+      active
+      hasGenome
+      report={{
+        ...report,
+        genome: { ...report.genome, model_profile: "female" },
+        genome_view: genomeView,
+      }}
+    />,
+  );
+  expect(screen.getByRole("group", { name: "Karyotype, 46,XX" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Chromosome Y" })).toBeNull();
+  rerender(
+    <GenomeExplorer
+      active
+      hasGenome
+      report={{
+        ...report,
+        genome: { ...report.genome, model_profile: "male" },
+        genome_view: genomeView,
+      }}
+    />,
+  );
+  expect(screen.getByRole("group", { name: "Karyotype, 46,XY" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Chromosome Y" })).toBeTruthy();
 });
 
 it("discloses a long finding list without hiding the selected mutation", async () => {
@@ -380,7 +505,7 @@ it("discloses a long finding list without hiding the selected mutation", async (
 
 it("shows empty and unavailable maps without inventing regions or substituting demo DNA", () => {
   const { rerender } = render(<GenomeExplorer active hasGenome />);
-  expect(screen.queryByRole("slider")).toBeNull();
+  expect(screen.queryByRole("group", { name: /Karyotype/ })).toBeNull();
   expect(screen.getByRole("status").textContent).toContain(
     "Finish genome analysis",
   );
@@ -485,7 +610,7 @@ it("does not mark a finding as viewed while the pane is hidden", () => {
   ).toBe(false);
 });
 
-it("slides to a clicked finding and keeps the readout and handle moving with it", () => {
+it("slides to a clicked finding and keeps the readout and karyotype cursor moving with it", () => {
   scene.instantGlide = false;
   openTwoFindings();
   fireEvent.click(
@@ -499,115 +624,32 @@ it("slides to a clicked finding and keeps the readout and handle moving with it"
     "117,559,590 bp",
   );
   const helix = scene.instances.at(-1)!;
-  const handle = screen.getByTestId("minimap-handle");
   act(() => helix.onGlide?.(60_000_000));
   expect(screen.getByLabelText("Current base").textContent).toBe(
     "60,000,001 bp",
   );
-  expect(handle.style.left).toBe(`${(60_000_000 / 159345972) * 100}%`);
+  expect(cursor()).toBe("60000000");
   act(() => helix.onGlide?.(null));
   expect(screen.getByLabelText("Current base").textContent).toBe(
     "120,000,001 bp",
   );
 });
 
-it("lets the slider handle be grabbed and dragged along the chromosome", () => {
+it("selects a finding from its dot without also jumping to the clicked chromosome point", () => {
   openTwoFindings();
-  const handle = screen.getByTestId("minimap-handle");
-  const track = handle.parentElement!;
-  vi.spyOn(track, "getBoundingClientRect").mockReturnValue({
-    left: 100,
-    width: 1000,
-    top: 0,
-    height: 44,
-    right: 1100,
-    bottom: 44,
-    x: 100,
-    y: 0,
-    toJSON: () => ({}),
-  });
-  const at = (fraction: number) => Math.round(fraction * 159345972);
-  const pointer = (clientX: number) => ({
-    button: 0,
-    pointerId: 1,
-    clientX,
-  });
-  fireEvent.pointerDown(handle, pointer(350));
-  expect(scene.setPosition).toHaveBeenLastCalledWith(at(0.25), true);
-  fireEvent.pointerMove(track, pointer(600));
-  expect(scene.setPosition).toHaveBeenLastCalledWith(at(0.5), true);
-  fireEvent.pointerMove(track, pointer(5000)); // clamped to the chromosome end
-  expect(scene.setPosition).toHaveBeenLastCalledWith(159345972, true);
-  expect(scene.glideTo).not.toHaveBeenCalled(); // dragging follows the pointer, it does not slide
-  fireEvent.pointerUp(track, pointer(5000));
-  scene.setPosition.mockClear();
-  fireEvent.pointerMove(track, pointer(200));
-  expect(scene.setPosition).not.toHaveBeenCalled();
-  // Pressing the empty rail grabs it as well, jumping straight to that point.
-  fireEvent.pointerDown(track, pointer(100));
-  expect(scene.setPosition).toHaveBeenLastCalledWith(0, true);
-});
-
-function mockTrack(track: HTMLElement) {
-  vi.spyOn(track, "getBoundingClientRect").mockReturnValue({
-    left: 100,
-    width: 1000,
-    top: 0,
-    height: 44,
-    right: 1100,
-    bottom: 44,
-    x: 100,
-    y: 0,
-    toJSON: () => ({}),
-  });
-}
-const span = 159345972; // chromosome 7 length - 1
-const regionStart = 117559589;
-const handleX = 100 + (regionStart / span) * 1000;
-
-it("keeps the grab point when the handle itself is pressed, instead of jumping", () => {
-  openTwoFindings();
-  const track = screen.getByTestId("minimap-handle").parentElement!;
-  mockTrack(track);
-  scene.setPosition.mockClear();
-  // Pressing 3px to the right of the handle's centre must not move it.
-  fireEvent.pointerDown(track, {
-    button: 0,
-    pointerId: 1,
-    clientX: handleX + 3,
-  });
-  expect(scene.setPosition).not.toHaveBeenCalled();
-  fireEvent.pointerMove(track, { pointerId: 1, clientX: handleX + 103 });
-  expect(scene.setPosition).toHaveBeenLastCalledWith(
-    Math.round(((handleX + 100 - 100) / 1000) * span),
-    true,
-  );
-});
-
-it("clicks a finding marker but scrubs when it is dragged", () => {
-  openTwoFindings();
-  const track = screen.getByTestId("minimap-handle").parentElement!;
-  mockTrack(track);
-  const marker = screen.getByRole("button", {
-    name: "Jump to CFTR at chr7:120000001",
-  });
-  scene.setPosition.mockClear();
-  // A press that barely moves is still a click, so it slides to the finding.
-  fireEvent.pointerDown(marker, { button: 0, pointerId: 1, clientX: 400 });
-  fireEvent.pointerMove(track, { pointerId: 1, clientX: 402 });
-  fireEvent.pointerUp(track, { pointerId: 1 });
-  expect(scene.setPosition).not.toHaveBeenCalled();
-  fireEvent.click(marker);
-  expect(scene.glideTo).toHaveBeenLastCalledWith(120_000_000);
-  // Dragging from the same marker scrubs along the chromosome instead.
   scene.glideTo.mockClear();
-  fireEvent.pointerDown(marker, { button: 0, pointerId: 2, clientX: 400 });
-  fireEvent.pointerMove(track, { pointerId: 2, clientX: 700 });
-  expect(scene.setPosition).toHaveBeenLastCalledWith(
-    Math.round(((700 - 100) / 1000) * span),
-    true,
+  scene.setPosition.mockClear();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Jump to CFTR at chr7:120000001" }),
   );
-  expect(scene.glideTo).not.toHaveBeenCalled();
+  expect(scene.glideTo).toHaveBeenCalledTimes(1);
+  expect(scene.glideTo).toHaveBeenLastCalledWith(120_000_000);
+  // Dots are keyboard buttons too.
+  fireEvent.keyDown(
+    screen.getByRole("button", { name: "Jump to CFTR at chr7:117559590" }),
+    { key: "Enter" },
+  );
+  expect(scene.glideTo).toHaveBeenLastCalledWith(117_559_589);
 });
 
 it("drags the helix with a mouse to scroll it, and leaves touch to native scrolling", () => {
@@ -709,15 +751,17 @@ it("floats the disease name beside the helix only while a zone is close to the f
   expect(within(tag).queryByRole("button", { name: "CRISPR" })).toBeNull();
   expect(tag.style.getPropertyValue("--zone-offset")).toBe("0px");
 
-  // Scrolling away removes it, and scrolling back brings it back where the zone now sits.
-  const slider = screen.getByRole("slider");
-  fireEvent.change(slider, { target: { value: "100000000" } });
+  // Moving away removes it, and coming back brings it back where the zone now sits.
+  const at = (base: number) =>
+    clickChromosome("7", "maternal", base / (159_345_973 - 1));
+  at(100_000_000);
+  expect(cursor()).toBe("100000000");
   expect(screen.queryByTestId("zone-tag")).toBeNull();
-  fireEvent.change(slider, { target: { value: "117559584" } }); // 5 bases before the zone
+  at(117_559_584); // 5 bases before the zone
   expect(
     screen.getByTestId("zone-tag").style.getPropertyValue("--zone-offset"),
   ).toBe("100px");
-  fireEvent.change(slider, { target: { value: "117559560" } }); // 29 bases away
+  at(117_559_560); // 29 bases away
   expect(screen.queryByTestId("zone-tag")).toBeNull();
 });
 

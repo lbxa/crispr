@@ -110,28 +110,30 @@ try {
     await harness.screenshot({ name: "cftr-deletion-map", fullPage: true });
     await harness.click({ selector: 'button[aria-label^="Inspect HBB at "]' });
     await harness.waitForText({ text: "5,227,002 bp" });
-    // The native range is keyboard-only (pointer input belongs to the track), so focus it directly.
-    await page.locator('input[aria-label="Position in chromosome"]').focus();
+    // A focused karyotype chromosome reaches its ends with Home and End.
+    await page.locator('[role="button"][aria-label="Chromosome 11"]').focus();
     await harness.press({ key: "End" });
     await harness.waitForText({ text: "135,086,622 bp" });
     await harness.press({ key: "Home" });
     await harness.waitForText({ text: "1 bp" });
-    await harness.click({ selector: 'button[aria-label^="Jump to HBB at "]' });
+    await harness.click({
+      selector: '[role="button"][aria-label^="Jump to HBB at "]',
+    });
     await harness.waitForText({ text: "5,227,002 bp" });
     await harness.click({ selector: '[aria-label="DNA sequence"]' });
     await harness.press({ key: "ArrowDown" });
     await harness.waitForText({ text: "5,227,003 bp" });
-    const scrolled = await harness.snapshot();
-    // The harness's ARIA snapshot exposes the range's numeric, zero-based value.
-    if (
-      !/slider "Position in chromosome"[^\n]*: "5227002"/.test(
-        scrolled.accessibilityTree,
-      )
-    )
+    // The karyotype cursor follows the helix in zero-based coordinates.
+    const cursor = await page
+      .locator('[data-testid="karyotype-cursor"]')
+      .getAttribute("data-position");
+    if (cursor !== "5227002")
       throw new Error(
-        `DNA scrolling did not synchronize the minimap; inspect ${evidenceDir}`,
+        `DNA scrolling did not move the karyotype cursor; inspect ${evidenceDir}`,
       );
-    await harness.click({ selector: 'button[aria-label^="Jump to HBB at "]' });
+    await harness.click({
+      selector: '[role="button"][aria-label^="Jump to HBB at "]',
+    });
     await harness.click({
       selector: 'button[aria-label="Unwind double helix"]',
     });

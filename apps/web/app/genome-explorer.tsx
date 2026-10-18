@@ -11,13 +11,16 @@ import {
 } from "@crispr/human-model/dna-sequence";
 import { DEMO_CHROMOSOMES, DEMO_GENOME } from "./demo-genome";
 import { CrisprDialog, type CrisprGene } from "./crispr/crispr-dialog";
-import { GenomeMinimap } from "./genome-minimap";
 import type { GenomeReport } from "./genome-analysis/contract";
 import {
   referenceSequenceSource,
   type GenomeRegion,
   type GenomeView,
 } from "./genome-analysis/genome-view";
+import {
+  KaryotypeNavigator,
+  type KaryotypeSex,
+} from "./karyotype/karyotype-navigator";
 import styles from "./genome-explorer.module.css";
 
 const DnaHelix = dynamic(
@@ -63,6 +66,7 @@ export function GenomeExplorer({
       active={active}
       view={report?.genome_view}
       findings={report?.findings}
+      profile={report?.genome.model_profile}
     />
   );
 }
@@ -71,12 +75,17 @@ function GenomeExplorerContent({
   active,
   view,
   findings,
+  profile,
 }: {
   active: boolean;
   view?: GenomeView;
   findings?: GenomeReport["findings"];
+  profile?: GenomeReport["genome"]["model_profile"];
 }) {
   const chromosomes = view?.chromosomes ?? DEMO_CHROMOSOMES;
+  // Without a reported sex, a genome with Y calls is drawn 46,XY; the demo genome has a Y.
+  const sex: KaryotypeSex =
+    profile ?? (chromosomes.some(({ id }) => id === "Y") ? "male" : "female");
   const regions = view?.regions ?? [];
   const first = regions[0];
   const [chromosomeId, setChromosomeId] = useState(
@@ -90,7 +99,7 @@ function GenomeExplorerContent({
     position: first?.start ?? (view ? 0 : 1_024_000),
   });
   const [position, setPosition] = useState(target.position);
-  // While the helix slides to a target, the readout and minimap handle follow it.
+  // While the helix slides to a target, the readout and karyotype cursor follow it.
   const [glide, setGlide] = useState<number | null>(null);
   const shown = glide ?? position;
   // Findings the user has not looked at pulse until their region has been in view.
@@ -190,6 +199,39 @@ function GenomeExplorerContent({
     setSelectedId(null);
   }
 
+  /** A point picked on the karyotype: slide there on this chromosome, or open the other one there. */
+  function goTo(
+    id: string,
+    next: number,
+    options: { animate: boolean } = { animate: true },
+  ) {
+    const destination = chromosomes.find((item) => item.id === id);
+    if (!destination) return;
+    if (id === chromosomeId) {
+      navigate(next, options);
+      return;
+    }
+    const clamped = clampGenomePosition(Math.round(next), destination.length);
+    // A new chromosome mounts a fresh helix, so there is nothing to slide from.
+    setChromosomeId(id);
+    setGlide(null);
+    setTarget({ position: clamped });
+    setPosition(clamped);
+    setSelectedId(null);
+  }
+
+  /** A whole chromosome chosen from the keyboard: open on its first finding, if any. */
+  function chooseChromosome(id: string) {
+    if (id === chromosomeId) return;
+    const region = regions.find((item) => item.chromosome === id);
+    const next = region?.start ?? (view ? 0 : 1_024_000);
+    setChromosomeId(id);
+    setGlide(null);
+    setTarget({ position: next });
+    setPosition(next);
+    setSelectedId(region?.id ?? null);
+  }
+
   function selectRegion(region: GenomeRegion) {
     // A new chromosome mounts a fresh helix, so there is nothing to slide from.
     setGlide(region.chromosome !== chromosomeId ? null : shown);
@@ -232,67 +274,6 @@ function GenomeExplorerContent({
           data-findings={(view && regions.length > 0) || undefined}
         >
           <div className={styles.visualization}>
-            <div className={styles.navigation}>
-              <label className={styles.chromosome}>
-                <span>Chromosome</span>
-                <select
-                  aria-label="Chromosome"
-                  value={chromosomeId}
-                  onChange={(event) => {
-                    const id = event.target.value;
-                    const region = regions.find(
-                      (item) => item.chromosome === id,
-                    );
-                    const next = region?.start ?? (view ? 0 : 1_024_000);
-                    setChromosomeId(id);
-                    setGlide(null);
-                    setTarget({ position: next });
-                    setPosition(next);
-                    setSelectedId(region?.id ?? null);
-                  }}
-                >
-                  {chromosomes.map(({ id }) => (
-                    <option key={id} value={id}>
-                      Chr {id}
-                      {regions.some((region) => region.chromosome === id)
-                        ? ` · ${regions.filter((region) => region.chromosome === id).length}`
-                        : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <form
-                key={`${chromosomeId}:${target.position}`}
-                className={styles.jump}
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const input =
-                    event.currentTarget.elements.namedItem("position");
-                  if (
-                    input instanceof HTMLInputElement &&
-                    input.checkValidity()
-                  )
-                    navigate(input.valueAsNumber - 1, { animate: true });
-                }}
-              >
-                <label htmlFor="genome-position">Go to base</label>
-                <div>
-                  <input
-                    id="genome-position"
-                    name="position"
-                    type="number"
-                    min={1}
-                    max={chromosome.length}
-                    step={1}
-                    defaultValue={Math.round(position) + 1}
-                    required
-                  />
-                  <button type="submit" aria-label="Go to base">
-                    ↵
-                  </button>
-                </div>
-              </form>
-            </div>
             <div className={styles.scene}>
               <DnaHelix
                 key={chromosomeId}
@@ -347,23 +328,28 @@ function GenomeExplorerContent({
                 </div>
               )}
             </div>
+            <KaryotypeNavigator
+              chromosomes={chromosomes}
+              current={chromosomeId}
+              position={shown}
+              regions={regions}
+              unseen={unseen}
+              sex={sex}
+              onNavigate={goTo}
+              onChoose={chooseChromosome}
+              onSelect={selectRegion}
+            />
             <footer className={styles.footer}>
               <div className={styles.location}>
+                <span className={styles.chromosomeName}>
+                  Chr {chromosome.id}
+                </span>
                 <output aria-label="Current base" aria-live="off">
                   {format.format(shown + 1)}
                   <span> bp</span>
                 </output>
                 <span>of {format.format(chromosome.length)}</span>
               </div>
-              <GenomeMinimap
-                chromosome={chromosome}
-                regions={regions}
-                position={position}
-                displayPosition={shown}
-                unseen={unseen}
-                onNavigate={navigate}
-                onSelect={selectRegion}
-              />
               <div className={styles.legend} aria-label="Base colors">
                 {(["A", "T", "C", "G"] as const).map((base) => (
                   <span key={base}>

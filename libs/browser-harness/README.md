@@ -37,8 +37,8 @@ in raw evidence. Other failed requests and errors still fail verification.
 
 `bun run --cwd libs/browser-harness verify:regions --app-url http://localhost:3000`
 uses a small synthetic VCF containing known CFTR and HBB alleles. It checks real
-backend reference contexts, cross-chromosome finding jumps, minimap boundaries,
-DNA-to-minimap synchronization and highlighted helix/ladder screenshots. The
+backend reference contexts, cross-chromosome finding jumps, karyotype chromosome
+ends, DNA-to-karyotype-cursor synchronization and highlighted helix/ladder screenshots. The
 fixture contains no patient data; it reuses the upload journey and error policy.
 
 ## TypeScript

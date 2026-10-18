@@ -123,7 +123,7 @@ assembly selection, permissions, and validation of any external response.
 Optional `highlights` are immutable zero-based, half-open reference intervals.
 The fixed base-pair pool colors those intervals red in both modes without adding
 geometry or changing coordinates. `DNA_FINDING_COLOR` and `DnaInterval` are
-exported from `/dna-sequence`. Product annotations and minimap controls remain
+exported from `/dna-sequence`. Product annotations and karyotype navigation remain
 in the app; the library never interprets diagnostic tiers or shifts coordinates
 to insert alternate alleles.
 
