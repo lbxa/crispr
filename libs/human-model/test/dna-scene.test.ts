@@ -352,7 +352,8 @@ test("reduced motion jumps instead of gliding", () => {
   runtime.glideTo(250_000);
   renderFrame();
   expect(frames.size).toBe(0);
-  expect(seen).toEqual([]);
+  // No animated frames, but the listener is told straight away that the slide is over.
+  expect(seen).toEqual([null]);
 });
 
 test("unseen findings breathe while seen findings stay still", () => {

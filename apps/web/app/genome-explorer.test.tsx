@@ -23,6 +23,8 @@ vi.mock("next/dynamic", () => ({
 
 const scene = vi.hoisted(() => ({
   instances: [] as { onGlide?: (position: number | null) => void }[],
+  // Like reduced motion by default: the "slide" finishes at once. Tests that watch a slide turn it off.
+  instantGlide: true,
   setPosition: vi.fn(),
   glideTo: vi.fn(),
   setMode: vi.fn(),
@@ -38,7 +40,10 @@ vi.mock("../../../libs/human-model/src/dna-scene", () => ({
       scene.instances.push(this);
     }
     setPosition = scene.setPosition;
-    glideTo = scene.glideTo;
+    glideTo = (position: number) => {
+      scene.glideTo(position);
+      if (scene.instantGlide) this.onGlide?.(null);
+    };
     setMode = scene.setMode;
     setHighlights = scene.setHighlights;
     setSequence = scene.setSequence;
@@ -52,6 +57,7 @@ let frame: FrameRequestCallback | undefined;
 beforeEach(() => {
   vi.clearAllMocks();
   scene.instances.length = 0;
+  scene.instantGlide = true;
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
     frame = callback;
     return 1;
@@ -475,12 +481,18 @@ it("does not mark a finding as viewed while the pane is hidden", () => {
 });
 
 it("slides to a clicked finding and keeps the readout and handle moving with it", () => {
+  scene.instantGlide = false;
   openTwoFindings();
   fireEvent.click(
     screen.getByRole("button", { name: "Jump to CFTR at chr7:120000001" }),
   );
   expect(scene.glideTo).toHaveBeenLastCalledWith(120_000_000);
   expect(scene.setPosition).not.toHaveBeenCalledWith(120_000_000, true);
+  // Until the helix reports its first animated frame the readout stays where it was, with no
+  // one-frame flash of the destination.
+  expect(screen.getByLabelText("Current base").textContent).toBe(
+    "117,559,590 bp",
+  );
   const helix = scene.instances.at(-1)!;
   const handle = screen.getByTestId("minimap-handle");
   act(() => helix.onGlide?.(60_000_000));

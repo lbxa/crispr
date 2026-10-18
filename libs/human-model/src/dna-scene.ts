@@ -143,6 +143,7 @@ export class DnaScene {
     const distance = Math.abs(position - this.position);
     if (this.motion.matches || distance < 0.5) {
       this.setPosition(position, true);
+      this.onGlide?.(null); // there is no slide, so whoever expected one can stop waiting
       return;
     }
     this.target = position;

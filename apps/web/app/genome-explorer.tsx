@@ -149,6 +149,8 @@ function GenomeExplorerContent({
   /** Scrubbing follows the pointer; typed jumps pass `animate` to slide instead. */
   function navigate(next: number, options?: { animate?: boolean }) {
     const clamped = clampGenomePosition(Math.round(next), chromosome.length);
+    // Start the readout where the helix is, so it slides rather than flashing the destination.
+    if (options?.animate) setGlide(shown);
     setTarget({ position: clamped, animate: options?.animate });
     setPosition(clamped);
     setSelectedId(null);
@@ -156,7 +158,7 @@ function GenomeExplorerContent({
 
   function selectRegion(region: GenomeRegion) {
     // A new chromosome mounts a fresh helix, so there is nothing to slide from.
-    if (region.chromosome !== chromosomeId) setGlide(null);
+    setGlide(region.chromosome !== chromosomeId ? null : shown);
     setChromosomeId(region.chromosome);
     setTarget({ position: region.start, animate: true });
     setPosition(region.start);
