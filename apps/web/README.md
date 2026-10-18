@@ -23,6 +23,7 @@ operations and workflow policy should be added at the application boundary.
 | `app/api/analyze/route.ts`                      | Compatibility small-file multipart route and safe request telemetry   |
 | `../../libs/widget-grid/README.md`              | Grid layout, reordering, widget sizing, and interaction contracts     |
 | `app/page.module.css`, `app/globals.css`        | App layout and styling                                                |
+| `app/advisability-test/`                        | Integration test page for the backend's CRISPRon advisability score   |
 | `app/layout.tsx`                                | Fonts and page metadata                                               |
 | `instrumentation.ts`                            | Node server observability                                             |
 | `wrangler.jsonc`, `open-next.config.ts`         | Cloudflare Worker deployment, bindings, and adapter settings          |

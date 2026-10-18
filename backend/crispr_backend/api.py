@@ -12,7 +12,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Response
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import AliasChoices, BaseModel, Field
 
@@ -98,6 +98,24 @@ def health() -> dict:
 @app.get("/diseases")
 def diseases() -> list[dict]:
     return [{"omim_id": d.omim_id, "name": d.name, "gene": d.gene, "inheritance": d.inheritance.value} for d in PANEL]
+
+
+@app.get("/genes")
+def list_genes() -> list[dict]:
+    """Genes that can be scored for CRISPR editing, with their disease, inheritance and variant count."""
+    return app.state.analyzer.genes()
+
+
+@app.get("/genes/{gene}/crispr")
+def gene_crispr(gene: str, variation_id: int | None = None, max_variants: int = Query(2, ge=1, le=10)) -> dict:
+    """Edit plans and CRISPRon advisability for a gene by name.
+
+    With `variation_id`, plans that ClinVar variant; otherwise the gene's best-supported variants.
+    """
+    try:
+        return app.state.analyzer.plan_gene(gene, variation_id, max_variants)
+    except KeyError as error:
+        raise HTTPException(404, error.args[0]) from error
 
 
 @app.get("/genomes")

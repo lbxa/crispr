@@ -20,8 +20,12 @@ select = ["E", "F", "I", "B", "UP"]
 ignore = ["E501"]  # the formatter owns line length; long strings are left intact
 
 [tool.pyright]
-include = ["crispr_backend", "etl", "scripts", "tests"]
+include = ["crispr_backend", "scoring_service", "etl", "scripts", "tests"]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.12"
 typeCheckingMode = "standard"
+
+[tool.ruff.lint.per-file-ignores]
+# Runs on Python 3.8 (TensorFlow 2.4.1 in IBM's s390x image): keep typing.List/Optional, %-formatting.
+"scoring_service/*" = ["UP"]

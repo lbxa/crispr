@@ -5,8 +5,11 @@ cut site to variant, GC content, poly-T, allele specificity). Off-target activit
 is not assessed and would need a genome-wide search (e.g. CRISPOR) before any use.
 """
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 
+from crispr_backend.analysis.advisability import Advisability, assess
+from crispr_backend.efficiency import Prediction
 from crispr_backend.panel import Inheritance, Mechanism
 
 PROTOSPACER = 20
@@ -14,6 +17,8 @@ SEED = 10  # PAM-proximal bases where mismatches block cutting
 WINDOW = 60  # bases searched on each side of the variant
 MAX_CUT_DISTANCE = 20
 DONOR_ARM = 60  # homology on each side of the corrected site in the repair template
+CONTEXT_5P = 4  # CRISPRon input: 4 nt before the protospacer ...
+CONTEXT_3P = 3  # ... and 3 nt after the PAM, 30 nt in total
 COMPLEMENT = str.maketrans("ACGTN", "TGCAN")
 
 
@@ -32,6 +37,10 @@ class Guide:
     allele_specific: bool  # variant lies in the seed or PAM, so the healthy allele is not cut
     score: float
     notes: tuple[str, ...]
+    context: str | None = None  # 30-mer for CRISPRon (4 + 20 + PAM 3 + 3); None near the region edge
+    efficiency: float | None = None  # CRISPRon predicted indel frequency (%), when the scorer is available
+    model_scores: dict[str, float] | None = None  # each CRISPRon ensemble member's own prediction
+    energy: dict[str, float] | None = None  # CRISPRoff energy terms behind the model's ΔG input
 
 
 @dataclass(frozen=True)
@@ -43,6 +52,7 @@ class EditPlan:
     repair_template_notes: str | None
     alternative: str
     off_target: str = "Not assessed. Run a genome-wide off-target search before any lab use."
+    advisability: Advisability | None = None
 
 
 def _score(gc: float, distance: int, allele_specific: bool, spacer: str) -> tuple[float, list[str]]:
@@ -81,22 +91,28 @@ def find_guides(region_sequence: str, region_start: int, pos: int, ref: str, alt
         if mutant[i + PROTOSPACER + 1 : i + PROTOSPACER + 3] == "GG":
             spacer, pam, cut = mutant[i : i + PROTOSPACER], mutant[i + PROTOSPACER : i + PROTOSPACER + 3], i + 17
             seed = (i + PROTOSPACER - SEED, i + PROTOSPACER + 3)
-            guides.append(("+", spacer, pam, cut, seed))
+            context = mutant[i - CONTEXT_5P : i + PROTOSPACER + 3 + CONTEXT_3P] if i >= CONTEXT_5P else None
+            guides.append(("+", spacer, pam, cut, seed, context))
         # Reverse strand: CCN at mutant[i:i+3], protospacer is the reverse complement of mutant[i+3:i+23].
         if mutant[i : i + 2] == "CC":
             spacer = reverse_complement(mutant[i + 3 : i + 3 + PROTOSPACER])
             pam, cut = reverse_complement(mutant[i : i + 3]), i + 6
             seed = (i, i + 3 + SEED)
-            guides.append(("-", spacer, pam, cut, seed))
+            # Guide orientation: 4 nt past the protospacer on the forward strand are its 5' context.
+            window = mutant[i - CONTEXT_3P : i + 3 + PROTOSPACER + CONTEXT_5P] if i >= CONTEXT_3P else ""
+            context = reverse_complement(window) if len(window) == 30 else None
+            guides.append(("-", spacer, pam, cut, seed, context))
 
     designed = []
-    for strand, spacer, pam, cut, (seed_start, seed_end) in guides:
+    for strand, spacer, pam, cut, (seed_start, seed_end), context in guides:
         distance = distance_to_variant(cut)
         if distance > MAX_CUT_DISTANCE or "TTTT" in spacer or "N" in spacer:
             continue
         gc = (spacer.count("G") + spacer.count("C")) / PROTOSPACER
         allele_specific = variant_span[0] < seed_end and variant_span[1] > seed_start
         score, notes = _score(gc, distance, allele_specific, spacer)
+        if context is not None and (len(context) != 30 or "N" in context):
+            context = None
         designed.append(
             Guide(
                 spacer,
@@ -108,6 +124,7 @@ def find_guides(region_sequence: str, region_start: int, pos: int, ref: str, alt
                 allele_specific,
                 score,
                 tuple(notes),
+                context,
             )
         )
     return sorted(designed, key=lambda guide: guide.score, reverse=True)
@@ -140,6 +157,36 @@ def plan_edit(
     inheritance: Inheritance,
     mechanism: Mechanism,
     max_guides: int = 3,
+    scorer: Callable[[list[str]], list[Prediction] | None] | None = None,
+) -> EditPlan:
+    """`scorer` maps 30-mers to CRISPRon predictions (None if unavailable); it never changes guide ranking."""
+    plan = _plan_edit(region_sequence, region_start, pos, ref, alt, inheritance, mechanism, max_guides)
+    if scorer is None:
+        return plan
+    contexts = [g.context for g in plan.guides if g.context]
+    predictions = scorer(contexts) if contexts else None
+    if predictions is None:
+        return replace(plan, advisability=assess(None, skipped=len(plan.guides)))
+    by_context = dict(zip(contexts, predictions, strict=True))
+    guides = [
+        replace(g, efficiency=p.efficiency, model_scores=p.models, energy=p.energy)
+        if (p := by_context.get(g.context or ""))
+        else g
+        for g in plan.guides
+    ]
+    skipped = sum(1 for g in guides if g.efficiency is None)
+    return replace(plan, guides=guides, advisability=assess(guides, skipped=skipped, strategy=plan.strategy))
+
+
+def _plan_edit(
+    region_sequence: str,
+    region_start: int,
+    pos: int,
+    ref: str,
+    alt: str,
+    inheritance: Inheritance,
+    mechanism: Mechanism,
+    max_guides: int,
 ) -> EditPlan:
     guides = find_guides(region_sequence, region_start, pos, ref, alt)
     alternative = base_editing_option(ref, alt)

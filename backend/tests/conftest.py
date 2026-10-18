@@ -60,6 +60,12 @@ def no_language_model(monkeypatch):
 def database(tmp_path, monkeypatch):
     path = tmp_path / "test.sqlite"
     monkeypatch.setenv("CRISPR_DB", str(path))
+    populate(path)
+    return path
+
+
+def populate(path):
+    """Fill a database with the synthetic diseases and genomes (also used by scripts/dev_stack.py)."""
     with db.session(path) as connection:
         connection.executemany("INSERT INTO diseases VALUES (?, ?, ?, ?, ?)", DISEASES)
         connection.executemany("INSERT INTO disease_phenotypes VALUES (?, ?, ?, ?)", PHENOTYPES)
@@ -89,4 +95,3 @@ def database(tmp_path, monkeypatch):
         )
         connection.execute("INSERT INTO genome_truth VALUES (1, 'OMIM:249100', ?)", (json.dumps([1, 3]),))
         connection.execute("INSERT INTO genome_truth VALUES (2, NULL, '[]')")
-    return path
