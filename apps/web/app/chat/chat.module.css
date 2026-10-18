@@ -1,0 +1,23 @@
+.main {
+  min-width: 0;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.frame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  background: var(--background);
+}
