@@ -205,42 +205,29 @@ describe("workspace widget grids", () => {
     ).toBeNull();
   });
 
-  it("starts fresh instead of restoring a saved genome, and clears highlights on removal", async () => {
+  // The workspace starts fresh (a saved genome is discarded on load), so highlights come
+  // from a completed analysis rather than from the device cache.
+  it("highlights mapped findings after analysis and clears them on removal", async () => {
     vi.stubGlobal("fetch", mockUploadFetch(mappedReport));
-    await currentGenomeCache.remember({
-      status: "complete",
-      file: new File(["VCF"], "saved.vcf"),
-      report: mappedReport,
-      progress: {
-        records_scanned: 3,
-        variants_checked: 3,
-        retained_variants: 2,
-        uncompressed_bytes: 100,
-      },
-    });
     render(
       <ModelWorkspace
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
       />,
     );
-    // The saved genome is not brought back (restore is opt-in in useGenomeAnalysis).
-    await waitFor(() =>
-      expect(
-        screen
-          .getByRole("region", { name: "3D anatomy workspace" })
-          .closest("[data-genome-cache-ready]"),
-      ).toBeTruthy(),
-    );
-    const model = screen.getByTestId("human-model");
-    expect(model.getAttribute("data-highlights")).toBe("[]");
-    expect(fetch).not.toHaveBeenCalled();
-    // The file pane starts open, so the summary's remove button is reachable.
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Choose a file"), {
-        target: { files: [new File(["VCF"], "affected.vcf")] },
+        target: { files: [new File(["VCF"], "mapped.vcf")] },
       });
     });
-    expect(model.getAttribute("data-highlights")).toContain("#ef4444");
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("human-model").getAttribute("data-highlights"),
+      ).toContain("#ef4444"),
+    );
+    expect(fetch).toHaveBeenCalled();
+    // The file pane starts open and the first toggle closed it, so reopen it to remove the file.
+    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Remove genome" }));
     });

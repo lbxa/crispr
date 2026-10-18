@@ -7,7 +7,7 @@ The backend analysis owns finding selection and the GRCh38 reference context.
 map. Upload status and the compatibility analysis response carry that map.
 `apps/web/app/genome-analysis/genome-view.ts` validates the external boundary and
 adapts reference windows to the existing bounded sequence-source interface.
-The app owns minimap navigation; `@crispr/human-model` owns highlighted 3D bases.
+The app owns karyotype navigation; `@crispr/human-model` owns highlighted 3D bases.
 
 The capability is locating an analyzed variant and inspecting its reference
 context. Likely changes are additional assemblies, full reference coverage and
@@ -31,8 +31,9 @@ backend enforces coordinate/context integrity and the frontend validates the
 wire contract before rendering. No simulation truth is read. No genome or
 report contents enter telemetry or persistent browser storage.
 
-The use cases are analyze → display map, scrub → update viewer, select finding
-→ switch chromosome and jump, and scroll viewer → update minimap. React event
+The use cases are analyze → display map, click a karyotype point → update viewer,
+select finding → switch chromosome and jump, and scroll viewer → update the
+karyotype cursor. React event
 handlers own navigation; existing scene effects synchronize only the external
 scroll/GPU systems. The existing upload state machine and lease publication
 remain the owners of processing/retry/cancellation. This projection adds no

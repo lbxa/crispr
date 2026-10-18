@@ -31,11 +31,10 @@
   min-inline-size: 0;
   gap: 24px;
 }
+/* Heading, then the Unwind/Rewind button beneath it. */
 .header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  justify-items: start;
   gap: 12px;
   padding-inline-end: 152px;
 }
@@ -55,57 +54,13 @@
 }
 .title {
   display: grid;
-  flex: 1 1 10rem;
   min-inline-size: 0;
   gap: 4px;
   overflow-wrap: anywhere;
 }
-.demo {
-  color: var(--accent);
-  font-size: 11px;
-  letter-spacing: 0.025em;
-}
-.navigation {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  align-items: end;
-  gap: 0;
-}
-.chromosome,
-.positionField {
-  display: grid;
-  min-inline-size: 0;
-  gap: 4px;
-}
-.jump {
-  min-inline-size: 0;
-  margin: 0;
-}
-.jump input {
-  appearance: textfield;
-  font-variant-numeric: tabular-nums;
-}
-.jump input::-webkit-inner-spin-button {
-  appearance: none;
-}
-.scene {
-  position: relative;
-  block-size: var(--dna-scene-min-height);
-  margin-inline: -16px;
-}
-.viewerToolbar {
-  position: absolute;
-  z-index: 2;
-  inset-block-start: 16px;
-  inset-inline-start: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  backdrop-filter: blur(12px);
+/* The Unwind/Rewind icon button sits flush with the heading's start edge. */
+.modeToggle {
+  margin-inline-start: -10px;
 }
 .modeIcon {
   inline-size: 24px;
@@ -115,6 +70,16 @@
 }
 .modeIcon[data-mode="ladder"] {
   mask-image: url("/icons/hugeicons/unfold-less.svg");
+}
+.demo {
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.025em;
+}
+.scene {
+  position: relative;
+  block-size: var(--dna-scene-min-height);
+  margin-inline: -16px;
 }
 .loading {
   margin: 0;
@@ -144,6 +109,12 @@
   color: var(--muted);
   font-size: 11px;
   letter-spacing: 0;
+}
+/* The karyotype has no text, so the readout names the chromosome on show. */
+.location > .chromosomeName {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
 }
 .empty {
   margin: auto;
