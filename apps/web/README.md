@@ -121,7 +121,10 @@ Focused chromosomes take Enter (open), Home and End. Displayed coordinates are o
 [the coordinate and ownership contract](../../docs/genome-regions.md).
 
 A VCF is not a full DNA sequence. The scene displays backend reference context
-and shows alternate alleles separately; uncovered positions are `N`. A no-finding
+around findings and fills every other position with the GRCh38 reference, fetched
+through `/api/reference/[chromosome]` in cached 4,096-base blocks
+(`app/genome-analysis/reference.ts`); alternate alleles are shown separately. If
+the reference is unavailable, uncovered positions are `N` and the footer says so. A no-finding
 report has no markers. Older completed reports without a map require reanalysis.
 The synthetic source is available only before choosing a file; it is never used
 to fill gaps in an uploaded genome. Replacing a file resets explorer navigation,
@@ -162,6 +165,7 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-18
 
+- After an upload, positions outside the backend's finding contexts show the GRCh38 reference instead of `N`. This shows reference DNA, not the person's sequence (a VCF lists only differences), so it is not fabricated patient DNA; finding contexts still take precedence and alternate alleles stay separate. The synthetic demo sequence is still never used for uploaded genomes.
 - The CRISPR popup no longer has a "Raw API response" disclosure; the plan's JSON stays out of the customer-facing UI (use the network panel or `/api/crispr/{gene}` when debugging).
 - Keep Wrangler's `keep_names` disabled: name-preservation helpers inside `next-themes` functions escape into its serialized inline script and fail with `__name is not defined`. Verify theme initialization in the Workers preview as well as Next.js.
 - Cloudflare's verification tests the fresh-start cache policy: loading the workspace discards a saved genome without contacting the backend. Wait for cache initialization before asserting that state; restoring cached highlights is no longer the default behavior.

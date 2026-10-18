@@ -44,6 +44,14 @@ if [ "$WITH_DB" = 1 ]; then
   mv ~/crispr.sqlite ~/data/crispr.sqlite
 fi
 chmod a+rwx ~/data && chmod a+rw ~/data/crispr.sqlite
+# GRCh38 reference for the DNA viewer's /reference endpoint (835 MB, downloaded once).
+if [ ! -f ~/data/reference/hg38.2bit ]; then
+  echo "Downloading the GRCh38 reference (835 MB, first deploy only)"
+  mkdir -p ~/data/reference
+  curl -fsSL -o ~/data/reference/hg38.2bit.part \
+    https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit
+  mv ~/data/reference/hg38.2bit.part ~/data/reference/hg38.2bit
+fi
 # API, worker and tusd use the same UID, with private upload directories. Runtime
 # jobs live here, separate from the replaceable reference database above.
 sudo install -d -m 0700 -o 1000 -g 1000 ~/data/uploads ~/data/uploads/files

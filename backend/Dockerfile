@@ -9,8 +9,10 @@ RUN python -m pip install --no-cache-dir -r requirements.txt
 COPY crispr_backend ./crispr_backend
 COPY scripts ./scripts
 
-# Mount the database built by etl/ at /data and the big-endian Granite model at /models.
+# Mount the database built by etl/ (and the GRCh38 hg38.2bit reference under
+# /data/reference) at /data, and the big-endian Granite model at /models.
 ENV CRISPR_DB=/data/crispr.sqlite \
+    CRISPR_REFERENCE_2BIT=/data/reference/hg38.2bit \
     CRISPR_UPLOAD_DIR=/data/uploads \
     GRANITE_GGUF=/models/granite-3.3-2b-instruct-be.Q4_K_M.gguf
 EXPOSE 8000

@@ -33,9 +33,10 @@ export function useGenomeAnalysis({ restore = false } = {}) {
   useEffect(() => {
     let disposed = false;
     const initialSelection = selection.current;
-    void (restore
-      ? currentGenomeCache.restore()
-      : currentGenomeCache.forget().then(() => null)
+    void (
+      restore
+        ? currentGenomeCache.restore()
+        : currentGenomeCache.forget().then(() => null)
     )
       .then((cached) => {
         if (disposed) return;

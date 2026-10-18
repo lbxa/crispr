@@ -12,13 +12,15 @@ import os
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Response
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Path, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, Field
 
 from crispr_backend import db
 from crispr_backend.analysis.pipeline import Analyzer
 from crispr_backend.panel import PANEL
+from crispr_backend.reference import get_reference, two_bit_name
 from crispr_backend.simulation import orders
 from crispr_backend.uploads.routes import router as upload_router
 from crispr_backend.uploads.routes import upload_error_response
@@ -28,6 +30,8 @@ from crispr_backend.uploads.store import UploadError
 from crispr_backend.vcf import read_calls, read_calls_gz
 
 MAX_VCF_BYTES = 20 * 1024 * 1024
+MAX_REFERENCE_BASES = 16_384  # per request; the web app fetches 4,096-base blocks
+CHROMOSOME_ID = r"^(?:[1-9]|1[0-9]|2[0-2]|X|Y|MT)$"
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 # Each order calls the language model (~1 min with Granite on the 3-vCPU server); cap
 # concurrent orders so a public API can't queue unbounded work.
@@ -116,6 +120,30 @@ def gene_crispr(gene: str, variation_id: int | None = None, max_variants: int = 
         return app.state.analyzer.plan_gene(gene, variation_id, max_variants)
     except KeyError as error:
         raise HTTPException(404, error.args[0]) from error
+
+
+@app.get("/reference/{chromosome}")
+def reference_sequence(
+    chromosome: str = Path(pattern=CHROMOSOME_ID),
+    start: int = Query(ge=0),
+    end: int = Query(gt=0),
+) -> Response:
+    """GRCh38 reference bases for [start, end), zero-based, so the DNA viewer can fill the
+    positions an uploaded VCF says nothing about. Unknown bases are N."""
+    if end <= start or end - start > MAX_REFERENCE_BASES:
+        raise HTTPException(422, f"Request 1 to {MAX_REFERENCE_BASES} bases with start < end.")
+    reference = get_reference()
+    if reference is None:
+        raise HTTPException(503, "The reference genome is not installed on this server.")
+    name = two_bit_name(chromosome)
+    length = reference.length(name)
+    if length is None:
+        raise HTTPException(404, f"Chromosome {chromosome} is not in the reference.")
+    if end > length:
+        raise HTTPException(422, f"Chromosome {chromosome} has {length} bases.")
+    body = {"chromosome": chromosome, "start": start, "end": end, "bases": reference.sequence(name, start, end)}
+    # The reference never changes, so any cache may keep it.
+    return JSONResponse(body, headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @app.get("/genomes")
