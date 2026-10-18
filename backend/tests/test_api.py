@@ -89,10 +89,52 @@ def test_orders_are_capped_while_others_are_processing(database, monkeypatch):
 
 def test_cors_allows_the_website_and_local_development(database):
     with TestClient(app) as client:
-        for origin in ("https://crispr.team-account.workers.dev", "http://localhost:3000"):
+        for origin in (
+            "https://crispr.lucas-chu-barbosa.workers.dev",
+            "https://abc123-crispr.lucas-chu-barbosa.workers.dev",
+            "https://genome.lbxa.net",
+            "http://localhost:3000",
+        ):
             response = client.get("/health", headers={"Origin": origin})
             assert response.headers.get("access-control-allow-origin") == origin
-        assert (
-            "access-control-allow-origin"
-            not in client.get("/health", headers={"Origin": "https://evil.example"}).headers
-        )
+        # Any other Cloudflare account can name a Worker "crispr"; it must not be trusted.
+        for origin in ("https://evil.example", "https://crispr.attacker.workers.dev"):
+            assert "access-control-allow-origin" not in client.get("/health", headers={"Origin": origin}).headers
+
+
+def test_api_docs_are_off_unless_enabled(database):
+    with TestClient(app) as client:
+        for path in ("/docs", "/redoc", "/openapi.json"):
+            assert client.get(path).status_code == 404
+
+
+def test_bad_vcf_error_does_not_echo_the_upload(database):
+    with TestClient(app) as client:
+        response = client.post("/analyze", json={"vcf": "chr1\t1\t.\tSECRET-SEQUENCE\tG\t.\tPASS\t."})
+    assert response.status_code == 422
+    assert "SECRET" not in response.text
+
+
+def test_analyses_are_rate_limited_per_client(database, monkeypatch):
+    from crispr_backend import api
+    from crispr_backend.security import RateLimiter
+
+    monkeypatch.setattr(api, "ANALYSES_PER_MINUTE", RateLimiter(2))
+    with TestClient(app) as client:
+        body = {"symptoms": "fever", "use_llm": False}
+        assert client.post("/genomes/1/analyze", json=body).status_code == 200
+        assert client.post("/genomes/1/analyze", json=body).status_code == 200
+        limited = client.post("/genomes/1/analyze", json=body)
+    assert limited.status_code == 429
+    assert int(limited.headers["retry-after"]) > 0
+
+
+def test_concurrent_analyses_are_capped(database, monkeypatch):
+    from crispr_backend import api
+    from crispr_backend.security import ConcurrencyCap
+
+    cap = ConcurrencyCap(1)
+    monkeypatch.setattr(api, "ACTIVE_ANALYSES", cap)
+    with TestClient(app) as client, cap:  # another analysis holds the only slot
+        response = client.post("/genomes/1/analyze", json={"symptoms": "fever", "use_llm": False})
+    assert response.status_code == 429

@@ -12,7 +12,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Path, Query, Response
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Path, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, Field
@@ -21,6 +21,7 @@ from crispr_backend import db
 from crispr_backend.analysis.pipeline import Analyzer
 from crispr_backend.panel import PANEL
 from crispr_backend.reference import get_reference, two_bit_name
+from crispr_backend.security import ConcurrencyCap, RateLimiter, allowed_origin_regex, allowed_origins, client_key
 from crispr_backend.simulation import orders
 from crispr_backend.uploads.routes import router as upload_router
 from crispr_backend.uploads.routes import upload_error_response
@@ -36,6 +37,14 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 # Each order calls the language model (~1 min with Granite on the 3-vCPU server); cap
 # concurrent orders so a public API can't queue unbounded work.
 MAX_ACTIVE_ORDERS = int(os.environ.get("CRISPR_MAX_ACTIVE_ORDERS", "3"))
+# Analyses can call the paid Gemini API; cap them per client and in total. The website's
+# server-side routes share Cloudflare's egress addresses, so per-IP limits stay generous.
+ANALYSES_PER_MINUTE = RateLimiter(int(os.environ.get("CRISPR_ANALYSES_PER_MINUTE", "20")))
+PLANS_PER_MINUTE = RateLimiter(int(os.environ.get("CRISPR_PLANS_PER_MINUTE", "60")))
+ORDERS_PER_MINUTE = RateLimiter(int(os.environ.get("CRISPR_ORDERS_PER_MINUTE", "5")))
+ACTIVE_ANALYSES = ConcurrencyCap(int(os.environ.get("CRISPR_MAX_ACTIVE_ANALYSES", "3")))
+# Interactive API docs are for development; set CRISPR_PUBLIC_DOCS=1 to serve them.
+PUBLIC_DOCS = os.environ.get("CRISPR_PUBLIC_DOCS", "") == "1"
 
 
 @asynccontextmanager
@@ -46,17 +55,21 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Crispr prototype API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(
+    title="Crispr prototype API",
+    version="0.2.0",
+    lifespan=lifespan,
+    docs_url="/docs" if PUBLIC_DOCS else None,
+    redoc_url="/redoc" if PUBLIC_DOCS else None,
+    openapi_url="/openapi.json" if PUBLIC_DOCS else None,
+)
 app.include_router(upload_router)
 app.add_exception_handler(UploadError, upload_error_response)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        o.strip()
-        for o in os.environ.get("CRISPR_CORS_ORIGINS", "http://localhost:3000,https://crispr.lbxa.net").split(",")
-    ],
-    # The website is served from crispr.<account>.workers.dev.
-    allow_origin_regex=os.environ.get("CRISPR_CORS_ORIGIN_REGEX", r"https://crispr\.[a-z0-9-]+\.workers\.dev"),
+    allow_origins=allowed_origins(),
+    # Only this team's Worker (and its preview hosts); see crispr_backend.security.
+    allow_origin_regex=allowed_origin_regex(),
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Authorization", "X-Request-Id"],
 )
@@ -111,11 +124,14 @@ def list_genes() -> list[dict]:
 
 
 @app.get("/genes/{gene}/crispr")
-def gene_crispr(gene: str, variation_id: int | None = None, max_variants: int = Query(2, ge=1, le=10)) -> dict:
+def gene_crispr(
+    gene: str, request: Request, variation_id: int | None = None, max_variants: int = Query(2, ge=1, le=10)
+) -> dict:
     """Edit plans and CRISPRon advisability for a gene by name.
 
     With `variation_id`, plans that ClinVar variant; otherwise the gene's best-supported variants.
     """
+    PLANS_PER_MINUTE.check(client_key(request))
     try:
         return app.state.analyzer.plan_gene(gene, variation_id, max_variants)
     except KeyError as error:
@@ -166,16 +182,19 @@ def get_genome_vcf(genome_id: int) -> Response:
 
 
 @app.post("/genomes/{genome_id}/analyze")
-def analyze_genome(genome_id: int, request: GenomeAnalyzeRequest) -> dict:
+def analyze_genome(genome_id: int, request: GenomeAnalyzeRequest, http: Request) -> dict:
     """Analyze a chosen demo genome with your own symptom text; useful for scripted demos and testing."""
+    ANALYSES_PER_MINUTE.check(client_key(http))
     with db.session() as connection:
         genome = genome_row(connection, genome_id)
     calls = read_calls_gz(genome["vcf_gz"])
-    return app.state.analyzer.analyze(calls, request.symptoms, genome["sex"], request.use_llm)
+    with ACTIVE_ANALYSES:
+        return app.state.analyzer.analyze(calls, request.symptoms, genome["sex"], request.use_llm)
 
 
 @app.post("/orders", status_code=202)
-def create_order(background: BackgroundTasks) -> dict:
+def create_order(background: BackgroundTasks, request: Request) -> dict:
+    ORDERS_PER_MINUTE.check(client_key(request))
     with db.session() as connection:
         if orders.active_orders(connection) >= MAX_ACTIVE_ORDERS:
             raise HTTPException(429, "Too many orders are being analyzed right now; try again in a minute.")
@@ -216,10 +235,13 @@ def get_truth(order_id: str) -> dict:
 
 
 @app.post("/analyze")
-def analyze(request: AnalyzeRequest) -> dict:
+def analyze(request: AnalyzeRequest, http: Request) -> dict:
     """The real product's entry point: analyze an uploaded genome and symptom description."""
+    ANALYSES_PER_MINUTE.check(client_key(http))
     try:
         calls = read_calls(request.vcf)
     except (ValueError, IndexError) as error:
-        raise HTTPException(422, f"Could not read VCF: {error}") from error
-    return app.state.analyzer.analyze(calls, request.symptoms, request.sex, request.use_llm)
+        # Parser messages can quote the uploaded genome; never echo them to the client.
+        raise HTTPException(422, "Could not read VCF: expected a single-sample VCF on GRCh38.") from error
+    with ACTIVE_ANALYSES:
+        return app.state.analyzer.analyze(calls, request.symptoms, request.sex, request.use_llm)

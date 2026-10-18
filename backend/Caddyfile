@@ -1,7 +1,20 @@
 {$CRISPR_HOST} {
+	# Security headers on every response; never advertise the server software.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+		-Server
+	}
+
 	# Internal capability checks and tus hooks are reachable only over loopback.
-	@internal path /internal/*
-	respond @internal 404
+	# This must be a `handle` block: Caddy orders `handle` before `respond`, so a
+	# bare `respond` here would be skipped by the catch-all `handle` below.
+	handle /internal/* {
+		respond 404
+	}
 
 	handle /files/* {
 		@creation method POST
@@ -27,6 +40,11 @@
 		@uploadControl path /uploads /uploads/*
 		request_body @uploadControl {
 			max_size 64KB
+		}
+		# Everything else is JSON; /analyze carries at most a 20 MiB VCF.
+		@otherBodies not path /uploads /uploads/*
+		request_body @otherBodies {
+			max_size 21MB
 		}
 		reverse_proxy 127.0.0.1:8000
 	}

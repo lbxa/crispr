@@ -3,7 +3,8 @@
 # image already deployed there. model.py falls back to the graph-mode SavedModel loader.)
 # Build context is backend/. Mount the prepared crispron tree (bin/, data/model/, data/deep_models/best/)
 # at /crispron.
-FROM registry.linuxone.cloud.marist.edu/l1cc/jupyterlab-image-s390x:latest
+# Pinned by digest (the image tagged :latest on 2026-10-18); bump deliberately.
+FROM registry.linuxone.cloud.marist.edu/l1cc/jupyterlab-image-s390x@sha256:d2da8a7b0c88c3b468e29014b2ada9ef8274f98c976ec456904c5e2bae5aa54c
 
 USER root
 # ViennaRNA 2.2.5 is the version CRISPRoff's energies were produced with; no s390x wheel exists.
