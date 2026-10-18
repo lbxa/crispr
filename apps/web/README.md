@@ -123,8 +123,8 @@ requests backend cancellation; unreachable sessions are reclaimed by backend
 expiry. Completed analyses persist in the browser's IndexedDB database
 `crispr-genomes`: one validated, versioned record contains file metadata, report,
 progress and the reference contexts used by the DNA viewer. Refresh restores
-that result without network requests or re-uploading. Raw VCF bytes and upload
-capabilities are not cached, keeping recovery independent of file size. Active
+that result without contacting the upload service or re-uploading. Raw VCF bytes
+and upload capabilities are not cached, keeping recovery independent of file size. Active
 upload/polling sessions remain in memory; pause/network recovery works in the
 current page. Replacing or removing the genome invalidates the saved result.
 The summary's Remove genome action clears it, and unavailable browser storage
@@ -157,7 +157,8 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 - Genome uploads bypass Next.js and use IBM's capability-bound tus sessions, 8 MiB chunks, compressed VCFs, and durable processing jobs. This keeps multi-gigabyte files out of the frontend/Next.js memory path; the former 20 MiB route remains compatibility-only.
 - Upload progress counts server-acknowledged chunks, and processing progress counts real scanned records/bytes. Pause/resume keeps one session, completion is idempotent, and processing retries reuse the stored file rather than transferring it again.
 - A tus creation conflict offers explicit fresh-session recovery only after the SDK observes a missing resource and no acknowledged bytes. Cancel the old reservation before requesting another id: duplicate tusd file-store creation can truncate an existing file, so resuming a saved resource must always use its acknowledged offset.
-- Completed genomes survive refresh through `genome-analysis/cache.ts`, using `idb-keyval` for atomic IndexedDB operations and the existing report/progress schemas at the storage boundary. Keep only one current result, never raw VCF bytes or upload tokens. A delayed restore cannot replace a new selection; replacement/removal invalidates older data, and `data-genome-cached` acknowledges a committed result for deterministic browser verification.
+- Completed genomes survive refresh through `genome-analysis/cache.ts`, using `idb-keyval` for one atomic, versioned IndexedDB record validated by the report/progress schemas. Persist file metadata, report and DNA reference contexts rather than raw VCF bytes or upload tokens, so restoration stays independent of genome file size; active uploads and job polling remain scoped to the current page.
+- Cache restoration must yield to a newer file selection, and restored snapshots must not be written back on mount, which could overwrite another tab's newer result. Replacement/removal invalidates the saved genome; a storage failure keeps the current analysis usable and displays a recovery notice.
 
 - The genome explorer's Unwind/Rewind button switches between the double helix and a flat ladder without resetting position or fetching sequence again. Mode stays selected across chromosome and pane changes; the library owns the reversible deformation and reduced-motion behavior.
 

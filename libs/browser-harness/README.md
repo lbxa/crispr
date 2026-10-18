@@ -127,6 +127,8 @@ evidence is best-effort: take an awaited snapshot before relying on saved files.
 
 ### 2026-10-17
 
+- Upload journeys wait for `data-genome-cached="true"` before refreshing and `data-genome-cache-ready="true"` afterward, because rendered results alone do not prove an IndexedDB commit. Both restoration and removal must survive reload without new upload-service requests; `verify:regions` also exercises the restored DNA findings.
+- App-specific Playwright assertions in `verify-genome-upload.ts` use the browser captured through `BrowserSession`'s launch seam. Keep navigation, CDP evidence and cleanup under the same `BrowserHarnessRuntime` so persistence checks do not introduce a separate browser lifecycle.
 - The desktop baseline keeps both panes visible at the app's 90rem breakpoint and closes them independently. Compact switching, resize preservation and pane-specific Escape behavior are covered by `apps/web/app/model-workspace.test.tsx`.
 - The baseline checks the default avatar and absence of manual profile/region controls. Report-driven avatar selection is covered by app tests; library tests retain both model profiles and highlight lifecycle coverage while developer region controls are disabled.
 - The upload journey's `--findings` mode verifies the region map against the configured backend, using synthetic reference alleles rather than downloading stored genomes. It checks both map-to-DNA and DNA-to-map navigation and keeps all browser diagnostics correlated.
