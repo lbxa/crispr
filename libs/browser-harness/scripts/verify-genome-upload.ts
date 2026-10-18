@@ -67,6 +67,12 @@ try {
     path: `libs/browser-harness/fixtures/${fixture}`,
   });
   await harness.waitForText({ text: "Analysis complete", timeoutMs: 90_000 });
+  const avatarLabel = values.findings
+    ? "Interactive realistic male human model"
+    : "Interactive realistic female human model";
+  await page
+    .locator(`[data-status="ready"] > canvas[aria-label="${avatarLabel}"]`)
+    .waitFor({ state: "visible", timeout: 90_000 });
   await page
     .locator('[data-genome-cached="true"]')
     .waitFor({ state: "attached" });
@@ -91,6 +97,9 @@ try {
     path: `libs/browser-harness/fixtures/${fixture}`,
   });
   await harness.waitForText({ text: "Analysis complete", timeoutMs: 90_000 });
+  await page
+    .locator(`[data-status="ready"] > canvas[aria-label="${avatarLabel}"]`)
+    .waitFor({ state: "visible", timeout: 90_000 });
   await page
     .locator('[data-genome-cached="true"]')
     .waitFor({ state: "attached" });
@@ -146,6 +155,16 @@ try {
     await harness.click({ selector: 'button[aria-label="Left pane"]' });
   }
   await harness.waitForText({ text: "Analysis complete" });
+  await harness.click({ selector: 'button:has-text("View full report")' });
+  await page
+    .getByRole("dialog", { name: "Genome report" })
+    .getByRole("heading", {
+      name: values.findings
+        ? "Disease-causing variants found"
+        : "No genetic cause found in the screened genes",
+      exact: true,
+    })
+    .waitFor({ state: "visible" });
   const snapshot = await harness.snapshot();
   // A known, not-yet-created tus resource is intentionally probed before POST.
   // Retain its 404 in raw evidence and allow only this precise protocol outcome.
@@ -180,6 +199,10 @@ try {
     )
   )
     throw new Error(`Genome journey failed; inspect ${evidenceDir}`);
+  await harness.press({ key: "Escape" });
+  await page
+    .getByRole("dialog", { name: "Genome report" })
+    .waitFor({ state: "hidden" });
   await harness.click({ selector: 'button[aria-label="Remove genome"]' });
   await harness.waitForText({ text: "Drop your genome" });
   await harness.open();
@@ -205,6 +228,7 @@ try {
     evidence_dir: evidenceDir,
     expected_initial_tus_probes: initialProbes.length,
     findings_navigation: values.findings,
+    avatar_profile: values.findings ? "male" : "female",
     fresh_start_after_refresh: true,
     cache_removal: true,
   };

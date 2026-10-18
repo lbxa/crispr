@@ -93,7 +93,7 @@ curl -X POST https://148-100-79-183.sslip.io/genomes/3/analyze -H 'Content-Type:
   -d '{"symptoms": "macrocephaly, bowing of the legs, recurrent otitis media", "use_llm": false}'
 ```
 
-CORS allows `http://localhost:3000` and `https://crispr.<account>.workers.dev`
+CORS allows `http://localhost:3000`, `https://genome.lbxa.net` and `https://crispr.<account>.workers.dev`
 (`CRISPR_CORS_ORIGINS` and `CRISPR_CORS_ORIGIN_REGEX` override them).
 
 ## Large genome workflow
@@ -307,6 +307,8 @@ base model that cannot follow instructions.
 ### 2026-10-18
 
 - Demo genome files declare their sex as `##SAMPLE=<ID=…,Sex=…>` (1000 Genomes metadata), added when served by `/genomes/{id}/genome.vcf` and written by `etl/build_genomes.py`. That is the explicit metadata `scan_vcf` reads, so an uploaded demo genome gets the right avatar and karyotype; demo analyses by ID and orders report the same `model_profile`. Sex is still never inferred from genotypes.
+- Avatar display metadata recognizes the exact selected-sample identifiers `HG001`, `NA12878` and `GM12878` as female, as documented in [NIST RM 8398](https://tsapps.nist.gov/srmext/certificates/8398%28QTY10%29.pdf). The HG001 v4.2.1 benchmark lacks `##SAMPLE` sex metadata. Conflicting, malformed or oversized declarations remain unknown; never infer a profile from the filename or absent Y calls, or use this display fallback as clinical sex.
+- The production browser origin is `https://genome.lbxa.net`. Keep API CORS, upload origin authorization and tusd's deployment allowlist aligned; the frontend transfers genomes directly to this backend.
 - Security hardening. Caddy now blocks `/internal/*` with a `handle` block (a bare `respond` ran after the catch-all `handle`, so the tus hook and forward-auth routes were publicly reachable), caps non-upload bodies at 21 MB, and sends HSTS, nosniff, frame and referrer headers without a `Server` header. `crispr_backend/security.py` owns allowed origins (this team's Worker and `genome.lbxa.net`, not any `crispr.*.workers.dev`), per-IP rate limits (`CRISPR_ANALYSES_PER_MINUTE` 20, `CRISPR_PLANS_PER_MINUTE` 60, `CRISPR_ORDERS_PER_MINUTE` 5) and a cap on concurrent analyses (`CRISPR_MAX_ACTIVE_ANALYSES` 3), each answering 429 with `Retry-After`. `/docs`, `/redoc` and `/openapi.json` need `CRISPR_PUBLIC_DOCS=1`; VCF parse errors no longer echo input; the scorer binds loopback by default. `deploy.sh` restores a missing `CRISPRON_URL`, keeps `~/data` owner-only (0700/0600) and limits tusd CORS to the same origins; base images are pinned by digest.
 - `/reference/{chromosome}` serves GRCh38 bases from UCSC's `hg38.2bit` (835 MB) in `~/data/reference/` on the server; `deploy.sh` downloads it once. `reference.py` is a pure-Python, byte-order-aware random-access reader (a 4,096-base read takes ~0.3 ms on LinuxONE), so no compiled 2bit library is needed on s390x. Without the file the endpoint returns 503 and the web app falls back to `N`.
 - Avatar mapping uses Gemini only after deterministic clinical findings are finalized. Restrict its schema to the avatar catalog and exact non-carrier finding indices so the model cannot add diagnoses, color carriers or change clinical tiers. Keep disease associations separate from predicted symptoms and genetic edit targets.

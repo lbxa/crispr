@@ -41,6 +41,51 @@ def test_scan_reads_only_the_selected_samples_declared_model_profile(compressed,
     assert result.calls == (Call(*KNOWN, 1, (1,)),)
 
 
+@pytest.mark.parametrize("compressed", [False, True])
+@pytest.mark.parametrize("sample_id", ["HG001", "NA12878", "GM12878"])
+def test_hg001_reference_sample_selects_female_without_explicit_sex_metadata(compressed, sample_id):
+    content = HEADER.replace(b"\tS1\n", f"\t{sample_id}\n".encode()) + RECORD
+
+    result = scan_vcf(
+        BoundedBytesIO(gzip.compress(content) if compressed else content),
+        relevant_loci={KNOWN},
+        compressed=compressed,
+    )
+
+    assert result.model_profile == "female"
+
+
+@pytest.mark.parametrize("sample_id", ["HG001_copy", "CUSTOM_HG001", "HG00001", "hg001", "S1"])
+def test_reference_sample_lookup_requires_an_exact_id_and_never_infers_from_absent_y_calls(sample_id):
+    content = HEADER.replace(b"\tS1\n", f"\t{sample_id}\n".encode()) + RECORD
+
+    result = scan_vcf(io.BytesIO(content), relevant_loci={KNOWN})
+
+    assert result.model_profile is None
+
+
+@pytest.mark.parametrize(
+    "metadata,expected",
+    [
+        (b"##SAMPLE=<ID=OTHER,Sex=male>\n", "female"),
+        (b"##SAMPLE=<ID=HG001,Sex=female>\n", "female"),
+        (b"##SAMPLE=<ID=HG001,Sex=male>\n", None),
+        (b"##SAMPLE=<ID=HG001,Sex=unknown>\n", None),
+        (b"##SAMPLE=<ID=HG001,Description=unspecified>\n", None),
+        (b"##SAMPLE=<ID=HG001,Sex=female>\n##SAMPLE=<ID=HG001,Sex=male>\n", None),
+        (b"##SAMPLE=<ID=HG001,Sex=female,Sex=male>\n", None),
+        (b'##SAMPLE=<ID=HG001,Sex="female>\n', None),
+        (b"##SAMPLE=<ID=HG001,Sex=female,Description=" + b"x" * (64 * 1024) + b">\n", None),
+    ],
+)
+def test_reference_sample_metadata_conflicts_or_validation_failures_stay_unknown(metadata, expected):
+    content = HEADER.replace(b"\tS1\n", b"\tHG001\n").replace(b"#CHROM", metadata + b"#CHROM") + RECORD
+
+    result = scan_vcf(io.BytesIO(content), relevant_loci={KNOWN})
+
+    assert result.model_profile == expected
+
+
 @pytest.mark.parametrize(
     "metadata",
     [

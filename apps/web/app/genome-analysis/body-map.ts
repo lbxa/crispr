@@ -34,6 +34,16 @@ export type BodyRegionHighlight = HumanModelHighlight & {
   readonly association?: "carrier";
 };
 
+/** Reviewed display association shared by the avatar and its finding card. */
+export function reviewedBodyAssociation({
+  gene,
+  disease,
+}: Pick<GenomeReport["findings"][number], "gene" | "disease">) {
+  if (gene !== "PAH") return undefined;
+  const mapping = findHealthResultMapping(disease);
+  return mapping?.key === "phenylketonuria" ? mapping : undefined;
+}
+
 /** Display associations retain carrier context; disease evidence takes precedence. */
 export function bodyHighlights(
   report: GenomeReport,
@@ -48,13 +58,12 @@ export function bodyHighlights(
     }
   }
   for (const finding of report.findings) {
-    if (finding.gene !== "PAH") continue;
     if (report.body_map?.status === "mapped" && finding.tier !== "carrier")
       continue;
     // Reviewed display association for older reports and PKU carriers. Other
     // diseases still require a backend map; do not guess from gene names.
-    const mapping = findHealthResultMapping(finding.disease);
-    if (mapping?.key !== "phenylketonuria") continue;
+    const mapping = reviewedBodyAssociation(finding);
+    if (!mapping) continue;
     for (const { regionId } of mapping.regions) {
       if (associations.get(regionId) !== "disease") {
         associations.set(

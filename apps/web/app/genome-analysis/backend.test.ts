@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { analyzeGenome } from "./backend";
 import { report } from "./report.fixture";
+import { plan } from "../crispr/plan.fixture";
 
 vi.mock("server-only", () => ({}));
 afterEach(() => {
@@ -36,7 +37,7 @@ describe("Python genome analysis gateway", () => {
             tier: "possible",
             gene: "MEFV",
             disease: "Familial Mediterranean fever",
-            crispr: ["PRIVATE_EDIT"],
+            crispr: [{ ...plan.edits[0], unused_sequence: "PRIVATE_EDIT" }],
           },
         ],
       }),

@@ -86,7 +86,7 @@ export function ModelWorkspace({
   const bodyMappingNotice =
     highlights.length > 0
       ? highlights.every(({ association }) => association === "carrier")
-        ? "Carrier finding · Associated region shown in red"
+        ? null
         : "Disease-associated regions shown in red"
       : hasDiseaseFindings
         ? analysis.status === "complete" &&
@@ -106,25 +106,6 @@ export function ModelWorkspace({
     visiblePanes.length === 2 ? "both" : (visiblePanes[0] ?? "none");
   const [genomeOpened, setGenomeOpened] = useState(false);
   const [genomeSelection, setGenomeSelection] = useState(0);
-  // The selection whose finished analysis has already opened the right pane for the user.
-  const [autoOpenedFor, setAutoOpenedFor] = useState(0);
-  // A freshly analyzed genome opens the explorer once. Restored (cached) genomes and panes the
-  // user closes afterwards are left alone because `genomeSelection` only changes on a new file.
-  if (
-    analysis.status === "complete" &&
-    analysis.report.genome_view &&
-    genomeSelection > autoOpenedFor
-  ) {
-    setAutoOpenedFor(genomeSelection);
-    setGenomeOpened(true);
-    setOpenPanes((current) =>
-      current.includes("right")
-        ? current
-        : sharedWorkspace
-          ? [...current, "right"]
-          : ["right"],
-    );
-  }
   const paneToggles = useRef<Record<Pane, HTMLButtonElement | null>>({
     left: null,
     right: null,
@@ -142,7 +123,8 @@ export function ModelWorkspace({
           !event.defaultPrevented &&
           visiblePanes.length > 0 &&
           !(
-            event.target instanceof Element && event.target.closest("[popover]")
+            event.target instanceof Element &&
+            event.target.closest("[popover], [role=dialog]")
           )
         ) {
           const target =
@@ -254,6 +236,7 @@ export function ModelWorkspace({
                 }
                 disabled={!visiblePanes.includes(side)}
                 aria-label="Left widgets"
+                gap={32}
               >
                 <WidgetGrid.Item
                   id="files"
@@ -266,6 +249,15 @@ export function ModelWorkspace({
                     file={genomeFile}
                     onFileSelect={(file) => {
                       setGenomeSelection((current) => current + 1);
+                      setGenomeOpened(true);
+                      setOpenPanes((current) =>
+                        sharedWorkspace
+                          ? [
+                              ...current.filter((pane) => pane !== "right"),
+                              "right",
+                            ]
+                          : ["right"],
+                      );
                       void analyze(file);
                     }}
                   />
@@ -309,6 +301,11 @@ export function ModelWorkspace({
               key={genomeSelection}
               active={visiblePanes.includes("right")}
               hasGenome={genomeFile !== null}
+              loading={
+                analysis.status === "uploading" ||
+                analysis.status === "queued" ||
+                analysis.status === "processing"
+              }
               report={
                 analysis.status === "complete" ? analysis.report : undefined
               }

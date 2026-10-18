@@ -6,6 +6,7 @@ import {
   render,
   screen,
   within,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { DEMO_REPORT } from "@crispr/ui/genome/report";
@@ -25,7 +26,7 @@ it("has a local WebP illustration for every screened disease", () => {
   }
 });
 
-it("filters image cards and discloses the selected result without promoting carriers to edit candidates", () => {
+it("filters image cards and opens a report drawer without promoting carriers to edit candidates", async () => {
   const { container } = render(
     <GenomeWorkspace
       report={DEMO_REPORT}
@@ -41,11 +42,12 @@ it("filters image cards and discloses the selected result without promoting carr
   expect(container.querySelectorAll("[data-disease]")).toHaveLength(1);
   const card = container.querySelector('[data-disease="CFTR"]')!;
   expect(within(card as HTMLElement).getByText("Carrier")).toBeTruthy();
-  const disclosure = screen.getByRole("button", { name: "View CFTR evidence" });
+  const disclosure = screen.getByRole("button", { name: "View CFTR report" });
   fireEvent.click(disclosure);
   expect(disclosure.getAttribute("aria-expanded")).toBe("true");
-  expect(screen.getByText("One copy")).toBeTruthy();
+  const drawer = await screen.findByRole("dialog", { name: "Cystic fibrosis" });
+  expect(within(drawer).getByText("One copy")).toBeTruthy();
   expect(screen.queryByRole("link", { name: /See edit plan/ })).toBeNull();
-  fireEvent.click(disclosure);
-  expect(screen.queryByText("One copy")).toBeNull();
+  fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { genomeViewSchema } from "./genome-view";
 import { bodyMapSchema } from "./body-map";
+import { editSchema, overviewSchema } from "../crispr/contract";
 
 // Matches backend/crispr_backend/api.py. Only uncompressed single-sample VCFs.
 export const MAX_GENOME_BYTES = 20 * 1024 * 1024;
@@ -8,8 +9,8 @@ export const MAX_GENOME_BYTES = 20 * 1024 * 1024;
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024 * 1024;
 export const UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024;
 
-// Project the Python report to the fields this UI uses. Raw variants and edit
-// sequences remain at the backend boundary rather than traveling to the browser.
+// Retain validated report evidence and editing results for the report drawer.
+// Optional additions preserve completed reports cached by older app versions.
 export const genomeReportSchema = z
   .object({
     genome_view: genomeViewSchema.optional(),
@@ -24,6 +25,7 @@ export const genomeReportSchema = z
       label: z.string().min(1),
     }),
     summary: z.object({ text: z.string().min(1) }),
+    overview: overviewSchema.optional(),
     genome: z.object({
       variants_checked: z.number().int().nonnegative(),
       panel_genes: z.array(z.string().min(1)),
@@ -34,9 +36,69 @@ export const genomeReportSchema = z
         tier: z.enum(["likely", "possible", "carrier"]),
         gene: z.string().min(1),
         disease: z.string().min(1),
+        omim_id: z.string().optional(),
+        inheritance: z.enum(["AD", "AR", "XLR", "XLD"]).optional(),
+        genotype: z
+          .object({
+            status: z.enum(["affected", "carrier"]),
+            explanation: z.string(),
+          })
+          .optional(),
+        variants: z
+          .array(
+            z.object({
+              variation_id: z.number().int().positive(),
+              name: z.string().nullable(),
+              rsid: z.string().nullable(),
+              chrom: z.string().min(1),
+              pos: z.number().int().positive(),
+              ref: z.string().min(1),
+              alt: z.string().min(1),
+              significance: z.string(),
+              stars: z.number().int().min(0).max(4),
+              zygosity: z.string(),
+              haplotypes: z.array(z.number().int().nonnegative()),
+            }),
+          )
+          .optional(),
+        phenotype: z
+          .object({
+            score: z.number(),
+            rank: z.number().int().positive(),
+            matched_terms: z.array(
+              z.object({
+                patient_term: z.string(),
+                disease_term: z.string(),
+                hpo_id: z.string(),
+              }),
+            ),
+          })
+          .nullable()
+          .optional(),
+        crispr: z.array(editSchema).optional(),
       }),
     ),
     disclaimer: z.string().min(1),
+    symptoms: z
+      .object({
+        text: z.string().nullable(),
+        extraction: z.string(),
+        terms: z.array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            matched_text: z.string(),
+          }),
+        ),
+        closest_panel_diseases: z.array(
+          z.object({
+            omim_id: z.string(),
+            disease: z.string(),
+            score: z.number(),
+          }),
+        ),
+      })
+      .optional(),
     // Symptoms the backend predicts from the genome. The backend does not send any yet; an absent or
     // empty list means none were predicted.
     predicted_symptoms: z

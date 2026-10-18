@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { createStore, get, set, type UseStore } from "idb-keyval";
 import { describe, expect, it } from "vitest";
 import { CurrentGenomeCache } from "./cache";
-import { report } from "./report.fixture";
+import { detailedReport, report } from "./report.fixture";
 import { uploadJob } from "./upload.fixture";
 
 const file = new File(["genome data"], "sample.vcf", {
@@ -22,6 +22,19 @@ const complete = {
 };
 
 describe("current genome cache", () => {
+  it("preserves detailed evidence and edit results across a cache round trip", async () => {
+    const cache = new CurrentGenomeCache(
+      createStore(`cache-${crypto.randomUUID()}`, "genomes"),
+    );
+    await cache.remember({ ...complete, report: detailedReport });
+    const restored = await cache.restore();
+    expect(restored?.report.findings[0]?.genotype).toEqual(
+      detailedReport.findings[0]?.genotype,
+    );
+    expect(restored?.report.findings[0]?.crispr).toEqual(
+      detailedReport.findings[0]?.crispr,
+    );
+  });
   it("restores the analyzed genome without storing raw file bytes or upload capabilities", async () => {
     // Arrange
     const store = createStore(`cache-${crypto.randomUUID()}`, "genomes");
