@@ -26,3 +26,25 @@ export const carrierReport: GenomeReport = {
     text: "No genetic cause found; carrier of a recessive condition. You carry one copy of a variant linked to Familial Mediterranean fever (MEFV); carriers usually have no symptoms.",
   },
 };
+
+export const mappedReport: GenomeReport = {
+  ...report,
+  conclusion: {
+    status: "genetic_finding",
+    label: "Disease-causing variants found",
+  },
+  findings: [
+    { tier: "possible", gene: "MEFV", disease: "Familial Mediterranean fever" },
+    { tier: "carrier", gene: "CFTR", disease: "Cystic fibrosis" },
+    { tier: "likely", gene: "FGFR3", disease: "Achondroplasia" },
+  ],
+  body_map: {
+    version: 1,
+    status: "mapped",
+    source: "gemini",
+    mappings: [
+      { finding_index: 0, region_ids: ["digestive_tract", "major_joints"] },
+      { finding_index: 2, region_ids: ["major_joints"] },
+    ],
+  },
+};

@@ -8,6 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { DnaHelix, type DnaHelixProps } from "@crispr/human-model/dna";
 import type { GenomeSequenceSource } from "@crispr/human-model/dna-sequence";
 import { DEMO_CHROMOSOMES, DEMO_GENOME } from "./demo-genome";
@@ -221,6 +222,7 @@ it("generates repeatable overlapping demo ranges and supports cancellation", asy
 });
 
 it("navigates by one-based coordinates, repeats a previous jump, and switches chromosomes", async () => {
+  const user = userEvent.setup();
   render(<GenomeExplorer active />);
   act(() => frame?.(0));
   const input = screen.getByRole("spinbutton", { name: "Go to base" });
@@ -238,9 +240,12 @@ it("navigates by one-based coordinates, repeats a previous jump, and switches ch
   );
   fireEvent.submit(screen.getByRole("spinbutton").closest("form")!);
   expect(scene.glideTo).toHaveBeenLastCalledWith(200_000_000);
-  fireEvent.change(screen.getByRole("combobox", { name: "Chromosome" }), {
-    target: { value: "Y" },
-  });
+  await user.click(screen.getByRole("combobox", { name: "Chromosome" }));
+  // The scene test's shared frame stub also gates the portaled menu.
+  act(() => frame?.(0));
+  await user.click(
+    await screen.findByRole("option", { name: "Chr Y" }),
+  );
   act(() => frame?.(0));
   expect(screen.getByText("of 57,000,000")).toBeTruthy();
   expect(screen.getByLabelText("Current base").textContent).toBe(
@@ -315,11 +320,8 @@ it("maps backend regions to the minimap and jumps across chromosomes with exact 
   );
   act(() => frame?.(0));
   expect(
-    screen
-      .getByRole("combobox")
-      .querySelector("option:checked")
-      ?.getAttribute("value"),
-  ).toBe("16");
+    screen.getByRole("combobox", { name: "Chromosome" }).textContent,
+  ).toContain("Chr 16");
   expect(scene.setPosition).toHaveBeenLastCalledWith(3293405, true);
   expect(screen.getByRole("slider").getAttribute("value")).toBe("3293405");
   fireEvent.change(screen.getByRole("slider"), {
@@ -505,6 +507,10 @@ it("slides to a clicked finding and keeps the readout and handle moving with it"
     "60,000,001 bp",
   );
   expect(handle.style.left).toBe(`${(60_000_000 / 159345972) * 100}%`);
+  expect(screen.getByRole("slider").getAttribute("value")).toBe("60000000");
+  expect(screen.getByRole("slider").getAttribute("aria-valuetext")).toBe(
+    "Chromosome 7, base 60,000,001 of 159,345,973",
+  );
   act(() => helix.onGlide?.(null));
   expect(screen.getByLabelText("Current base").textContent).toBe(
     "120,000,001 bp",
@@ -680,6 +686,39 @@ it("slides to an animated navigation without letting the scroll echo cancel it",
   expect(changed).toHaveBeenLastCalledWith(90_000_005);
 });
 
+it("continues scrolling from the visible DNA when a jump is interrupted", () => {
+  const changed = vi.fn();
+  const { rerender } = render(
+    <DnaHelix
+      chromosome={chromosome}
+      source={DEMO_GENOME}
+      navigation={{ position: 1_024_000 }}
+      active
+      onPositionChange={changed}
+    />,
+  );
+  act(() => frame?.(0));
+  scene.instantGlide = false;
+  rerender(
+    <DnaHelix
+      chromosome={chromosome}
+      source={DEMO_GENOME}
+      navigation={{ position: 90_000_000, animate: true }}
+      active
+      onPositionChange={changed}
+    />,
+  );
+  act(() => scene.instances.at(-1)?.onGlide?.(40_000_000));
+
+  const viewport = screen.getByRole("region", { name: "DNA sequence" });
+  fireEvent.scroll(viewport); // A frame's own scroll write must not cancel the jump.
+  expect(changed).not.toHaveBeenCalled();
+  viewport.scrollTop += 100;
+  fireEvent.scroll(viewport);
+
+  expect(changed).toHaveBeenLastCalledWith(40_000_005);
+});
+
 // CFTR is only a carrier finding; MEFV is a possible disease and so an editing target.
 const mappedReport = {
   ...report,
@@ -734,12 +773,10 @@ it("offers CRISPR beside an editing target and opens the popup on that gene", as
   fireEvent.click(within(tag).getByRole("button", { name: "CRISPR" }));
   const dialog = await screen.findByRole("dialog");
   expect(
-    (
-      within(dialog).getByRole("combobox", {
-        name: "Gene",
-      }) as HTMLSelectElement
-    ).value,
-  ).toBe("MEFV");
+    within(dialog).getByRole("combobox", {
+      name: "Gene",
+    }),
+  ).toHaveProperty("value", "MEFV");
   // Only genes with a likely or possible finding can be chosen; the carrier gene cannot.
   expect(
     within(dialog)

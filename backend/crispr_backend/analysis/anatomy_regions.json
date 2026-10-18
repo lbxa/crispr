@@ -1,0 +1,17 @@
+{
+  "head_brain": "Head and brain, including neurological and cranial effects",
+  "neck_thyroid": "Neck and thyroid",
+  "heart_circulation": "Heart and circulation, including blood disorders",
+  "lungs_breathing": "Lungs and breathing",
+  "liver": "Liver",
+  "pancreas_metabolism": "Pancreas and glucose regulation",
+  "digestive_tract": "Stomach, intestines and digestion",
+  "kidneys_urinary": "Kidneys and urinary system",
+  "pelvic_health": "Pelvic and reproductive health",
+  "upper_limbs": "Arms and hands",
+  "lower_limbs": "Legs and feet",
+  "major_joints": "Shoulders, elbows, hips and knees",
+  "spine_back": "Spine and back",
+  "skin": "Skin surface",
+  "whole_body": "Systemic effects with no more specific supported region"
+}

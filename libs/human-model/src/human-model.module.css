@@ -24,6 +24,7 @@
   min-height: 0;
   outline-offset: -4px;
   touch-action: none;
+  filter: var(--avatar-filter, none);
 }
 .notice {
   position: absolute;

@@ -1,0 +1,28 @@
+.toggle {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+/* CSS selects the visible action before hydration, including saved preferences. */
+.toDark {
+  display: flex;
+}
+.toLight {
+  display: none;
+}
+:global(.dark) .toDark {
+  display: none;
+}
+:global(.dark) .toLight {
+  display: flex;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

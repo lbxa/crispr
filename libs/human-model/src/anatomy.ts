@@ -95,7 +95,8 @@ export const ANATOMY_REGIONS = [
     label: "Liver",
     category: "digestive",
     anchors: [anchor([-0.17, 0.58, 0.62], [0.24, 0.095, 0.52], "front")],
-    surfaceCue: "Upper-right abdominal surface association; not an organ outline.",
+    surfaceCue:
+      "Upper-right abdominal surface association; not an organ outline.",
   },
   {
     id: "pancreas_metabolism",
@@ -163,7 +164,8 @@ export const ANATOMY_REGIONS = [
       anchor([-0.17, 0.2, 0], [0.13, 0.06, 1.05], "both"),
       anchor([0.17, 0.2, 0], [0.13, 0.06, 1.05], "both"),
     ],
-    surfaceCue: "Bilateral shoulder, elbow, hip, and knee surface associations.",
+    surfaceCue:
+      "Bilateral shoulder, elbow, hip, and knee surface associations.",
   },
   {
     id: "spine_back",
@@ -208,6 +210,15 @@ export interface HealthResultMapping {
 
 export const HEALTH_RESULT_MAPPINGS = [
   {
+    key: "phenylketonuria",
+    label: "Phenylketonuria",
+    aliases: ["PKU", "Phenylalanine hydroxylase deficiency"],
+    regions: [{ regionId: "head_brain", strength: "primary" }],
+    // https://medlineplus.gov/genetics/condition/phenylketonuria/
+    association:
+      "Shows the primary neurological association of PKU, without inferring current symptoms or treatment status.",
+  },
+  {
     key: "apob",
     label: "Apolipoprotein B",
     aliases: ["apo b"],
@@ -215,14 +226,16 @@ export const HEALTH_RESULT_MAPPINGS = [
       { regionId: "heart_circulation", strength: "primary" },
       { regionId: "whole_body", strength: "secondary" },
     ],
-    association: "Presented as a cardiovascular risk association, not a diagnosis.",
+    association:
+      "Presented as a cardiovascular risk association, not a diagnosis.",
   },
   {
     key: "ldl_cholesterol",
     label: "LDL cholesterol",
     aliases: ["ldl", "ldl-c"],
     regions: [{ regionId: "heart_circulation", strength: "primary" }],
-    association: "Presented as a cardiovascular risk association, not a diagnosis.",
+    association:
+      "Presented as a cardiovascular risk association, not a diagnosis.",
   },
   {
     key: "blood_pressure",
@@ -316,7 +329,8 @@ export const HEALTH_RESULT_MAPPINGS = [
       { regionId: "spine_back", strength: "primary" },
       { regionId: "major_joints", strength: "secondary" },
     ],
-    association: "Highlights common skeletal assessment areas without depicting bone.",
+    association:
+      "Highlights common skeletal assessment areas without depicting bone.",
   },
   {
     key: "grip_strength",
@@ -326,21 +340,24 @@ export const HEALTH_RESULT_MAPPINGS = [
       { regionId: "upper_limbs", strength: "primary" },
       { regionId: "whole_body", strength: "secondary" },
     ],
-    association: "Shows the tested limbs and a secondary whole-body fitness association.",
+    association:
+      "Shows the tested limbs and a secondary whole-body fitness association.",
   },
   {
     key: "cognitive_health",
     label: "Cognitive health",
     aliases: ["cognitive score", "memory", "reaction time"],
     regions: [{ regionId: "head_brain", strength: "primary" }],
-    association: "Uses a whole-head cue rather than implying a localized finding.",
+    association:
+      "Uses a whole-head cue rather than implying a localized finding.",
   },
   {
     key: "digestive_health",
     label: "Digestive health",
     aliases: ["microbiome", "gut health", "stool test"],
     regions: [{ regionId: "digestive_tract", strength: "primary" }],
-    association: "Uses a broad abdominal cue because results are not spatially diagnostic.",
+    association:
+      "Uses a broad abdominal cue because results are not spatially diagnostic.",
   },
   {
     key: "sex_hormones",
@@ -350,7 +367,8 @@ export const HEALTH_RESULT_MAPPINGS = [
       { regionId: "pelvic_health", strength: "primary" },
       { regionId: "whole_body", strength: "secondary" },
     ],
-    association: "Shows pelvic and systemic associations shared across model profiles.",
+    association:
+      "Shows pelvic and systemic associations shared across model profiles.",
   },
   {
     key: "vitamin_d",
@@ -384,11 +402,10 @@ export function findHealthResultMapping(
   resultName: string,
 ): HealthResultMapping | undefined {
   const normalized = normalizeResultKey(resultName);
-  return HEALTH_RESULT_MAPPINGS.find(
-    ({ key, label, aliases }) =>
-      [key, label, ...aliases].some(
-        (candidate) => normalizeResultKey(candidate) === normalized,
-      ),
+  return HEALTH_RESULT_MAPPINGS.find(({ key, label, aliases }) =>
+    [key, label, ...aliases].some(
+      (candidate) => normalizeResultKey(candidate) === normalized,
+    ),
   );
 }
 

@@ -58,6 +58,19 @@ def test_misconfiguration_is_reported(monkeypatch):
             llm.get_llm()
 
 
+@pytest.mark.parametrize("provider", ["", "granite", "none"])
+def test_gemini_only_selection_never_loads_granite(monkeypatch, provider):
+    monkeypatch.setenv("CRISPR_LLM", provider)
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    llm.get_llm.cache_clear()
+
+    def forbidden():
+        raise AssertionError("Granite must not be loaded for body mapping")
+
+    monkeypatch.setattr(llm, "_granite", forbidden)
+    assert llm.get_llm(gemini_only=True) is None
+
+
 def test_gemini_request_format():
     client, session = gemini_with(gemini_reply({"text": "thinking...", "thought": True}, {"text": '["Fever"]'}))
     assert client.chat("system prompt", "I have a fever", json_output=True) == '["Fever"]'
@@ -74,6 +87,21 @@ def test_gemini_errors_do_not_leak_the_key():
     with pytest.raises(RuntimeError, match="Gemini API error 400") as error:
         client.chat("s", "u")
     assert "test-key" not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"candidates": True},
+        {"candidates": [{"content": {"parts": "private"}}]},
+        {"candidates": [{"content": {"parts": [{"text": 123}]}}]},
+    ],
+)
+def test_gemini_rejects_malformed_vendor_responses_without_echoing_them(payload):
+    client, _ = gemini_with(payload)
+    with pytest.raises(RuntimeError, match="invalid response") as error:
+        client.chat("s", "u")
+    assert "private" not in str(error.value)
 
 
 def test_chat_json_parses_or_returns_none():

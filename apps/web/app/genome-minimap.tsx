@@ -20,9 +20,9 @@ export function GenomeMinimap({
 }: {
   chromosome: GenomeChromosome;
   regions: readonly GenomeRegion[];
-  /** Where the explorer is (or is heading). Drives the slider's value and region state. */
+  /** Where the explorer is (or is heading). */
   position: number;
-  /** Where the handle is drawn; differs from `position` while the helix slides. */
+  /** The displayed DNA position; drives the handle, slider value, and region state. */
   displayPosition?: number;
   /** Region ids the user has not looked at yet; their markers pulse. */
   unseen?: ReadonlySet<string>;
@@ -50,7 +50,7 @@ export function GenomeMinimap({
 
   function atX(clientX: number) {
     const rect = track();
-    if (!rect) return position;
+    if (!rect) return displayPosition;
     const fraction = (clientX - rect.left) / rect.width;
     return Math.round(Math.min(1, Math.max(0, fraction)) * span);
   }
@@ -119,9 +119,9 @@ export function GenomeMinimap({
           min={0}
           max={chromosome.length - 1}
           step={1}
-          value={position}
+          value={displayPosition}
           aria-label="Position in chromosome"
-          aria-valuetext={`Chromosome ${chromosome.id}, base ${format.format(position + 1)} of ${format.format(chromosome.length)}`}
+          aria-valuetext={`Chromosome ${chromosome.id}, base ${format.format(displayPosition + 1)} of ${format.format(chromosome.length)}`}
           onChange={(event) => onNavigate(Number(event.target.value))}
         />
         {current.map((region) => (
@@ -132,7 +132,9 @@ export function GenomeMinimap({
             data-unseen={unseen?.has(region.id) || undefined}
             aria-label={`Jump to ${region.annotations.map(({ gene }) => gene).join(", ")} at chr${chromosome.id}:${region.start + 1}`}
             title={`${region.annotations[0]!.gene} · ${format.format(region.start + 1)}–${format.format(region.end)} bp`}
-            aria-pressed={position >= region.start && position < region.end}
+            aria-pressed={
+              displayPosition >= region.start && displayPosition < region.end
+            }
             onClick={() => onSelect(region)}
             style={
               {

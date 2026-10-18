@@ -26,6 +26,8 @@ def public_report(report: dict) -> dict:
     # Older completed jobs have no map; keep them readable and request reanalysis in the UI.
     if "genome_view" in report:
         result["genome_view"] = report["genome_view"]
+    if "body_map" in report:
+        result["body_map"] = report["body_map"]
     return result
 
 

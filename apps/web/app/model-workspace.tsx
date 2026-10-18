@@ -1,13 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRef, useState, useSyncExternalStore } from "react";
-import {
-  ANATOMY_REGIONS,
-  type AnatomyRegionId,
-} from "@crispr/human-model/anatomy";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { getAnatomyRegion } from "@crispr/human-model/anatomy";
 import type { ModelProfile } from "@crispr/human-model/profiles";
-import type { HumanModelHighlight } from "@crispr/human-model";
 import { ManagedWidgetGrid } from "@crispr/widget-grid/managed-react";
 import { WidgetGrid } from "@crispr/widget-grid/react";
 import { FileDropCard } from "./file-drop-card";
@@ -15,6 +11,8 @@ import { DateCard } from "./date-card";
 import { GenomeExplorer } from "./genome-explorer";
 import { GenomeSummaryCard } from "./genome-analysis/summary-card";
 import { useGenomeAnalysis } from "./genome-analysis/use-genome-analysis";
+import { bodyHighlights } from "./genome-analysis/body-map";
+import { ThemeToggle } from "./theme-toggle";
 import styles from "./page.module.css";
 
 // The application shell and controls hydrate without downloading Three.js.
@@ -30,9 +28,6 @@ const HumanModel = dynamic(
   },
 );
 
-const REGIONS = ANATOMY_REGIONS.filter(
-  ({ id }) => id !== "skin" && id !== "whole_body",
-);
 const PANES = ["left", "right"] as const;
 type Pane = (typeof PANES)[number];
 // 360px files + 548px studio + 440px anatomy + 64px margins + 28px gaps.
@@ -51,8 +46,6 @@ function getSharedWorkspace() {
 function getServerSharedWorkspace() {
   return false;
 }
-// Temporarily disabled: manual anatomy highlighting is a developer tool.
-const SHOW_DEV_REGION_CONTROLS = false;
 
 export function ModelWorkspace({
   modelUrls,
@@ -76,10 +69,31 @@ export function ModelWorkspace({
     analysis.status === "complete"
       ? (analysis.report.genome.model_profile ?? "male")
       : "male";
-  // Once a genome has been analyzed, the avatar dims when no symptoms are predicted from it.
+  const highlights = useMemo(
+    () =>
+      analysis.status === "complete" ? bodyHighlights(analysis.report) : [],
+    [analysis],
+  );
+  const hasDiseaseFindings =
+    analysis.status === "complete" &&
+    analysis.report.findings.some(({ tier }) => tier !== "carrier");
+  // Disease associations remain visible even when no symptom predictions exist.
   const noPredictedSymptoms =
     analysis.status === "complete" &&
+    !hasDiseaseFindings &&
+    highlights.length === 0 &&
     (analysis.report.predicted_symptoms?.length ?? 0) === 0;
+  const bodyMappingNotice =
+    highlights.length > 0
+      ? highlights.every(({ association }) => association === "carrier")
+        ? "Carrier finding · Associated region shown in red"
+        : "Disease-associated regions shown in red"
+      : hasDiseaseFindings
+        ? analysis.status === "complete" &&
+          analysis.report.body_map?.status === "mapped"
+          ? "No supported body regions mapped"
+          : "Body region mapping unavailable. Analyze this genome again."
+        : null;
   const sharedWorkspace = useSyncExternalStore(
     subscribeToWorkspaceWidth,
     getSharedWorkspace,
@@ -115,17 +129,6 @@ export function ModelWorkspace({
     left: null,
     right: null,
   });
-  const [highlights, setHighlights] = useState<readonly HumanModelHighlight[]>(
-    [],
-  );
-
-  function toggleRegion(regionId: AnatomyRegionId) {
-    setHighlights((current) =>
-      current.some((region) => region.regionId === regionId)
-        ? current.filter((region) => region.regionId !== regionId)
-        : [...current, { regionId, color: "#5ec8b0" }],
-    );
-  }
 
   return (
     <div
@@ -163,8 +166,9 @@ export function ModelWorkspace({
       <div
         className={styles.paneToggles}
         role="group"
-        aria-label="Workspace panes"
+        aria-label="Workspace controls"
       >
+        <ThemeToggle className={styles.paneToggle} />
         {PANES.map((side) => (
           <button
             key={side}
@@ -211,6 +215,19 @@ export function ModelWorkspace({
         {noPredictedSymptoms && (
           <p className={styles.phenotypeNotice} role="status">
             No phenotypic symptoms predicted
+          </p>
+        )}
+        {bodyMappingNotice && (
+          <p className={styles.phenotypeNotice} role="status">
+            {bodyMappingNotice}
+            {highlights.length > 0 && (
+              <span className={styles.srOnly}>
+                {": "}
+                {highlights
+                  .map(({ regionId }) => getAnatomyRegion(regionId).label)
+                  .join(", ")}
+              </span>
+            )}
           </p>
         )}
       </section>
@@ -299,61 +316,6 @@ export function ModelWorkspace({
           )}
         </section>
       ))}
-      {SHOW_DEV_REGION_CONTROLS && (
-        <>
-          <aside className={styles.controls} aria-label="Anatomy controls">
-            <button
-              type="button"
-              popoverTarget="anatomy-regions"
-              className={styles.regionsTrigger}
-            >
-              Regions
-              {highlights.length > 0 && (
-                <span className={styles.selectionCount} aria-hidden="true">
-                  {highlights.length}
-                </span>
-              )}
-              <span className={styles.chevron} aria-hidden="true" />
-            </button>
-          </aside>
-          <div
-            id="anatomy-regions"
-            popover="auto"
-            className={styles.regionsPanel}
-          >
-            <div className={styles.regionsHeader}>
-              <h2>Highlight regions</h2>
-              <button
-                type="button"
-                disabled={highlights.length === 0}
-                onClick={() => setHighlights([])}
-              >
-                Clear selection
-              </button>
-            </div>
-            <fieldset className={styles.regions}>
-              <legend className={styles.srOnly}>Anatomical regions</legend>
-              {REGIONS.map((region) => (
-                <label key={region.id} className={styles.region}>
-                  <input
-                    type="checkbox"
-                    value={region.id}
-                    checked={highlights.some(
-                      (highlight) => highlight.regionId === region.id,
-                    )}
-                    onChange={() => toggleRegion(region.id)}
-                  />
-                  <span>{region.label}</span>
-                </label>
-              ))}
-            </fieldset>
-          </div>
-          <p className={styles.srOnly} role="status">
-            {highlights.length} {highlights.length === 1 ? "region" : "regions"}{" "}
-            selected
-          </p>
-        </>
-      )}
     </div>
   );
 }

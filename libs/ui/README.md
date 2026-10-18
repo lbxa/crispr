@@ -17,6 +17,15 @@ cards have surfaces. Preserve the app's existing CSS Module layout.
 
 ## Changelog
 
+### 2026-10-18
+
+- `SelectContent size="sm"` applies compact group/item spacing and bounds long menus to the available height or 18rem. The small trigger keeps its 28px target with 6px horizontal padding; other Select popups retain the default density.
+- `genome/disease-card` composes shadcn Card, Badge and Button for both genome views. Keep report adapters, artwork paths and editing eligibility in the app. The card exposes a controlled evidence disclosure; its artwork is decorative and never encodes the patient's status.
+- Shared `Card` surfaces use app-owned `--card-shadow`, `--card-footer`, and `--card-divider` tokens for depth and neutral inset sections. Cards have no permanent outer ring; retain interactive focus outlines and structural footer dividers. Dashboard cards use the same light elevation treatment, tinted nested tiles, and darker status text.
+- Genome dashboard themes follow the app's root `.dark` class rather than system appearance, so the saved light/dark choice remains consistent across routes. Light uses the requested `rgb(250, 250, 250)` page background; the existing dashboard dark palette stays intact.
+- Added Base UI Select, Input/InputGroup and Field primitives for dense controls. The small Select uses 28px height and narrow padding; field labels use the existing muted theme, and popup colors resolve through the app's semantic tokens.
+- Declare `lucide-react` in this workspace because the shared Select imports it directly; relying on the web app's dependency breaks isolated library type checks.
+
 ### 2026-10-17
 
 - Replaced the Turbo starter Button and Card with official shadcn primitives and added Empty. Matching app/library registry configuration keeps future components in the shared workspace while product widgets remain app-owned.

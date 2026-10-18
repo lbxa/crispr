@@ -77,7 +77,18 @@ export function DnaHelix({
     scene.setPosition(current.current, true);
     scene.setMode(mode, true);
     scene.setHighlights(highlights ?? []);
-    scene.onGlide = (position) => glideListener.current?.(position);
+    scene.onGlide = (position) => {
+      if (position !== null) {
+        // Native scrolling must resume from the visible DNA, even mid-jump.
+        current.current = clampGenomePosition(position, chromosome.length);
+        runway.current = genomeScrollWindow(current.current, chromosome.length);
+        if (viewport.current) {
+          expectedScroll.current = runway.current.offset;
+          viewport.current.scrollTop = runway.current.offset;
+        }
+      }
+      glideListener.current?.(position);
+    };
     if (sequence.current) scene.setSequence(sequence.current);
     scene.setActive(active);
   });

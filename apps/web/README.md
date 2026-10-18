@@ -1,4 +1,4 @@
-# Crispr web
+# Genome web
 
 The Next.js App Router application owns the gene editing software's UI and
 navigation. The current page establishes the anatomy workspace; genetic edit
@@ -6,34 +6,35 @@ operations and workflow policy should be added at the application boundary.
 
 ## Code map
 
-| File                                            | Owns                                                                  |
-| ----------------------------------------------- | --------------------------------------------------------------------- |
-| `app/page.tsx`                                  | Server-rendered page shell and built asset URLs                       |
-| `app/model-workspace.tsx`                       | React panes, report-driven avatar profile, disabled developer regions and lazy `HumanModel` |
-| `app/file-drop-card.tsx`                        | Single-file VCF selection, size/type checks, and replacement          |
-| `app/genome-explorer.tsx`, `app/demo-genome.ts` | Right-pane DNA navigation and a position-addressable synthetic genome |
-| `app/genome-minimap.tsx`                        | Chromosome minimap, accessible scrubbing and exact finding jumps      |
-| `app/genome-analysis/genome-view.ts`            | Validated BED-compatible map and bounded reference-context source     |
-| `app/genome-analysis/client.ts`                 | Capability-bound IBM tus transfers, pause/resume, and job polling     |
-| `app/genome-analysis/use-genome-analysis.ts`    | Workspace upload ownership, cancellation, and latest-file state       |
-| `app/genome-analysis/cache.ts`                   | Versioned IndexedDB cache of the current genome metadata and report   |
-| `app/genome-analysis/summary-card.tsx`          | Processing, failure/retry, and backend summary presentation           |
-| `app/genome-analysis/contract.ts`, `backend.ts` | Validated report contract and server-only Python API adapter          |
-| `app/api/genome-uploads/config/route.ts`        | Public IBM upload origin and bounded transfer settings                |
-| `app/api/analyze/route.ts`                      | Compatibility small-file multipart route and safe request telemetry   |
-| `../../libs/widget-grid/README.md`              | Grid layout, reordering, widget sizing, and interaction contracts     |
-| `app/page.module.css`, `app/globals.css`        | App layout and styling                                                |
-| `app/crispr/crispr-dialog.tsx`, `panels.tsx` | The CRISPR popup: gene choice, plain-language verdict, collapsed Advanced genomics |
+| File                                                | Owns                                                                                               |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `app/page.tsx`                                      | Server-rendered page shell and built asset URLs                                                    |
+| `app/model-workspace.tsx`                           | React panes, report-driven avatar profile/highlights and lazy `HumanModel`                         |
+| `app/genome-analysis/body-map.ts`                   | Supported-region validation and non-carrier red highlight policy                                   |
+| `app/file-drop-card.tsx`                            | Single-file VCF selection, size/type checks, and replacement                                       |
+| `app/genome-explorer.tsx`, `app/demo-genome.ts`     | Right-pane DNA navigation and a position-addressable synthetic genome                              |
+| `app/genome-minimap.tsx`                            | Chromosome minimap, accessible scrubbing and exact finding jumps                                   |
+| `app/genome-analysis/genome-view.ts`                | Validated BED-compatible map and bounded reference-context source                                  |
+| `app/genome-analysis/client.ts`                     | Capability-bound IBM tus transfers, pause/resume, and job polling                                  |
+| `app/genome-analysis/use-genome-analysis.ts`        | Workspace upload ownership, cancellation, and latest-file state                                    |
+| `app/genome-analysis/cache.ts`                      | Versioned IndexedDB cache of the current genome metadata and report                                |
+| `app/genome-analysis/summary-card.tsx`              | Processing, failure/retry, and backend summary presentation                                        |
+| `app/genome-analysis/contract.ts`, `backend.ts`     | Validated report contract and server-only Python API adapter                                       |
+| `app/api/genome-uploads/config/route.ts`            | Public IBM upload origin and bounded transfer settings                                             |
+| `app/api/analyze/route.ts`                          | Compatibility small-file multipart route and safe request telemetry                                |
+| `../../libs/widget-grid/README.md`                  | Grid layout, reordering, widget sizing, and interaction contracts                                  |
+| `app/page.module.css`, `app/globals.css`            | App layout and styling                                                                             |
+| `app/crispr/crispr-dialog.tsx`, `panels.tsx`        | The CRISPR popup: gene choice, plain-language verdict, collapsed Advanced genomics                 |
 | `app/crispr/contract.ts`, `backend.ts`, `client.ts` | Validated CRISPR plan contract, server-only adapter for `GET /genes/{gene}/crispr`, browser client |
-| `app/api/crispr/[gene]/route.ts` | Uncached server route the popup calls; maps backend failures to statuses |
-| `app/layout.tsx`                                | Fonts and page metadata                                               |
-| `instrumentation.ts`                            | Node server observability                                             |
-| `wrangler.jsonc`, `open-next.config.ts`         | Cloudflare Worker deployment, bindings, and adapter settings          |
-| `scripts/sync-model-assets.ts`                  | Copies the library's generated assets into Next's public directory    |
-| `../../libs/human-model/src/scene.ts`           | Three.js scene lifecycle, not app policy                              |
-| `app/genome/page.tsx`                    | Genome results route: server shell and top navigation              |
-| `app/genome/genome-workspace.tsx`        | Body-system rail, `HumanModel` highlights, panel filters, ask bar  |
-| `@crispr/ui/genome/*` (`libs/ui`)        | Summary/edit-plan cards, icons, report types + demo data, styles   |
+| `app/api/crispr/[gene]/route.ts`                    | Uncached server route the popup calls; maps backend failures to statuses                           |
+| `app/layout.tsx`                                    | Fonts and page metadata                                                                            |
+| `instrumentation.ts`                                | Node server observability                                                                          |
+| `wrangler.jsonc`, `open-next.config.ts`             | Cloudflare Worker deployment, bindings, and adapter settings                                       |
+| `scripts/sync-model-assets.ts`                      | Copies the library's generated assets into Next's public directory                                 |
+| `../../libs/human-model/src/scene.ts`               | Three.js scene lifecycle, not app policy                                                           |
+| `app/genome/page.tsx`                               | Genome results route: server shell and top navigation                                              |
+| `app/genome/genome-workspace.tsx`                   | Body-system rail, `HumanModel` highlights, panel filters, ask bar                                  |
+| `@crispr/ui/genome/*` (`libs/ui`)                   | Summary/edit-plan cards, icons, report types + demo data, styles                                   |
 
 Import the component from `@crispr/human-model`; import lightweight metadata from
 `@crispr/human-model/profiles` or `/anatomy`. The app does not import Three.js or
@@ -90,13 +91,21 @@ The API and tus collection must share an origin, with uploads at `/files/`;
 every SDK request is bound to that collection or the current session's exact
 resource URL before sending its bearer capability.
 
-The current journey is genome-only: symptoms are empty and `use_llm` is false.
+The current journey is genome-only: symptoms are empty and symptom extraction is off.
+The backend upload worker separately requests Gemini body-region mapping for
+non-carrier findings. The validated `body_map` drives red avatar highlights,
+deduplicated across diseases, with accessible region labels. The reviewed PKU
+association in `@crispr/human-model/anatomy` also supports older reports without
+`body_map`. PKU carriers show the associated head/brain region in red with an
+explicit `Carrier finding` label; this does not change their clinical tier or
+claim current injury. Other unavailable mappings show a reanalysis notice.
+Maps persist with the cached report, and replacing/removing a genome clears its
+highlights. Disease findings keep the avatar fully visible even without symptom predictions.
 The avatar follows the completed report's optional `genome.model_profile`,
 derived from explicit sex metadata for the VCF's selected sample. Missing or
 ambiguous metadata uses the default male model without claiming an inference;
 replacement uploads reset that choice. The manual profile toggle is removed,
-and region highlighting is temporarily disabled by `SHOW_DEV_REGION_CONTROLS`
-in `model-workspace.tsx`. The avatar is never treated as patient sex.
+and manual region controls are removed. The avatar is never treated as patient sex.
 Python owns VCF interpretation, panel/inheritance rules, and edit planning;
 the frontend never opens the database or invents findings.
 
@@ -147,6 +156,21 @@ adapter are pinned in this workspace. See [deployment ownership, CI settings,
 and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ## Changelog
+
+### 2026-10-18
+
+- Widget cards use surface contrast and soft shadows without a permanent outer border. Retain keyboard-focus, file-drop and error outlines so interaction states remain visible.
+- DNA navigation uses a compact Select popup capped at 18rem, with 24px option rows and 6px field insets. Keep its chromosome trigger and base-pair input joined at 28px high; dense spacing should preserve keyboard selection, focus and validation while the mobile viewer title clears the floating header.
+- Light mode brightens the avatar by 10% and keeps no-symptom desaturation without darkening it. The `--avatar-filter` and `--avatar-muted-brightness` tokens preserve the original material and dark-mode appearance across both routes.
+- The summary's variant count uses compact decimal notation (for example, `3.9M` and `1.2k`); its hover title and accessible label retain the exact count.
+- The product is Genome. Both routes share an app-owned wordmark with Apple's native San Francisco system-font stack, falling back to a system sans on other platforms. Keep scientific CRISPR terminology, workspace package names and storage identifiers separate from product branding.
+- Disease cards share `@crispr/ui/genome/disease-card` across the main DNA inspector and `/genome` demo dashboard. `app/disease-artwork.ts` maps the 24 panel genes to local generated WebP covers; `public/diseases/README.md` and `generation.json` record their conceptual motifs and prompts. Keep exact alleles/inheritance behind evidence disclosure, preserve coordinate navigation, and keep carrier findings outside editing actions. `/genome` still displays the simulated demo report.
+- The chromosome scrollbar's value, thumb, accessible readout, and selected markers follow the displayed DNA position during animated jumps. Commit animation coordinates before the WebGL frame paints; completion stays asynchronous because reduced motion can complete inside an Effect. Keep destinations separate from displayed coordinates so input can interrupt a jump at the visible DNA.
+- Light cards use neutral edges and shallow shadows on the `250, 250, 250` canvas, with separate footer/divider tokens. The file pane reserves shadow gutters without shrinking its cards; keep those gutters at zero in dark mode to preserve the original layout and surfaces.
+- Light mode defaults to `rgb(250, 250, 250)` regardless of system appearance; dark mode preserves the original palette and scene gradient. The shared `next-themes` provider saves explicit choices across reloads and both routes, and root `.dark` selectors drive CSS Modules and Tailwind together.
+- Chromosome and base-pair navigation share a joined 28px shadcn control row, with narrow padding and matching outside corners. Use the Base UI Select's controlled value/labels and InputGroup's native number validation; its portaled popup opens below the row and Escape dismisses it before the pane.
+- Prefer validated backend `body_map` for automatic avatar highlights. A reviewed PKU display association recovers older reports and labels carrier associations explicitly, because the HG001 benchmark returns a PAH carrier finding rather than affected-genotype PKU. Associated regions bypass no-symptom dimming without changing the report's clinical tier; unknown diseases still require backend mappings.
+- DNA view controls live in a vertical toolbar inside the scene, aligned to its starting edge so they stay with the viewer at every pane width. Unwind/Rewind uses the official Hugeicons Stroke Rounded assets in `public/icons/hugeicons` with retained source/license credits; keep the existing mode state, accessible action names and 44px targets when extending the toolbar.
 
 ### 2026-10-17
 

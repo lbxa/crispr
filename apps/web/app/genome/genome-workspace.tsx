@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import type { HumanModelHighlight } from "@crispr/human-model";
+import { DiseaseCard } from "@crispr/ui/genome/disease-card";
 import {
   MODEL_PROFILES,
   type ModelProfile,
@@ -30,6 +31,7 @@ import {
   worstStatus,
 } from "@crispr/ui/genome/report";
 import styles from "@crispr/ui/genome/genome.module.css";
+import { DISEASE_ARTWORK } from "../disease-artwork";
 
 // The dashboard hydrates without downloading Three.js.
 const HumanModel = dynamic(
@@ -156,7 +158,7 @@ export function GenomeWorkspace({
     if (typeof question !== "string" || !question.trim()) return;
     // Placeholder until the page calls Granite through the backend.
     setAskReply(
-      "Crispr AI will answer from your report once the backend is connected. For now: your one likely finding is hereditary hemochromatosis, and the next step is a ferritin blood test.",
+      "Genome AI will answer from your report once the backend is connected. For now: your one likely finding is hereditary hemochromatosis, and the next step is a ferritin blood test.",
     );
     form.reset();
   }
@@ -329,14 +331,7 @@ export function GenomeWorkspace({
         </section>
 
         <div>
-          <div className={styles.tableHead} aria-hidden="true">
-            <span>Condition</span>
-            <span>Gene</span>
-            <span>Status</span>
-            <span>Symptom fit</span>
-            <span />
-          </div>
-          <div className={styles.rows} aria-live="polite">
+          <div className={styles.diseaseGrid} aria-live="polite">
             {visible.length === 0 ? (
               <p className={styles.empty}>
                 No conditions match these filters. Try a gene name such as HFE,
@@ -344,7 +339,7 @@ export function GenomeWorkspace({
               </p>
             ) : (
               visible.map((result) => (
-                <ResultRow
+                <DiseaseResult
                   key={result.gene}
                   result={result}
                   open={openGene === result.gene}
@@ -374,12 +369,12 @@ export function GenomeWorkspace({
       <form className={styles.ask} id="ask" onSubmit={ask}>
         <Spark className={styles.spark} />
         <label className={styles.srOnly} htmlFor="ask-input">
-          Ask Crispr AI
+          Ask Genome AI
         </label>
         <input
           id="ask-input"
           name="question"
-          placeholder="Ask Crispr AI…"
+          placeholder="Ask Genome AI…"
           autoComplete="off"
         />
         <button
@@ -394,7 +389,7 @@ export function GenomeWorkspace({
   );
 }
 
-function ResultRow({
+function DiseaseResult({
   result,
   open,
   onToggle,
@@ -403,67 +398,28 @@ function ResultRow({
   open: boolean;
   onToggle: () => void;
 }) {
-  const detailId = `result-${result.gene}`;
   return (
-    <>
-      <button
-        type="button"
-        className={styles.row}
-        aria-expanded={open}
-        aria-controls={open ? detailId : undefined}
-        onClick={onToggle}
-      >
-        <span className={styles.rowName}>
-          <span className={styles.cat}>{systemLabel(result.system)}</span>
-          <span className={styles.name}>{result.name}</span>
-        </span>
-        <span className={styles.gene} translate="no">
-          {result.gene}
-        </span>
-        <span className={styles.status} data-status={result.status}>
-          <span className={styles.dot} data-status={result.status} />
-          {STATUS_LABEL[result.status]}
-        </span>
-        <span
-          className={styles.fit}
-          data-status={result.status}
-          aria-label={`Symptom fit ${result.fit} of 5`}
-        >
-          {[1, 2, 3, 4, 5].map((step) => (
-            <i
-              key={step}
-              data-filled={step <= result.fit || undefined}
-              style={{ height: 6 + step * 3 }}
-            />
-          ))}
-        </span>
-        <ChevronDown className={styles.chev} />
-      </button>
-      {open && (
-        <div className={styles.detail} id={detailId}>
-          <dl>
-            <dt>Gene</dt>
-            <dd translate="no">{result.gene}</dd>
-            <dt>Inheritance</dt>
-            <dd>{result.inheritance}</dd>
-            <dt>Copies found</dt>
-            <dd>{result.copies}</dd>
-            <dt>Matched symptoms</dt>
-            <dd>{result.matchedSymptoms}</dd>
-          </dl>
-          {result.status === "likely" && (
-            <a className={styles.linkish} href="#edit-plan">
-              See edit plan <ArrowUpRight />
-            </a>
-          )}
-          {result.status === "carrier" && (
-            <p>
-              Carriers usually have no symptoms. Partners can test the same gene
-              before a pregnancy.
-            </p>
-          )}
-        </div>
+    <DiseaseCard
+      name={result.name}
+      gene={result.gene}
+      status={result.status}
+      artwork={DISEASE_ARTWORK[result.gene]}
+      expanded={open}
+      onExpandedChange={onToggle}
+    >
+      <dl>
+        <dt>Inheritance</dt>
+        <dd>{result.inheritance}</dd>
+        <dt>Copies found</dt>
+        <dd>{result.copies}</dd>
+        <dt>Matched symptoms</dt>
+        <dd>{result.matchedSymptoms}</dd>
+      </dl>
+      {result.status === "likely" && (
+        <a className={styles.linkish} href="#edit-plan">
+          See edit plan <ArrowUpRight />
+        </a>
       )}
-    </>
+    </DiseaseCard>
   );
 }

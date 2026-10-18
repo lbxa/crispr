@@ -1,0 +1,151 @@
+{
+  "generator": "Built-in image_gen.imagegen",
+  "date": "2026-10-18",
+  "styleReference": "HBB",
+  "assets": [
+    {
+      "gene": "HBB",
+      "source": "exec-6a7aae04-4f6a-4bbb-ae72-f9b2d3e2136f.png",
+      "output": "HBB.webp",
+      "prompt": "Seed prompt recorded in public/diseases/README.md."
+    },
+    {
+      "gene": "CFTR",
+      "source": "exec-8e558145-6751-4295-aab2-ddf184f60b6d.png",
+      "output": "CFTR.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: A single sculptural chloride-channel pore embedded in a small rounded cross-section of cell membrane. Muted sea-glass phospholipid membrane, tiny pale mineral spheres nearby. Cystic fibrosis biological motif; no literal lungs. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "HFE",
+      "source": "exec-90a42215-5af1-4970-b556-5988b8bb29a4.png",
+      "output": "HFE.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: A small translucent sea-glass storage-protein sphere with a restrained cluster of warm iron-colored mineral beads at its core. Hemochromatosis biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "HEXA",
+      "source": "exec-c917c24b-b1c4-4c9c-a6a2-19e7b6e41fe8.png",
+      "output": "HEXA.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One translucent rounded lysosome with a few softly coiled coral lipid ribbons inside. Tay-Sachs disease biological motif; a clean stylized cellular cutaway, not an anatomical scan. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "PAH",
+      "source": "exec-de679509-df5f-4825-8d05-fc04cb900bd1.png",
+      "output": "PAH.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One folded sea-glass enzyme-like sculpture beside a small cluster of coral amino-acid-like beads. Phenylketonuria biological motif; do not claim atomically accurate protein structure. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "ATP7B",
+      "source": "exec-6f0eeafc-a1f0-4656-a9a8-59d9f3308e73.png",
+      "output": "ATP7B.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: A single sea-glass membrane transport channel with a small group of soft copper-colored mineral spheres passing nearby. Wilson disease biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "GBA1",
+      "source": "exec-27937eca-eaf5-42f9-ba9d-ccade83ff3e4.png",
+      "output": "GBA1.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One translucent lysosome containing neatly layered coral lipid discs. Gaucher disease biological motif; sculptural organelle cutaway. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "ACADM",
+      "source": "exec-d9c69507-68b1-4caa-b680-a86fc3120514.png",
+      "output": "ACADM.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One translucent sea-glass mitochondrion cutaway with soft folded inner membrane and a short coral chain nearby. Medium-chain acyl-CoA dehydrogenase deficiency biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "GAA",
+      "source": "exec-7d4c6079-3610-4abf-bda7-a604e4da192e.png",
+      "output": "GAA.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One translucent lysosome holding a sparse branching coral glycogen-like bead structure. Pompe disease biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "SERPINA1",
+      "source": "exec-546e72fa-347c-4ded-96c5-4829497172f3.png",
+      "output": "SERPINA1.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One delicate sculptural cluster of rounded air sacs at the end of a short branching airway, sea-glass and pale coral. Alpha-1 antitrypsin deficiency biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "MEFV",
+      "source": "exec-0ed2856c-b8c9-4348-82da-47e8fed3efdb.png",
+      "output": "MEFV.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One rounded sea-glass innate immune cell, translucent with a small coral central molecular assembly. Familial Mediterranean fever biological motif; no spiky virus. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "FBN1",
+      "source": "exec-0508c459-b6d0-46c2-a5c5-47bdcb844f68.png",
+      "output": "FBN1.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: A small graceful bundle of intertwined elastic connective-tissue microfibrils, pale sea-glass with one muted coral strand. Marfan syndrome biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "ASPA",
+      "source": "exec-c08a7fe3-ef82-40cb-b044-953c15ced144.png",
+      "output": "ASPA.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One short sea-glass nerve fiber wrapped in segmented translucent myelin sleeves, with a restrained coral inner axon. Canavan disease biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "TTR",
+      "source": "exec-fea01e6e-9a0b-4076-9c6d-7c44d1d126b6.png",
+      "output": "TTR.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: A small sculptural bundle of fine sea-glass protein fibrils with one short coral folded-protein form beside it. Transthyretin amyloidosis biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "BCKDHA",
+      "source": "exec-30bf47b6-082c-4d34-a736-bf6cc840ef8f.png",
+      "output": "BCKDHA.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One small sculptural branched-chain amino-acid-like bead arrangement beside a sea-glass enzyme shape. Maple syrup urine disease biological motif; no literal syrup or food. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "MYBPC3",
+      "source": "exec-edf50b46-81ca-4dbb-8db4-d15b13f33987.png",
+      "output": "MYBPC3.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: A small isolated orderly bundle of cardiac muscle fibers, pale sea-glass with subtle coral striations. Hypertrophic cardiomyopathy biological motif; no whole heart. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "ALDOB",
+      "source": "exec-fa985f57-90d5-479b-926b-daf4cec8f42f.png",
+      "output": "ALDOB.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One translucent sea-glass enzyme-like folded form holding a simple small coral sugar-ring-like sculpture. Hereditary fructose intolerance biological motif; no atom labels or literal fruit. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "NF1",
+      "source": "exec-e5378e62-33e4-49e4-a02f-77ecf654e1b0.png",
+      "output": "NF1.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One sea-glass branching peripheral nerve fiber with a rounded translucent supporting cell resting alongside, restrained coral axon. Neurofibromatosis type 1 biological motif; no tumor or gore. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "F8",
+      "source": "exec-451c5a59-053e-47bb-bded-edf0c03add5d.png",
+      "output": "F8.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: A small rounded sea-glass platelet beside gently interlaced fibrin-like fibers, muted coral accents. Hemophilia A biological motif, visually distinct from a mesh-wide composition. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "F9",
+      "source": "exec-488c0a9c-fc55-4cb0-8def-b4c18b942c7d.png",
+      "output": "F9.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: A delicate small sea-glass fibrin-like mesh with two pale coral platelets suspended within, open airy composition. Hemophilia B biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "GLA",
+      "source": "exec-480dead7-d25f-4a3d-85de-7d5b1d9a3994.png",
+      "output": "GLA.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One translucent sea-glass lysosome holding a few softly stacked coral lipid ribbons with rounded ends. Fabry disease biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "FGFR3",
+      "source": "exec-e1319391-5bfa-44d1-89b9-387b47b00d67.png",
+      "output": "FGFR3.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: A small sculptural cross-section of cartilage with three rounded chondrocyte-like cells in a pale sea-glass matrix and a coral central cell. Achondroplasia biological motif. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "G6PD",
+      "source": "exec-057929f8-498a-4f42-93bf-e4b2ea5c3b34.png",
+      "output": "G6PD.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One smooth coral biconcave red blood cell with a small translucent sea-glass enzyme-like folded form nearby. G6PD deficiency biological motif; keep cell intact, not sickle-shaped. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    },
+    {
+      "gene": "MECP2",
+      "source": "exec-ff8f4ed0-dd16-4891-a006-27491be33544.png",
+      "output": "MECP2.webp",
+      "prompt": "Use case: stylized-concept. Production disease-card cover, one landscape 3:2 image, not a UI mockup or collage. Use the reference ONLY for consistent lighting, pale seamless background, translucent material, restrained coral and sea-glass palette, and premium scientific product-photography finish. Create a NEW biological subject: One small graceful branching neuron with a sea-glass cell body and muted coral dendrite tips. Rett syndrome biological motif; no whole brain. Conceptual editorial illustration, not a patient scan, diagnostic image, or atomically accurate molecular model. One isolated sculptural subject centered in the middle 65% with generous breathing room so it crops to 16:10. Fine believable texture, frosted-glass/wax cellular surfaces, diffuse large softbox upper left, soft contact shadow, crisp subject and gently softened background. Quiet, clean, simple, high-tech, Apple-like. No words, labels, symbols, logos, borders, decorative gradients, HUD graphics, people, gore, hospital imagery, or dramatic neon. Do not repeat the sickle cell from the style reference."
+    }
+  ]
+}

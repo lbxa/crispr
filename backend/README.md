@@ -42,6 +42,7 @@ analysis never reads it.
 | `crispr_backend/vcf.py`                  | Pure-Python VCF reading (no htslib needed on s390x)                                  |
 | `crispr_backend/analysis/`               | Genotype, phenotype, CRISPR design, pipeline. Never reads ground truth               |
 | `crispr_backend/analysis/genome_view.py` | Versioned BED-compatible finding map and bounded GRCh38 reference contexts           |
+| `crispr_backend/analysis/body_map.py`, `anatomy_regions.json` | Validated Gemini condition-to-avatar region mapping and supported display catalog |
 | `crispr_backend/simulation/`             | "Order your kit" flow and simulated customer symptoms; reads ground truth            |
 | `crispr_backend/llm.py`                  | Gemini or Granite, chosen in `.env`; `None` when unavailable                         |
 | `crispr_backend/api.py`                  | FastAPI app                                                                          |
@@ -253,8 +254,9 @@ the scorer container; rebuild it by hand after changing `scoring_service/`.
 
 ## Language model
 
-The model turns customers' plain-language symptoms into clinical terms; everything else
-is deterministic. Choose it in `backend/.env`, copied from `.env.example` (git-ignored;
+The model turns customers' plain-language symptoms into clinical terms. Gemini also
+maps non-carrier findings onto the avatar's supported body regions; genotype,
+clinical tiering and edit planning remain deterministic. Choose it in `backend/.env`, copied from `.env.example` (git-ignored;
 values without quotes):
 
 ```sh
@@ -272,6 +274,27 @@ backend/scripts/deploy.sh              # uploads .env to the server, readable on
 If the model errors or is over quota, the analysis falls back to keyword matching
 instead of failing. Tests always run with `none` and fake HTTP, so they never call a model.
 
+### Avatar body mapping
+
+Completed reports include `body_map` version 1, separate from the DNA-coordinate
+`genome_view`. `mapped` results identify each non-carrier finding by its index in
+the final sorted `findings` array and list `region_ids` from `anatomy_regions.json`.
+`not_needed` means there are no disease findings to visualize; `unavailable`
+means mapping was disabled or Gemini was unavailable or returned invalid output.
+An empty region list means the condition has no supported surface association.
+These are display associations, not predicted symptoms or clinical diagnoses.
+
+The upload worker requests mapping with `map_body=True` while keeping symptom
+extraction off. Other callers follow `use_llm` unless they explicitly override
+`map_body`. Configure `CRISPR_LLM=gemini` and `GEMINI_API_KEY` to enable it; Granite
+is never loaded for this feature. One schema-constrained call receives only
+condition names, gene symbols, OMIM IDs and the region catalog. Raw genome data,
+sample identifiers and symptom text are excluded. Responses must cover exactly
+the eligible findings with unique, supported regions. Invalid responses produce
+no partial highlights and never fail the genome analysis. Existing worker lease
+heartbeats continue during the call, and the completed mapping is persisted
+with the report. Reading or refreshing a completed report makes no model call.
+
 **Granite model file:** `~/shared/models/granite-3.3-2b-instruct-be.Q4_K_M.gguf`, a
 big-endian build from
 [taronaeo/Granite-3.3-2B-Instruct-BE-GGUF](https://huggingface.co/taronaeo/Granite-3.3-2B-Instruct-BE-GGUF)
@@ -279,6 +302,12 @@ big-endian build from
 base model that cannot follow instructions.
 
 ## Changelog
+
+### 2026-10-18
+
+- Avatar mapping uses Gemini only after deterministic clinical findings are finalized. Restrict its schema to the avatar catalog and exact non-carrier finding indices so the model cannot add diagnoses, color carriers or change clinical tiers. Keep disease associations separate from predicted symptoms and genetic edit targets.
+- Persist `body_map` with completed upload reports; reuse it on reads and refreshes. Mapping is optional enrichment, so provider errors leave an explicit unavailable state instead of failing genome analysis. The web contract test checks catalog parity with the actual model regions.
+- Gemini's structured-output grammar rejects larger nested `maxItems` bounds. Keep the outer mapping cardinality limit in Pydantic and validate exact finding coverage locally; retain the supported-region enum in the request schema. Live acceptance covers the full 24-condition panel, not just a single finding.
 
 ### 2026-10-17
 

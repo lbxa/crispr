@@ -303,6 +303,7 @@ export class DnaScene {
       if (progress < 1) this.onGlide?.(Math.round(this.position));
       else {
         this.position = this.glide.to;
+        this.onGlide?.(Math.round(this.position));
         this.endGlide();
       }
     } else {
