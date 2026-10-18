@@ -190,7 +190,7 @@ describe("workspace widget grids", () => {
     expect(rightToggle.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("opens the file pane with an upload prompt that goes away once a file is chosen", async () => {
+  it("opens the file pane first, before any genome is chosen", () => {
     render(
       <ModelWorkspace
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
@@ -202,15 +202,7 @@ describe("workspace widget grids", () => {
         .getByRole("button", { name: "Left pane" })
         .getAttribute("aria-expanded"),
     ).toBe("true");
-    expect(screen.getByText(/start here: add your genome/i)).toBeTruthy();
-
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText("Choose a file"), {
-        target: { files: [new File(["VCF"], "sample.vcf")] },
-      });
-    });
-
-    expect(screen.queryByText(/start here: add your genome/i)).toBeNull();
+    expect(screen.getByText("Drop your genome")).toBeTruthy();
   });
 
   it("omits manual body profiles and developer region controls", () => {
