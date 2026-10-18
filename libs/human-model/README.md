@@ -12,8 +12,8 @@ bun run setup # from the repository root
 bun run dev   # Next.js is the UI driver
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Drag left or right to turn the model; zoom, panning and the vertical
-angle are fixed. `apps/web/app/model-workspace.tsx` demonstrates the
+Open [http://localhost:3000](http://localhost:3000). Drag left or right to turn the model without limit; the vertical angle can tilt a few degrees (about 12°) and the wheel or pinch zooms
+between 0.8× and 1.25× of the fitted framing. Panning is off (`camera.ts` sets the limits). `apps/web/app/model-workspace.tsx` demonstrates the
 public API with a lazy client import; no Vite server or iframe is involved.
 
 ```tsx

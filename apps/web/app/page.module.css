@@ -35,8 +35,10 @@
 }
 .phenotypeNotice {
   position: absolute;
-  inset-block-end: clamp(48px, 11svh, 120px);
+  /* Centered on the avatar's body: the model is framed on its middle. */
+  inset-block-start: 50%;
   inset-inline: 0;
+  transform: translateY(-50%);
   inline-size: fit-content;
   max-inline-size: calc(100% - 48px);
   margin: 0 auto;

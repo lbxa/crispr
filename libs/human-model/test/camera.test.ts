@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import * as THREE from "three";
 import type { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { fitCameraToObject } from "../src/camera";
+import { TILT_RADIANS, ZOOM_RANGE, fitCameraToObject } from "../src/camera";
 
 describe("fitCameraToObject", () => {
   test("frames a portrait object and updates clipping planes", () => {
@@ -23,13 +23,15 @@ describe("fitCameraToObject", () => {
     expect(controls.target.distanceTo(result.center)).toBeLessThan(0.0001);
   });
 
-  test("pins zoom and the vertical angle so the model only turns horizontally", () => {
+  test("allows slight tilt and zoom while horizontal turning stays unrestricted", () => {
     const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 100);
     const controls = {
       maxDistance: Infinity,
       minDistance: 0,
       minPolarAngle: 0,
       maxPolarAngle: Math.PI,
+      minAzimuthAngle: -Infinity,
+      maxAzimuthAngle: Infinity,
       target: new THREE.Vector3(),
       update: () => true,
     } as unknown as OrbitControls;
@@ -37,11 +39,18 @@ describe("fitCameraToObject", () => {
 
     const result = fitCameraToObject(camera, controls, model);
 
-    expect(controls.minDistance).toBe(result.distance);
-    expect(controls.maxDistance).toBe(result.distance);
-    expect(controls.minPolarAngle).toBe(controls.maxPolarAngle);
-    // The camera sits at the pinned angle, measured from the up axis.
+    expect(controls.minDistance).toBeCloseTo(result.distance * ZOOM_RANGE.min);
+    expect(controls.maxDistance).toBeCloseTo(result.distance * ZOOM_RANGE.max);
+    expect(controls.maxPolarAngle - controls.minPolarAngle).toBeCloseTo(
+      2 * TILT_RADIANS,
+    );
+    expect(controls.maxPolarAngle - controls.minPolarAngle).toBeLessThan(0.6);
+    // The camera starts inside the tilt range, measured from the up axis.
     const offset = camera.position.clone().sub(result.center).normalize();
-    expect(Math.acos(offset.y)).toBeCloseTo(controls.minPolarAngle, 6);
+    const polar = Math.acos(offset.y);
+    expect(polar).toBeGreaterThan(controls.minPolarAngle);
+    expect(polar).toBeLessThan(controls.maxPolarAngle);
+    expect(controls.minAzimuthAngle).toBe(-Infinity);
+    expect(controls.maxAzimuthAngle).toBe(Infinity);
   });
 });
