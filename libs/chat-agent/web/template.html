@@ -283,6 +283,9 @@ details.opt > summary { display: flex; justify-content: space-between; align-ite
   .chips { margin-left: 0; }
   .composer { position: sticky; bottom: 0; }
 }
+/* drawers cover the header chips, so each open drawer carries its own off-target chip */
+.drawer-chip { display: none; }
+.app[data-open] .drawer-chip { display: inline-block; position: sticky; top: 0; z-index: 1; align-self: flex-start; box-shadow: 0 0 0 4px var(--bg); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -305,6 +308,7 @@ details.opt > summary { display: flex; justify-content: space-between; align-ite
     </nav>
 
     <aside class="side" id="left" aria-label="Visualisation and scores">
+      <span class="chip danger drawer-chip">Off-target: not assessed</span>
       <section class="panel" id="p-viz">
         <h2><span>Visualisation</span><button class="close-x" data-close>Close</button></h2>
         <div class="viz-slot" id="viz-slot"></div>
@@ -338,6 +342,7 @@ details.opt > summary { display: flex; justify-content: space-between; align-ite
     </section>
 
     <aside class="side" id="right" aria-label="Sequence">
+      <span class="chip danger drawer-chip">Off-target: not assessed</span>
       <section class="panel">
         <h2 class="hx-extra"><span>Sequence</span><button class="close-x" data-close>Close</button></h2>
         <div class="hx-title hx-extra" id="hx-title"></div>
