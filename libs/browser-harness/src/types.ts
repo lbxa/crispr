@@ -214,6 +214,16 @@ export type PressInput = {
   key: string;
 };
 
+export type PointerInput =
+  | { action: "move"; x: number; y: number; steps?: number }
+  | { action: "down" | "up" };
+
+export type SetInputFilesInput = {
+  selector: string;
+  path: string;
+  timeoutMs?: number;
+};
+
 export type WaitInput = {
   timeoutMs: number;
 };
@@ -244,7 +254,9 @@ export type BrowserHarness = {
   network(): Promise<NetworkResult>;
   open(input?: OpenInput): Promise<OpenResult>;
   press(input: PressInput): Promise<SuccessResult>;
+  pointer(input: PointerInput): Promise<SuccessResult>;
   screenshot(input?: ScreenshotInput): Promise<ScreenshotResult>;
+  setInputFiles(input: SetInputFilesInput): Promise<SuccessResult>;
   snapshot(): Promise<SnapshotResult>;
   start(): Promise<void>;
   stop(): Promise<void>;

@@ -49,6 +49,7 @@ HPO_FREQUENCY = {
     "HP:0040285": 0.0,  # excluded
 }
 DNA = re.compile(r"^[ACGT]+$")
+MAX_ALLELE = 50  # bases; longer changes are structural variants the pipeline doesn't handle
 
 
 def parse_frequency(value: str) -> float | None:
@@ -122,41 +123,48 @@ def gene_region(gene: str) -> dict:
     return {"gene": gene, "chrom": chrom, "start": start, "end": end, "strand": info["strand"], "sequence": sequence}
 
 
+def disease_ids(clndisdb: str) -> set[str]:
+    """IDs in ClinVar's CLNDISDB field, e.g. 'MONDO:MONDO:0009061,OMIM:219700|MedGen:C0010674'."""
+    return {entry.strip() for group in clndisdb.split("|") for entry in group.split(",") if entry.strip()}
+
+
+def parse_clinvar_record(line: str, gene: str, omim_ids: list[str]) -> dict | None:
+    """One ClinVar VCF line -> a variant row, or None unless it is a small pathogenic variant
+    in `gene` that ClinVar links to one of `omim_ids`."""
+    chrom, pos, variation_id, ref, alt, _qual, _filter, info = line.rstrip("\n").split("\t")[:8]
+    fields = dict(item.split("=", 1) for item in info.split(";") if "=" in item)
+    if fields.get("CLNSIG") not in PATHOGENIC:
+        return None
+    if not (DNA.match(ref) and DNA.match(alt)) or max(len(ref), len(alt)) > MAX_ALLELE:
+        return None
+    genes = {entry.split(":")[0] for entry in fields.get("GENEINFO", "").split("|")}
+    if gene not in genes:
+        return None
+    linked = [omim for omim in omim_ids if omim in disease_ids(fields.get("CLNDISDB", ""))]
+    if not linked:
+        return None
+    return {
+        "variation_id": int(variation_id),
+        "omim_id": linked[0],
+        "gene": gene,
+        "chrom": chrom,
+        "pos": int(pos),
+        "ref": ref,
+        "alt": alt,
+        "significance": fields["CLNSIG"],
+        "stars": REVIEW_STARS.get(fields.get("CLNREVSTAT", ""), 0),
+        "variant_type": fields.get("CLNVC", ""),
+        "rsid": f"rs{fields['RS']}" if "RS" in fields else None,
+    }
+
+
 def clinvar_variants(region: dict, diseases: list) -> list[dict]:
     """Pathogenic ClinVar variants in the region linked to one of the gene's panel diseases."""
-    by_omim = {disease.omim_id: disease for disease in diseases}
-    variants = []
+    omim_ids = [disease.omim_id for disease in diseases]
     index = download(f"{CLINVAR_VCF}.tbi", RAW_DIR / "clinvar.vcf.gz.tbi")
     with pysam.TabixFile(CLINVAR_VCF, index=str(index), encoding="utf-8") as clinvar:
-        for line in clinvar.fetch(region["chrom"], region["start"] - 1, region["end"]):
-            chrom, pos, variation_id, ref, alt, _qual, _filter, info = line.split("\t")[:8]
-            fields = dict(item.split("=", 1) for item in info.split(";") if "=" in item)
-            if fields.get("CLNSIG") not in PATHOGENIC:
-                continue
-            if not (DNA.match(ref) and DNA.match(alt)) or max(len(ref), len(alt)) > 50:
-                continue
-            genes = {entry.split(":")[0] for entry in fields.get("GENEINFO", "").split("|")}
-            if region["gene"] not in genes:
-                continue
-            linked = [omim for omim in by_omim if omim in fields.get("CLNDISDB", "")]
-            if not linked:
-                continue
-            variants.append(
-                {
-                    "variation_id": int(variation_id),
-                    "omim_id": linked[0],
-                    "gene": region["gene"],
-                    "chrom": chrom,
-                    "pos": int(pos),
-                    "ref": ref,
-                    "alt": alt,
-                    "significance": fields["CLNSIG"],
-                    "stars": REVIEW_STARS.get(fields.get("CLNREVSTAT", ""), 0),
-                    "variant_type": fields.get("CLNVC", ""),
-                    "rsid": f"rs{fields['RS']}" if "RS" in fields else None,
-                }
-            )
-    return variants
+        lines = clinvar.fetch(region["chrom"], region["start"] - 1, region["end"])
+        return [v for v in (parse_clinvar_record(line, region["gene"], omim_ids) for line in lines) if v]
 
 
 def variant_names(variation_ids: list[int]) -> dict[int, str]:

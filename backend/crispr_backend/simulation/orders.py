@@ -9,11 +9,20 @@ import json
 import random
 import secrets
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from crispr_backend.analysis.pipeline import Analyzer
 from crispr_backend.simulation import symptoms
 from crispr_backend.vcf import read_calls_gz
+
+STALE_AFTER = timedelta(minutes=10)  # an order still 'processing' after this is assumed abandoned
+
+
+def active_orders(connection: sqlite3.Connection) -> int:
+    since = (datetime.now(UTC) - STALE_AFTER).isoformat(timespec="seconds")
+    return connection.execute(
+        "SELECT COUNT(*) FROM orders WHERE status = 'processing' AND created_at >= ?", (since,)
+    ).fetchone()[0]
 
 
 def create_order(connection: sqlite3.Connection) -> dict:

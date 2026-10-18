@@ -101,6 +101,44 @@ With Blender open and the Blender MCP panel connected:
 bun run --cwd libs/human-model verify:mcp
 ```
 
+## DNA viewer
+
+`@crispr/human-model/dna` exports the lazy client `DnaHelix` component. The
+lightweight `/dna-sequence` entrypoint exports chromosome/source types, base
+colors, complementary pairs, and bounded coordinate/range calculations without
+importing Three.js. `src/dna-scene.ts` owns the GPU lifecycle; `src/dna-helix.tsx`
+owns native scrolling and cancellable range loading.
+
+Provide a stable `GenomeSequenceSource`, a positive-length chromosome, an
+`active` flag, a navigation command `{ position }`, and `onPositionChange`.
+The optional `mode` is `helix` (default) or `ladder`; it changes geometry in place
+without replacing the renderer, scroll position, or sequence window.
+Coordinates are zero-based internally; ranges have an exclusive end. Each new
+navigation object is an explicit jump, including a jump back to the same target
+after scrolling. Key the component by chromosome id. `readRange` must honor the
+abort signal and return exactly the requested uppercase A/C/G/T/N sequence;
+invalid responses surface a retry action. The source adapter owns reference
+assembly selection, permissions, and validation of any external response.
+
+Optional `highlights` are immutable zero-based, half-open reference intervals.
+The fixed base-pair pool colors those intervals red in both modes without adding
+geometry or changing coordinates. `DNA_FINDING_COLOR` and `DnaInterval` are
+exported from `/dna-sequence`. Product annotations and minimap controls remain
+in the app; the library never interprets diagnostic tiers or shifts coordinates
+to insert alternate alleles.
+
+The viewer retains one sequence window of at most 1,536 bases, including overscan,
+and draws a fixed pool of 96 pairs using two instanced meshes. A 4,096-base
+native scroll runway recenters without changing genome coordinates, avoiding
+browser limits on huge DOM heights. The chromosome overview belongs in the app.
+Arrow keys advance one base; Page keys advance one viewport using genome
+coordinates rather than relying on browser-specific native keyboard scrolling.
+Scroll motion uses frame-rate-independent damping outside React; large jumps
+snap immediately. Hidden panes/tabs and settled scenes stop rendering. Reduced
+motion removes damping and added twist. Unmount releases geometry, materials,
+instance buffers, observers, listeners, and the renderer; context loss offers a
+fresh-canvas retry.
+
 ## Blender MCP
 
 The scoped `.codex/config.toml` runs pinned `blender-mcp==1.6.4` through `uvx`, so copied checkout paths and virtual environments are not required. Its add-on source is `.mcp/blender-mcp/addon.py`. Telemetry is disabled. Restart Codex after changing MCP configuration. The optional virtual environment below is only needed for manual bridge tooling. Workspace dependencies use the monorepo's root `bun.lock`.
@@ -143,9 +181,18 @@ anatomy. See `docs/blender-segmentation.md` for the export contract.
 
 ### 2026-10-17
 
+- The anatomy viewer and canvas fill their host without a fixed minimum height. The app owns viewport sizing and pane movement; avoid scaling the canvas element during pane transitions because that pulls its top and bottom away from the viewport edges.
+- `DnaHelix.highlights` and `DnaScene.setHighlights` render exact reference intervals in the existing instanced base pool. Both helix and ladder modes share those coordinates; the app supplies validated reference sequence, annotation policy and navigation. Unknown sequence remains `N` rather than synthetic patient DNA.
+- DNA bases carry the visual emphasis: saturated colors from the shared `DNA_BASES` palette, a glossy clearcoat finish, and direct joins to the rails without connector spheres. Base pairs and the fully opaque, subdued backbone share one tube radius in both helix and ladder views; the legend shares the same palette.
+
+- DNA mode changes unwind local helical angles into two planar rails with paired, complementary half-rungs. Both endpoints reuse the same instance buffers; reversible damping runs only until settled, and reduced motion switches directly. Keep orientation continuous during a transition so scrolling through a full turn cannot make the strand snap.
+
+- Added `/dna` and `/dna-sequence` entrypoints so genome exploration reuses the existing Three.js ownership boundary without coupling DNA to the anatomy model. Keep the source range-based and GPU/scroll pools bounded; genome length must never determine scene allocation or DOM height.
+
+- The viewer omits a camera reset button to keep the workspace minimal. Scene reframing on model loads and viewport changes remains internal to the renderer.
 - Type checks depend on this workspace's asset build because the runtime asset tests import the generated manifest. Warm local output can hide this dependency; preserve the task ordering for clean CI checkouts.
 - Track this workspace and its canonical assets as ordinary files in the monorepo. An inherited Git submodule pointer without `.gitmodules` prevented clean CI clones; do not reintroduce a nested repository when copying authoring assets or tooling.
-- Viewer feedback and camera reset inherit host color tokens so the reusable scene fits the app's minimal workspace without adding a separate themed panel.
+- Viewer feedback inherits host color tokens so the reusable scene fits the app's minimal workspace without adding a separate themed panel.
 - `HumanModel` is a controlled React library component used by `apps/web`; Next.js owns the main UI so growing product features do not become coupled to page-global Three.js code.
 - Kept existing anatomy shaders and Blender semantics behind `src/scene.ts` lifecycle ownership, with cancellation and stale-result disposal to make profile changes, retries, and React Strict Mode safe.
 - Renderer allocation waits for the first animation frame and cancels during Strict Mode's effect replay; retry creates a fresh canvas. This avoids reusing a context that cleanup intentionally lost.

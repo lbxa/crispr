@@ -1,0 +1,72 @@
+.card {
+  container: file-card / inline-size;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  border-radius: var(--widget-corner-radius, 32px);
+  cursor: pointer;
+  transition:
+    background-color 150ms var(--workspace-ease, ease),
+    outline-color 150ms ease;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+}
+.content {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+}
+@media (hover: hover) {
+  .card:hover {
+    background: color-mix(in oklab, var(--surface), var(--foreground) 3%);
+  }
+}
+.card:focus-visible,
+.card[data-dragging] {
+  outline-color: var(--accent);
+}
+.card[data-dragging] {
+  background: color-mix(in oklab, var(--surface), var(--accent) 6%);
+}
+.card[data-invalid] {
+  outline-color: var(--destructive);
+}
+.dropContents {
+  min-height: 112px;
+  padding: 12px;
+}
+.title {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.error {
+  margin: 8px 0 0;
+  color: var(--destructive);
+  font-size: 11px;
+  line-height: 1.5;
+}
+@container file-card (max-width: 180px) {
+  .dropContents {
+    min-height: 0;
+    padding: 4px;
+  }
+  .dropContents [data-slot="empty-header"] {
+    gap: 4px;
+  }
+  .dropContents [data-slot="empty-icon"] {
+    display: none;
+  }
+  .dropContents [data-slot="empty-description"] {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

@@ -14,6 +14,20 @@ const typeSchema = z.object({
   timeoutMs: z.number().int().positive().optional(),
 });
 const pressSchema = z.object({ key: z.string() });
+const pointerSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("move"),
+    x: z.number().finite(),
+    y: z.number().finite(),
+    steps: z.number().int().positive().optional(),
+  }),
+  z.object({ action: z.enum(["down", "up"]) }),
+]);
+const setInputFilesSchema = z.object({
+  selector: z.string().min(1),
+  path: z.string().min(1),
+  timeoutMs: z.number().int().positive().optional(),
+});
 const waitSchema = z.object({ timeoutMs: z.number().int().nonnegative() });
 const waitForTextSchema = z.object({
   text: z.string(),
@@ -46,6 +60,10 @@ export async function runBrowserTool(
       return harness.type(typeSchema.parse(params));
     case "browser.press":
       return harness.press(pressSchema.parse(params));
+    case "browser.pointer":
+      return harness.pointer(pointerSchema.parse(params));
+    case "browser.setInputFiles":
+      return harness.setInputFiles(setInputFilesSchema.parse(params));
     case "browser.wait":
       return harness.wait(waitSchema.parse(params));
     case "browser.waitForText":

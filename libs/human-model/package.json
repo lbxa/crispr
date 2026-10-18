@@ -7,6 +7,8 @@
     ".": "./src/human-model.tsx",
     "./anatomy": "./src/anatomy.ts",
     "./profiles": "./src/profiles.ts",
+    "./dna": "./src/dna-helix.tsx",
+    "./dna-sequence": "./src/dna-sequence.ts",
     "./asset-manifest": "./dist/assets/manifest.json"
   },
   "scripts": {

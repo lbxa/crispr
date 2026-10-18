@@ -59,6 +59,13 @@ The Cloudflare Worker is `crispr` in account
 GitHub connection and existing Workers Builds token. Production listens to
 `main`; branch preview builds are disabled.
 
+Production is served at `https://crispr.lbxa.net`. Its Custom Domain is declared
+in `apps/web/wrangler.jsonc`, so local and Git-triggered deployments preserve
+the hostname. Cloudflare manages the DNS record and TLS certificate for this
+hostname in the `lbxa.net` zone. The existing `workers.dev` URL remains enabled.
+Commit this route configuration before the next push to `main`; Workers Builds
+deploys the committed configuration, not local edits.
+
 Configure Workers Builds at the repository root (`/`):
 
 | Setting                   | Value                                                                     |

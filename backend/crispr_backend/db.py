@@ -73,14 +73,14 @@ CREATE TABLE IF NOT EXISTS genome_truth (
     variant_ids TEXT NOT NULL                       -- JSON list of planted variation_ids
 );
 
--- Customer symptom descriptions written ahead of time by Granite (slow on LinuxONE).
+-- Customer symptom descriptions written ahead of time by the language model.
 CREATE TABLE IF NOT EXISTS genome_symptoms (
     id        INTEGER PRIMARY KEY,
     genome_id INTEGER NOT NULL REFERENCES genomes(id),
     scenario  TEXT NOT NULL,  -- 'disease' | 'phenocopy' | 'everyday'
     terms     TEXT NOT NULL,  -- JSON list of the HPO term names described
     text      TEXT NOT NULL,
-    source    TEXT NOT NULL   -- 'granite'
+    source    TEXT NOT NULL   -- the model: 'gemini' | 'granite'
 );
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS orders (
     genome_id       INTEGER REFERENCES genomes(id),
     sex             TEXT,
     symptoms        TEXT,
-    symptoms_source TEXT,           -- 'granite' | 'template' | 'customer'
+    symptoms_source TEXT,           -- 'gemini' | 'granite' | 'template' | 'customer'
     report_json     TEXT,
     error           TEXT
 );

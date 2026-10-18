@@ -13,6 +13,7 @@ iteration inspectable and repeatable.
 | `libs/observability`                           | `@crispr/observability`: server telemetry and Loki queries                       |
 | `libs/exhaustiveness`                          | `@crispr/exhaustiveness`: exhaustive state checks                                |
 | `libs/ui`                                      | `@crispr/ui`: shared React components                                            |
+| `libs/widget-grid`                             | `@crispr/widget-grid`: responsive packing and accessible widget reordering      |
 | `libs/eslint-config`, `libs/typescript-config` | Shared tooling                                                                   |
 | `libs/human-model`                             | Reusable React/Three.js component, optimized model assets, and Blender authoring |
 | `backend`                                      | Python API on IBM LinuxONE: genome + symptoms → finding → CRISPR edit plan       |

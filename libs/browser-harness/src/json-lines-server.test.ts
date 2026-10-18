@@ -34,6 +34,9 @@ function createHarnessStub(
     async press() {
       return success();
     },
+    async pointer() {
+      return success();
+    },
     async screenshot() {
       return { path: "/tmp/screenshot.png", success: true };
     },
@@ -58,6 +61,9 @@ function createHarnessStub(
       calls.push("stop");
     },
     async type() {
+      return success();
+    },
+    async setInputFiles() {
       return success();
     },
     async wait() {

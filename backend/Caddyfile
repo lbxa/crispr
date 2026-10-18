@@ -1,0 +1,33 @@
+{$CRISPR_HOST} {
+	# Internal capability checks and tus hooks are reachable only over loopback.
+	@internal path /internal/*
+	respond @internal 404
+
+	handle /files/* {
+		@creation method POST
+		request_body @creation {
+			max_size 1KB
+		}
+		# Preflights have no capability. tusd applies its configured CORS policy.
+		@preflight method OPTIONS
+		handle @preflight {
+			reverse_proxy 127.0.0.1:1080
+		}
+		handle {
+			forward_auth 127.0.0.1:8000 {
+				uri /internal/uploads/authorize
+			}
+			# Caddy streams the body; never enable request_buffers here.
+			reverse_proxy 127.0.0.1:1080
+		}
+	}
+
+	handle {
+		# Control-plane JSON remains small even though /files accepts large streams.
+		@uploadControl path /uploads /uploads/*
+		request_body @uploadControl {
+			max_size 64KB
+		}
+		reverse_proxy 127.0.0.1:8000
+	}
+}

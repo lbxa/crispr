@@ -1,0 +1,6 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##source=Crispr-synthetic-browser-acceptance
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SYNTHETIC
+7	117559590	.	ATCT	A	.	PASS	.	GT	0/1
+11	5227002	.	T	A	.	PASS	.	GT	1/1

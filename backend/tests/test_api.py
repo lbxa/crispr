@@ -57,3 +57,42 @@ def test_analysis_never_reads_simulation_ground_truth():
         text = source.read_text()
         assert not re.search(r"(FROM|JOIN)\s+genome_(truth|symptoms)", text, re.IGNORECASE), source.name
         assert "crispr_backend.simulation" not in text, source.name
+
+
+def test_genome_endpoints_hide_ground_truth(database):
+    with TestClient(app) as client:
+        genomes = client.get("/genomes").json()
+        assert genomes == [
+            {"id": 1, "sample_id": "HG00001", "sex": "female"},
+            {"id": 2, "sample_id": "HG00002", "sex": "male"},
+        ]
+        assert client.get("/genomes/1/genome.vcf").text.startswith("##fileformat")
+        assert client.get("/genomes/99/genome.vcf").status_code == 404
+
+
+def test_analyze_a_chosen_genome_without_the_language_model(database):
+    with TestClient(app) as client:
+        report = client.post(
+            "/genomes/1/analyze", json={"symptoms": "recurrent fevers and abdominal pain", "use_llm": False}
+        ).json()
+    assert report["symptoms"]["extraction"] == "keyword"
+    assert report["findings"][0]["disease"] == "Familial Mediterranean fever"
+
+
+def test_orders_are_capped_while_others_are_processing(database, monkeypatch):
+    import crispr_backend.api as api
+
+    monkeypatch.setattr(api, "MAX_ACTIVE_ORDERS", 0)
+    with TestClient(app) as client:
+        assert client.post("/orders").status_code == 429
+
+
+def test_cors_allows_the_website_and_local_development(database):
+    with TestClient(app) as client:
+        for origin in ("https://crispr.team-account.workers.dev", "http://localhost:3000"):
+            response = client.get("/health", headers={"Origin": origin})
+            assert response.headers.get("access-control-allow-origin") == origin
+        assert (
+            "access-control-allow-origin"
+            not in client.get("/health", headers={"Origin": "https://evil.example"}).headers
+        )

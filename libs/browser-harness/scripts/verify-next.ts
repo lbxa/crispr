@@ -36,26 +36,159 @@ try {
   await harness.start();
   await harness.waitForText({ text: "Gene editing workspace" });
   await harness.waitForText({ text: "3D anatomy ready", timeoutMs: 90_000 });
-  await harness.click({ selector: 'button[popovertarget="anatomy-regions"]' });
-  await harness.click({ selector: 'input[type="checkbox"][value="liver"]' });
-  await harness.waitForText({ text: "1 region selected" });
-  await harness.press({ key: "Escape" });
-  await harness.screenshot({ name: "male-liver", fullPage: true });
-  await harness.click({ selector: 'input[type="radio"][value="female"]' });
-  await harness.waitForText({ text: "3D anatomy ready", timeoutMs: 90_000 });
-  const femaleSnapshot = await harness.snapshot();
+  const initialSnapshot = await harness.snapshot();
   if (
-    !femaleSnapshot.accessibilityTree.includes(
-      "Interactive realistic female human model",
-    )
+    !initialSnapshot.accessibilityTree.includes(
+      "Interactive realistic male human model",
+    ) ||
+    initialSnapshot.accessibilityTree.includes('group "Body profile"') ||
+    initialSnapshot.accessibilityTree.includes('link "Crispr home"') ||
+    initialSnapshot.accessibilityTree.includes('button "Regions"')
   ) {
-    throw new Error(`Profile switch failed; inspect ${evidenceDir}`);
+    throw new Error(
+      `Initial avatar or hidden developer controls failed; inspect ${evidenceDir}`,
+    );
   }
   await harness.screenshot({ name: "next-home", fullPage: true });
-  await harness.click({ selector: 'button[popovertarget="anatomy-regions"]' });
-  await harness.click({ selector: "#anatomy-regions button" });
-  await harness.waitForText({ text: "0 regions selected" });
+  for (const side of ["Left", "Right"]) {
+    const opposite = side === "Left" ? "Right" : "Left";
+    const bothOpen = side === "Right" && config.viewport.width >= 1440;
+    await harness.click({ selector: `button[aria-label="${side} pane"]` });
+    const paneSnapshot = await harness.snapshot();
+    if (
+      !paneSnapshot.accessibilityTree.includes(
+        `region "${side} workspace pane"`,
+      ) ||
+      !paneSnapshot.accessibilityTree.includes(
+        `button "${side} pane" [expanded]`,
+      ) ||
+      paneSnapshot.accessibilityTree.includes(
+        `region "${opposite} workspace pane"`,
+      ) !== bothOpen ||
+      paneSnapshot.accessibilityTree.includes(
+        `button "${opposite} pane" [expanded]`,
+      ) !== bothOpen ||
+      !paneSnapshot.accessibilityTree.includes(
+        "Interactive realistic male human model",
+      )
+    ) {
+      throw new Error(
+        `Pane switch lost workspace state; inspect ${evidenceDir}`,
+      );
+    }
+    await harness.wait({ timeoutMs: 800 });
+    if (side === "Right") {
+      await harness.waitForText({ text: "3D DNA ready", timeoutMs: 60_000 });
+      await harness.click({ selector: '[aria-label="DNA sequence"]' });
+      await harness.press({ key: "PageDown" });
+      let scrolled = await harness.snapshot();
+      // Native keyboard scrolling can finish late while both WebGL scenes render.
+      for (
+        let attempt = 0;
+        attempt < 30 && scrolled.visibleText.includes("1,024,001 bp");
+        attempt++
+      ) {
+        await harness.wait({ timeoutMs: 100 });
+        scrolled = await harness.snapshot();
+      }
+      if (scrolled.visibleText.includes("1,024,001 bp")) {
+        throw new Error(
+          `DNA scrolling did not advance; inspect ${evidenceDir}`,
+        );
+      }
+      await harness.type({ selector: "#genome-position", text: "200000001" });
+      await harness.click({ selector: 'button[aria-label="Go to base"]' });
+      await harness.waitForText({ text: "200,000,001" });
+      await harness.click({
+        selector: 'button[aria-label="Unwind double helix"]',
+      });
+      await harness.waitForText({ text: "Flat ladder" });
+      await harness.wait({ timeoutMs: 1400 });
+      await harness.screenshot({ name: "dna-flat-ladder", fullPage: true });
+      const ladder = await harness.snapshot();
+      if (!ladder.visibleText.includes("200,000,001 bp")) {
+        throw new Error(
+          `Unwinding lost the genome position; inspect ${evidenceDir}`,
+        );
+      }
+      await harness.click({ selector: '[aria-label="DNA sequence"]' });
+      await harness.press({ key: "End" });
+      await harness.waitForText({ text: "248,000,000 bp" });
+      await harness.press({ key: "Home" });
+      await harness.waitForText({ text: "1 bp" });
+    }
+    await harness.screenshot({
+      name: `${side.toLowerCase()}-pane`,
+      fullPage: true,
+    });
+    if (side === "Left") {
+      if (!paneSnapshot.accessibilityTree.includes('group "Current date"')) {
+        throw new Error(`Date widget is missing; inspect ${evidenceDir}`);
+      }
+      // Drag across the sidebar's clipping edge and capture the live top layer.
+      await harness.pointer({ action: "move", x: 100, y: 42 });
+      await harness.pointer({ action: "down" });
+      await harness.pointer({ action: "move", x: 110, y: 42 });
+      await harness.waitForText({ text: "Files picked up." });
+      await harness.pointer({ action: "move", x: 620, y: 220, steps: 12 });
+      await harness.screenshot({
+        name: "widget-above-sidebar",
+        fullPage: true,
+      });
+      await harness.pointer({ action: "up" });
+      await harness.waitForText({
+        text: "Files returned to its original position.",
+      });
+      await harness.click({
+        selector: '[data-widget-id="files"] > span[aria-hidden="true"]',
+      });
+      await harness.press({ key: "Space" });
+      await harness.waitForText({ text: "Files picked up." });
+      await harness.press({ key: "ArrowRight" });
+      await harness.press({ key: "Enter" });
+      await harness.waitForText({ text: "Files moved to position 2 of 2." });
+      await harness.press({ key: "Space" });
+      await harness.press({ key: "Escape" });
+      await harness.waitForText({
+        text: "Files returned to its original position.",
+      });
+      const canceledWidget = await harness.snapshot();
+      if (
+        !canceledWidget.accessibilityTree.includes(
+          'button "Left pane" [expanded]',
+        )
+      ) {
+        throw new Error(
+          `Widget cancellation dismissed its pane; inspect ${evidenceDir}`,
+        );
+      }
+    }
+  }
   await harness.press({ key: "Escape" });
+  // Focus stays on the right toggle, so keyboard users can reopen it directly.
+  await harness.press({ key: "Space" });
+  await harness.waitForText({ text: "3D DNA ready" });
+  await harness.waitForText({ text: "1 bp" });
+  await harness.waitForText({ text: "Flat ladder" });
+  await harness.click({ selector: 'button[aria-label="Rewind double helix"]' });
+  const rewound = await harness.snapshot();
+  if (!rewound.accessibilityTree.includes('heading "Double helix"')) {
+    throw new Error(
+      `DNA rewind did not restore helix mode; inspect ${evidenceDir}`,
+    );
+  }
+  await harness.click({
+    selector: 'button[aria-label="Right pane"][aria-expanded="true"]',
+  });
+  if (config.viewport.width >= 1440) {
+    await harness.click({
+      selector: 'button[aria-label="Left pane"][aria-expanded="true"]',
+    });
+  }
+  const closedPanes = await harness.snapshot();
+  if (closedPanes.accessibilityTree.includes("[expanded]")) {
+    throw new Error(`Pane dismissal failed; inspect ${evidenceDir}`);
+  }
   await diagnostics.connect(
     new StreamableHTTPClientTransport(new URL("/_next/mcp", config.appUrl)),
   );

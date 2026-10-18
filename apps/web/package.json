@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "imports": {
+    "#components/*": "./components/*.tsx",
+    "#lib/*": "./lib/*.ts",
+    "#hooks/*": "./hooks/*.ts"
+  },
   "scripts": {
     "dev": "bun scripts/sync-model-assets.ts && next dev",
     "build": "bun scripts/sync-model-assets.ts && next build",
@@ -13,25 +18,41 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
+    "test": "vitest run",
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@crispr/ui": "workspace:*",
     "@crispr/human-model": "workspace:*",
     "@crispr/observability": "workspace:*",
-    "next": "16.4.1",
+    "@crispr/ui": "workspace:*",
+    "@crispr/widget-grid": "workspace:*",
     "@opennextjs/cloudflare": "1.20.12",
+    "idb-keyval": "^6.3.0",
+    "lucide-react": "1.59.0",
+    "next": "16.4.1",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-dropzone": "20.1.4",
+    "server-only": "0.0.1",
+    "tus-js-client": "^4.3.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@crispr/eslint-config": "workspace:*",
     "@crispr/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "4.3.3",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
     "@types/node": "26.4.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
+    "@vitejs/plugin-react": "6.0.3",
     "eslint": "10.9.1",
+    "fake-indexeddb": "^6.2.6",
+    "jsdom": "29.1.1",
+    "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
+    "vitest": "4.1.12",
     "wrangler": "4.151.1"
   }
 }
