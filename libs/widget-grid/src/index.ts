@@ -49,7 +49,7 @@ export const WIDGET_FOOTPRINTS = {
     columnSpan: 2,
     rowSpan: 2,
     columnAlignment: 2,
-    rowAlignment: 2,
+    rowAlignment: 1,
   },
   small: {
     columnSpan: 1,

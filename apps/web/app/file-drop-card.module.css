@@ -1,6 +1,7 @@
 .card {
   container: file-card / inline-size;
   flex: 1;
+  min-height: 0;
   min-width: 0;
   border-radius: var(--widget-corner-radius, 32px);
   cursor: pointer;
@@ -34,6 +35,14 @@
   min-height: 112px;
   padding: 12px;
 }
+.title {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .error {
   margin: 8px 0 0;
   color: var(--destructive);
@@ -42,7 +51,18 @@
 }
 @container file-card (max-width: 180px) {
   .dropContents {
-    padding: 8px;
+    min-height: 0;
+    padding: 4px;
+  }
+  .dropContents [data-slot="empty-header"] {
+    gap: 4px;
+  }
+  .dropContents [data-slot="empty-icon"] {
+    display: none;
+  }
+  .dropContents [data-slot="empty-description"] {
+    font-size: 11px;
+    line-height: 1.4;
   }
 }
 @media (prefers-reduced-motion: reduce) {

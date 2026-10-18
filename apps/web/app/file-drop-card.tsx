@@ -16,13 +16,14 @@ import {
   formatGenomeBytes,
   MAX_UPLOAD_BYTES,
   UPLOAD_ERRORS,
+  type GenomeFileInfo,
 } from "./genome-analysis/contract";
 
 export function FileDropCard({
   file,
   onFileSelect,
 }: {
-  file: File | null;
+  file: GenomeFileInfo | null;
   onFileSelect: (file: File) => void;
 }) {
   const id = useId();
@@ -97,7 +98,7 @@ export function FileDropCard({
                   <UploadIcon aria-hidden="true" />
                 )}
               </EmptyMedia>
-              <EmptyTitle className="max-w-full wrap-anywhere">
+              <EmptyTitle className={styles.title} title={file?.name}>
                 {isDragActive
                   ? "Drop to add"
                   : (file?.name ?? "Drop your genome")}

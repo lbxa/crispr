@@ -1,33 +1,16 @@
-.app {
-  position: relative;
-  min-height: 100svh;
-}
-.header {
-  position: absolute;
-  top: max(24px, env(safe-area-inset-top));
-  left: 32px;
-  z-index: 1;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  font-size: 26px;
-  font-weight: 500;
-  letter-spacing: -1.5px;
-}
-.brand span {
-  color: var(--accent);
-}
 .main {
   min-width: 0;
 }
 .workspace {
-  --pane-width: clamp(240px, 30vw, 400px);
+  --pane-inset: 32px;
+  --left-pane-max: 400px;
+  --right-pane-max: 720px;
+  --left-pane-width: clamp(320px, 25vw, var(--left-pane-max));
+  --right-pane-width: clamp(440px, 38vw, var(--right-pane-max));
+  --stage-offset: 0px;
   --workspace-ease: cubic-bezier(0.22, 1, 0.36, 1);
   position: relative;
   height: 100svh;
-  min-height: 480px;
   overflow: clip;
   background: radial-gradient(
     ellipse at 50% 40%,
@@ -37,17 +20,26 @@
 }
 .stage {
   height: 100%;
-  transform: scale(var(--stage-scale, 1));
-  transition: transform 760ms var(--workspace-ease);
+  transform: translateX(var(--stage-offset));
+  visibility: visible;
+  transition:
+    transform 760ms var(--workspace-ease),
+    visibility 0s var(--stage-hide-delay, 0s);
+}
+.workspace[data-pane="left"] {
+  --stage-offset: calc((var(--left-pane-width) + var(--pane-inset)) / 2);
 }
 .workspace[data-pane="right"] {
-  --pane-width: clamp(280px, 32vw, 420px);
+  --stage-offset: calc((var(--right-pane-width) + var(--pane-inset)) / -2);
+}
+.workspace[data-pane="both"] {
+  --stage-offset: calc((var(--left-pane-width) - var(--right-pane-width)) / 2);
 }
 .paneToggles {
-  position: absolute;
-  top: max(24px, env(safe-area-inset-top));
-  right: 32px;
-  z-index: 1;
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  inset-inline-end: 32px;
+  z-index: 2;
   display: flex;
   gap: 4px;
 }
@@ -59,7 +51,8 @@
   padding: 0;
   border: 0;
   border-radius: 12px;
-  background: transparent;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(12px);
   color: var(--muted);
   cursor: pointer;
   transition:
@@ -98,9 +91,8 @@
 }
 .pane {
   position: absolute;
-  top: max(104px, calc(env(safe-area-inset-top) + 80px));
-  bottom: max(124px, calc(env(safe-area-inset-bottom) + 108px));
-  width: var(--pane-width);
+  top: 0;
+  bottom: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
@@ -116,13 +108,14 @@
   display: none;
 }
 .pane[data-side="left"] {
-  left: 32px;
+  left: var(--pane-inset);
+  width: var(--left-pane-width);
+  padding-block: 32px;
   transform: translateX(-24px);
 }
 .pane[data-side="right"] {
-  right: 32px;
-  width: clamp(280px, 32vw, 420px);
-  bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px));
+  right: var(--pane-inset);
+  width: var(--right-pane-width);
   overflow: hidden;
   transform: translateX(24px);
 }
@@ -139,6 +132,12 @@
   --widget-corner-radius: 32px;
   border-radius: var(--widget-corner-radius);
   padding-top: 20px;
+}
+.cacheNotice {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 .widgetGrip {
   position: absolute;
@@ -304,35 +303,26 @@
 }
 @media (max-width: 700px) {
   .workspace {
-    --pane-width: calc(40vw - 12px);
+    --pane-inset: 20px;
+    --left-pane-width: min(var(--left-pane-max), calc(100vw - 40px));
+    --right-pane-width: calc(100vw - 40px);
   }
   .workspace:not([data-pane="none"]) {
-    --stage-scale: 0.64;
+    --stage-hide-delay: 760ms;
   }
   .workspace[data-pane="left"] {
-    --pane-width: clamp(200px, 58vw, 320px);
+    --stage-offset: calc(50vw + 128px);
   }
-  .workspace[data-pane="right"] .stage {
-    opacity: 0.2;
+  .workspace[data-pane="right"] {
+    --stage-offset: calc(-50vw - 128px);
   }
-  .pane[data-side="right"] {
-    width: min(360px, calc(100vw - 40px));
-    right: 20px;
-    bottom: 116px;
+  .workspace:not([data-pane="none"]) .stage {
+    visibility: hidden;
   }
 }
 @media (max-width: 480px) {
-  .header {
-    left: 20px;
-  }
   .paneToggles {
-    right: 16px;
-  }
-  .pane[data-side="left"] {
-    left: 20px;
-  }
-  .pane[data-side="right"] {
-    right: 20px;
+    inset-inline-end: 16px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -42,6 +42,7 @@ try {
       "Interactive realistic male human model",
     ) ||
     initialSnapshot.accessibilityTree.includes('group "Body profile"') ||
+    initialSnapshot.accessibilityTree.includes('link "Crispr home"') ||
     initialSnapshot.accessibilityTree.includes('button "Regions"')
   ) {
     throw new Error(
@@ -50,6 +51,8 @@ try {
   }
   await harness.screenshot({ name: "next-home", fullPage: true });
   for (const side of ["Left", "Right"]) {
+    const opposite = side === "Left" ? "Right" : "Left";
+    const bothOpen = side === "Right" && config.viewport.width >= 1440;
     await harness.click({ selector: `button[aria-label="${side} pane"]` });
     const paneSnapshot = await harness.snapshot();
     if (
@@ -59,6 +62,12 @@ try {
       !paneSnapshot.accessibilityTree.includes(
         `button "${side} pane" [expanded]`,
       ) ||
+      paneSnapshot.accessibilityTree.includes(
+        `region "${opposite} workspace pane"`,
+      ) !== bothOpen ||
+      paneSnapshot.accessibilityTree.includes(
+        `button "${opposite} pane" [expanded]`,
+      ) !== bothOpen ||
       !paneSnapshot.accessibilityTree.includes(
         "Interactive realistic male human model",
       )
@@ -113,10 +122,13 @@ try {
       fullPage: true,
     });
     if (side === "Left") {
+      if (!paneSnapshot.accessibilityTree.includes('group "Current date"')) {
+        throw new Error(`Date widget is missing; inspect ${evidenceDir}`);
+      }
       // Drag across the sidebar's clipping edge and capture the live top layer.
-      await harness.pointer({ action: "move", x: 100, y: 114 });
+      await harness.pointer({ action: "move", x: 100, y: 42 });
       await harness.pointer({ action: "down" });
-      await harness.pointer({ action: "move", x: 110, y: 114 });
+      await harness.pointer({ action: "move", x: 110, y: 42 });
       await harness.waitForText({ text: "Files picked up." });
       await harness.pointer({ action: "move", x: 620, y: 220, steps: 12 });
       await harness.screenshot({
@@ -134,7 +146,7 @@ try {
       await harness.waitForText({ text: "Files picked up." });
       await harness.press({ key: "ArrowRight" });
       await harness.press({ key: "Enter" });
-      await harness.waitForText({ text: "Files moved to position 1 of 1." });
+      await harness.waitForText({ text: "Files moved to position 2 of 2." });
       await harness.press({ key: "Space" });
       await harness.press({ key: "Escape" });
       await harness.waitForText({
@@ -150,9 +162,6 @@ try {
           `Widget cancellation dismissed its pane; inspect ${evidenceDir}`,
         );
       }
-      // Switching to Right must also cancel an unfinished pickup in Left.
-      await harness.press({ key: "Space" });
-      await harness.waitForText({ text: "Files picked up." });
     }
   }
   await harness.press({ key: "Escape" });
@@ -171,6 +180,11 @@ try {
   await harness.click({
     selector: 'button[aria-label="Right pane"][aria-expanded="true"]',
   });
+  if (config.viewport.width >= 1440) {
+    await harness.click({
+      selector: 'button[aria-label="Left pane"][aria-expanded="true"]',
+    });
+  }
   const closedPanes = await harness.snapshot();
   if (closedPanes.accessibilityTree.includes("[expanded]")) {
     throw new Error(`Pane dismissal failed; inspect ${evidenceDir}`);

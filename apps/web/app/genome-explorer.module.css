@@ -1,18 +1,43 @@
 .explorer {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+  container: genome-explorer / inline-size;
+  --dna-scene-min-height: clamp(16rem, 40svh, 28rem);
+  block-size: 100%;
+  min-block-size: 0;
+  min-inline-size: 0;
+  padding-inline: 16px;
+  padding-block: 32px;
   pointer-events: auto;
   overflow-y: auto;
-  scrollbar-width: thin;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.explorer::-webkit-scrollbar {
+  display: none;
+}
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  min-block-size: 100%;
+  min-inline-size: 0;
+  gap: 24px;
+}
+.body,
+.visualization {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  align-items: start;
+  min-inline-size: 0;
+  gap: 24px;
 }
 .header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 4px 18px;
+  padding-inline-end: 104px;
 }
 .header h2 {
   margin: 0;
@@ -22,11 +47,14 @@
 }
 .title {
   display: grid;
+  flex: 1 1 10rem;
+  min-inline-size: 0;
   gap: 4px;
+  overflow-wrap: anywhere;
 }
 .modeToggle {
-  min-height: 40px;
-  padding: 0 14px;
+  min-block-size: 44px;
+  padding: 10px 16px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: transparent;
@@ -46,53 +74,55 @@
 }
 .demo {
   color: var(--accent);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.025em;
 }
 .navigation {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
   align-items: end;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 0 4px 12px;
-  border-bottom: 1px solid var(--border);
+  gap: 12px;
 }
-.navigation label,
+.chromosome,
+.jump {
+  display: grid;
+  min-inline-size: 0;
+  gap: 8px;
+  margin: 0;
+}
+.chromosome > span,
 .jump > label {
-  display: block;
   color: var(--muted);
-  font-size: 10px;
-}
-.chromosome span {
-  display: block;
-  margin-bottom: 3px;
+  font-size: 11px;
 }
 .chromosome select {
-  min-height: 36px;
-  max-width: 100%;
-  padding: 0 16px 0 0;
-  border: 0;
-  background: transparent;
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
   font-size: 13px;
 }
 .chromosome option {
   background: var(--background);
 }
-.jump {
-  min-width: 0;
-  width: 148px;
-  margin: 0;
-}
 .jump > div {
   display: flex;
   align-items: center;
+  min-inline-size: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
 }
 .jump input {
-  min-width: 0;
-  width: 100%;
-  height: 36px;
-  padding: 0;
+  min-inline-size: 0;
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding-inline: 12px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
   color: var(--foreground);
   font-family: var(--font-geist-mono), monospace;
@@ -104,8 +134,8 @@
 }
 .jump button {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  min-inline-size: 44px;
+  min-block-size: 44px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -118,8 +148,8 @@
 }
 .scene {
   position: relative;
-  flex: 1;
-  min-height: 140px;
+  block-size: var(--dna-scene-min-height);
+  margin-inline: -16px;
 }
 .loading {
   margin: 0;
@@ -129,12 +159,12 @@
   font-size: 12px;
 }
 .footer {
-  flex-shrink: 0;
-  padding: 12px 4px 0;
-  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 12px;
 }
 .location {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
@@ -147,58 +177,93 @@
 .location > span,
 .location output span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0;
 }
 .empty {
   margin: auto;
-  max-width: 240px;
+  max-inline-size: 28ch;
+  padding: 24px 16px;
   color: var(--muted);
   font-size: 13px;
   text-align: center;
   line-height: 1.6;
 }
+.inspector {
+  display: grid;
+  min-inline-size: 0;
+  align-content: start;
+  gap: 24px;
+}
 .findings {
+  min-inline-size: 0;
+}
+.findings summary {
+  min-block-size: 44px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 12px;
+  list-style-position: inside;
+  cursor: pointer;
+}
+.findings summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.findings[open] summary {
+  margin-block-end: 12px;
+}
+.findingCount {
+  margin-inline-start: 8px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.findingList {
+  display: grid;
+  gap: 12px;
+}
+.findingList button {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  max-height: 92px;
-  overflow: auto;
-  margin: 12px 0;
-  padding: 3px;
-}
-.findings button {
-  display: grid;
-  gap: 3px;
-  min-height: 44px;
-  padding: 7px 10px;
+  align-items: baseline;
+  justify-content: space-between;
+  min-inline-size: 0;
+  min-block-size: 44px;
+  gap: 8px 16px;
+  padding: 12px 16px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: transparent;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
-.findings button > span:last-child {
+.findingList button > span:last-child {
   font:
-    9px var(--font-geist-mono),
+    11px var(--font-geist-mono),
     monospace;
   color: var(--muted);
 }
-.findings button:hover,
-.findings button[aria-pressed="true"] {
+.findingList button:hover,
+.findingList button[aria-pressed="true"] {
   border-color: var(--destructive);
   background: color-mix(in srgb, var(--destructive) 6%, transparent);
 }
 .site {
-  padding: 10px 12px;
-  margin: 0 0 14px;
-  border-left: 2px solid var(--dna-finding);
+  display: grid;
+  gap: 12px;
+  min-inline-size: 0;
+  padding: 16px;
+  border-inline-start: 2px solid var(--dna-finding);
   background: color-mix(in srgb, var(--destructive) 4%, transparent);
-  border-radius: 0 10px 10px 0;
-  font-size: 11px;
+  border-radius: 12px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
-.site > div {
+.siteHeading {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -206,39 +271,51 @@
 }
 .site strong {
   font-weight: 500;
+  font-size: 14px;
 }
-.site > div > span:last-child {
+.siteHeading > span {
   color: var(--muted);
   font-family: var(--font-geist-mono), monospace;
-  font-size: 10px;
+  font-size: 11px;
 }
 .site p {
-  margin: 6px 0 8px;
+  margin: 0;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.6;
 }
-.site .alleles {
-  justify-content: start;
+.alleles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  overflow-wrap: anywhere;
-  max-height: 64px;
-  overflow: auto;
-  color: var(--muted);
+  margin: 0;
   font:
-    10px var(--font-geist-mono),
+    11px var(--font-geist-mono),
     monospace;
 }
-.alleles b {
+.alleles > div {
+  display: grid;
+  min-inline-size: 0;
+  align-content: start;
+  gap: 8px;
+}
+.alleles dt {
+  color: var(--muted);
+}
+.alleles dd {
+  margin: 0;
   color: var(--foreground);
-  font-weight: 450;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+  unicode-bidi: isolate;
 }
 .legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 8px 16px;
   color: var(--muted);
   font:
-    10px var(--font-geist-mono),
+    11px var(--font-geist-mono),
     monospace;
 }
 .legend > span {
@@ -251,30 +328,23 @@
   height: 5px;
   border-radius: 50%;
 }
-.legend .hint {
-  margin-left: auto;
-  font-family: var(--font-geist-sans), sans-serif;
-  font-size: 10px;
-}
 .disclaimer {
-  margin: 10px 0 0;
+  margin: 0;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
+  line-height: 1.6;
 }
-@media (max-width: 700px) {
-  .header {
-    padding-bottom: 12px;
+@container genome-explorer (max-width: 20rem) {
+  .navigation,
+  .alleles {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .navigation {
-    gap: 10px;
+}
+@container genome-explorer (min-width: 40rem) {
+  .body[data-findings] {
+    grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 1fr);
   }
-  .legend {
-    gap: 12px;
-  }
-  .legend .hint {
-    display: none;
-  }
-  .location output {
-    font-size: 14px;
+  .body[data-findings] .scene {
+    margin-inline: 0;
   }
 }

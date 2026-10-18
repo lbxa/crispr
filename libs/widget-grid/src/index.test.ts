@@ -17,6 +17,37 @@ const widgets = [
 ] as const satisfies readonly WidgetDescriptor[];
 
 describe("packLayout", () => {
+  it.each([2, 4])(
+    "places a large card directly after a filled small-card row in %i columns",
+    (columnCount) => {
+      // Arrange
+      const mixedWidgets: readonly WidgetDescriptor[] = [
+        ...Array.from({ length: columnCount }, (_, index) => ({
+          id: `small-${index}`,
+          size: "small" as const,
+        })),
+        { id: "summary", size: "normal" },
+      ];
+
+      // Act
+      const layout = packLayout(
+        mixedWidgets,
+        mixedWidgets.map(({ id }) => id),
+        columnCount,
+      );
+
+      // Assert
+      expect(
+        layout.placements.find(({ id }) => id === "summary"),
+      ).toMatchObject({
+        column: 0,
+        row: 1,
+        columnSpan: 2,
+        rowSpan: 2,
+      });
+    },
+  );
+
   it("packs normal widgets into aligned 2-by-2 footprints and mini widgets into one cell", () => {
     // Arrange
     const order = ["bio-age", "summary", "oura"];
@@ -55,7 +86,7 @@ describe("packLayout", () => {
       columnSpan: 2,
       rowSpan: 2,
       columnAlignment: 2,
-      rowAlignment: 2,
+      rowAlignment: 1,
     });
   });
 
@@ -131,6 +162,31 @@ describe("reorderWidgets", () => {
 });
 
 describe("buildDropTargets", () => {
+  it("offers the adjacent row when reordering a large card after small cards", () => {
+    // Arrange
+    const mixedWidgets: readonly WidgetDescriptor[] = [
+      { id: "files", size: "small" },
+      { id: "date", size: "small" },
+      { id: "summary", size: "normal" },
+    ];
+
+    // Act
+    const targets = buildDropTargets(
+      mixedWidgets,
+      ["files", "date", "summary"],
+      "summary",
+      2,
+    );
+
+    // Assert
+    expect(
+      targets.map(({ placement }) => [placement.column, placement.row]),
+    ).toEqual([
+      [0, 0],
+      [0, 1],
+    ]);
+  });
+
   it("deduplicates insertion indices that resolve to the same visible footprint", () => {
     // Arrange
     const order = ["bio-age", "summary", "oura"];

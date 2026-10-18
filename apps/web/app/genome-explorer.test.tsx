@@ -314,6 +314,48 @@ it("maps backend regions to the minimap and jumps across chromosomes with exact 
   expect(screen.getByRole("slider").getAttribute("value")).toBe("3293406");
 });
 
+it("discloses a long finding list without hiding the selected mutation", async () => {
+  const regions = [
+    ...genomeView.regions,
+    ...Array.from({ length: 4 }, (_, index) => ({
+      ...genomeView.regions[1]!,
+      id: `additional-finding-${index}`,
+    })),
+  ];
+  render(
+    <GenomeExplorer
+      active
+      hasGenome
+      report={{ ...report, genome_view: { ...genomeView, regions } }}
+    />,
+  );
+  act(() => frame?.(0));
+  await screen.findByText("3D DNA ready");
+
+  const summary = screen.getByText("Browse findings").closest("summary")!;
+  const disclosure = summary.closest("details")!;
+  const selected = screen.getByLabelText("Selected finding");
+  expect(disclosure.open).toBe(false);
+  expect(summary.textContent).toContain("6");
+  expect(disclosure.contains(selected)).toBe(false);
+  expect(selected.textContent).toContain("CFTR");
+
+  fireEvent.click(summary);
+  expect(disclosure.open).toBe(true);
+  fireEvent.click(
+    screen.getAllByRole("button", {
+      name: "Inspect MEFV at chr16:3293406",
+    })[0]!,
+  );
+
+  expect(screen.getByLabelText("Current base").textContent).toBe(
+    "3,293,406 bp",
+  );
+  expect(screen.getByLabelText("Selected finding").textContent).toContain(
+    "MEFV",
+  );
+});
+
 it("shows empty and unavailable maps without inventing regions or substituting demo DNA", () => {
   const { rerender } = render(<GenomeExplorer active hasGenome />);
   expect(screen.queryByRole("slider")).toBeNull();

@@ -27,7 +27,9 @@ The attached server stays running after verification.
 `bun run --cwd libs/browser-harness verify:upload --app-url http://localhost:3000`
 checks the complete synthetic file → configured IBM upload → summary journey.
 It submits the tiny, explicitly synthetic fixture in `fixtures/`, saves correlated
-browser evidence, and confirms pane switching preserves the result. The forced-ID
+browser evidence, confirms pane switching preserves the result, then reloads to
+verify IndexedDB restoration without further upload-service requests. It also
+removes the saved genome and reloads again to verify removal. The forced-ID
 tus client intentionally probes its resource before creating it; this journey
 allows one matching HEAD 404 and its matching console message, preserving both
 in raw evidence. Other failed requests and errors still fail verification.
@@ -125,6 +127,7 @@ evidence is best-effort: take an awaited snapshot before relying on saved files.
 
 ### 2026-10-17
 
+- The desktop baseline keeps both panes visible at the app's 90rem breakpoint and closes them independently. Compact switching, resize preservation and pane-specific Escape behavior are covered by `apps/web/app/model-workspace.test.tsx`.
 - The baseline checks the default avatar and absence of manual profile/region controls. Report-driven avatar selection is covered by app tests; library tests retain both model profiles and highlight lifecycle coverage while developer region controls are disabled.
 - The upload journey's `--findings` mode verifies the region map against the configured backend, using synthetic reference alleles rather than downloading stored genomes. It checks both map-to-DNA and DNA-to-map navigation and keeps all browser diagnostics correlated.
 - Added an explicit synthetic genome journey against the configured backend. Initial tus HEAD 404 is classified only by this caller; global browser evidence/error recording remains strict.

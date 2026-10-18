@@ -1,9 +1,10 @@
 "use client";
 
-import { LoaderCircleIcon } from "lucide-react";
+import { LoaderCircleIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@crispr/ui/components/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
@@ -22,12 +23,14 @@ export function GenomeSummaryCard({
   onPause,
   onResume,
   onCancel,
+  onClear,
 }: {
   analysis: Exclude<GenomeAnalysisState, { status: "idle" }>;
   onRetry: () => void;
   onPause: () => void;
   onResume: () => void;
   onCancel: () => void;
+  onClear?: () => void;
 }) {
   const transferring =
     analysis.status === "uploading" || analysis.status === "paused";
@@ -41,6 +44,19 @@ export function GenomeSummaryCard({
       <CardHeader>
         <CardTitle>Genome summary</CardTitle>
         <CardDescription>Genome-only analysis</CardDescription>
+        {analysis.status === "complete" && onClear && (
+          <CardAction>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Remove genome"
+              title="Remove genome"
+              onClick={onClear}
+            >
+              <Trash2Icon aria-hidden="true" />
+            </Button>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent className={styles.content}>
         {transferring && (

@@ -1,7 +1,10 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useGenomeAnalysis } from "./use-genome-analysis";
-import { uploadConfig, uploadSession } from "./upload.fixture";
+import { currentGenomeCache } from "./cache";
+import { uploadConfig, uploadJob, uploadSession } from "./upload.fixture";
+import { report } from "./report.fixture";
+import type { GenomeAnalysisState } from "./contract";
 import type { HttpRequest, HttpResponse, Upload } from "tus-js-client";
 
 const { uploads } = vi.hoisted(() => ({
@@ -25,6 +28,39 @@ vi.mock("tus-js-client", () => ({
   },
 }));
 
+vi.mock("./cache", () => ({
+  currentGenomeCache: {
+    restore: vi.fn(),
+    remember: vi.fn(),
+    forget: vi.fn(),
+  },
+}));
+
+const cachedGenome: Extract<GenomeAnalysisState, { status: "complete" }> = {
+  status: "complete",
+  file: {
+    name: "saved.vcf",
+    size: 2_100_000_000,
+    type: "application/vcf",
+    lastModified: 1000,
+  },
+  report,
+  progress: {
+    records_scanned: 100,
+    variants_checked: 100,
+    retained_variants: 1,
+    uncompressed_bytes: 2048,
+  },
+};
+
+beforeEach(() => {
+  vi.mocked(currentGenomeCache.restore).mockReset().mockResolvedValue(null);
+  vi.mocked(currentGenomeCache.remember)
+    .mockReset()
+    .mockResolvedValue(undefined);
+  vi.mocked(currentGenomeCache.forget).mockReset().mockResolvedValue(undefined);
+});
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -32,6 +68,151 @@ afterEach(() => {
 });
 
 describe("genome analysis lifecycle", () => {
+  it("restores the current genome without starting an upload or fetching analysis again", async () => {
+    // Arrange
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    vi.mocked(currentGenomeCache.restore).mockResolvedValue(cachedGenome);
+
+    // Act
+    const { result } = renderHook(useGenomeAnalysis);
+    await waitFor(() =>
+      expect(result.current.analysis.status).toBe("complete"),
+    );
+
+    // Assert
+    expect(result.current.analysis).toEqual(cachedGenome);
+    expect(result.current.cacheSaved).toBe(true);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(currentGenomeCache.remember).not.toHaveBeenCalled();
+  });
+
+  it("does not let a delayed cache read replace a newly selected genome", async () => {
+    // Arrange
+    let restore!: (value: typeof cachedGenome) => void;
+    vi.mocked(currentGenomeCache.restore).mockReturnValue(
+      new Promise((resolve) => {
+        restore = resolve;
+      }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(uploadConfig))
+        .mockResolvedValueOnce(Response.json(uploadSession)),
+    );
+    const { result } = renderHook(useGenomeAnalysis);
+
+    // Act
+    await act(async () => {
+      await result.current.analyze(new File(["VCF"], "new.vcf"));
+      restore(cachedGenome);
+    });
+
+    // Assert
+    expect(result.current.analysis).toMatchObject({
+      status: "uploading",
+      file: { name: "new.vcf" },
+    });
+    await waitFor(() => expect(currentGenomeCache.forget).toHaveBeenCalled());
+  });
+
+  it("saves a completed analysis and preserves it when browser storage fails", async () => {
+    // Arrange
+    const file = new File(["VCF"], "new.vcf");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(uploadConfig))
+        .mockResolvedValueOnce(Response.json(uploadSession))
+        .mockResolvedValueOnce(Response.json(uploadJob(file.size))),
+    );
+    vi.mocked(currentGenomeCache.remember).mockRejectedValue(
+      new DOMException("Full", "QuotaExceededError"),
+    );
+    const { result } = renderHook(useGenomeAnalysis);
+
+    // Act
+    await act(async () => {
+      await result.current.analyze(file);
+      uploads[0]!.options.onSuccess?.(
+        {} as Parameters<
+          NonNullable<ConstructorParameters<typeof Upload>[1]["onSuccess"]>
+        >[0],
+      );
+    });
+
+    // Assert
+    await waitFor(() =>
+      expect(result.current.analysis.status).toBe("complete"),
+    );
+    await waitFor(() => expect(result.current.cacheError).toMatch(/refresh/i));
+    expect(currentGenomeCache.remember).toHaveBeenCalledWith(
+      expect.objectContaining({ file, report }),
+    );
+    expect(result.current.cacheSaved).toBe(false);
+  });
+
+  it("marks a genome cached only after the IndexedDB write completes", async () => {
+    // Arrange
+    let finishSaving!: () => void;
+    vi.mocked(currentGenomeCache.remember).mockReturnValue(
+      new Promise((resolve) => {
+        finishSaving = resolve;
+      }),
+    );
+    const file = new File(["VCF"], "saved.vcf");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(uploadConfig))
+        .mockResolvedValueOnce(Response.json(uploadSession))
+        .mockResolvedValueOnce(Response.json(uploadJob(file.size))),
+    );
+    const { result } = renderHook(useGenomeAnalysis);
+
+    // Act
+    await act(async () => {
+      await result.current.analyze(file);
+      uploads[0]!.options.onSuccess?.(
+        {} as Parameters<
+          NonNullable<ConstructorParameters<typeof Upload>[1]["onSuccess"]>
+        >[0],
+      );
+    });
+    await waitFor(() =>
+      expect(result.current.analysis.status).toBe("complete"),
+    );
+
+    // Assert
+    expect(result.current.cacheSaved).toBe(false);
+    await act(async () => {
+      finishSaving();
+    });
+    expect(result.current.cacheSaved).toBe(true);
+  });
+
+  it("forgets the restored genome so a later refresh cannot bring it back", async () => {
+    // Arrange
+    vi.mocked(currentGenomeCache.restore).mockResolvedValue(cachedGenome);
+    const { result } = renderHook(useGenomeAnalysis);
+    await waitFor(() =>
+      expect(result.current.analysis.status).toBe("complete"),
+    );
+
+    // Act
+    await act(async () => {
+      await result.current.clear();
+    });
+
+    // Assert
+    expect(result.current.analysis.status).toBe("idle");
+    expect(currentGenomeCache.forget).toHaveBeenCalled();
+  });
+
   it("aborts the previous upload and ignores its response if it arrives late", async () => {
     let resolveFirst!: (response: Response) => void;
     const first = new Promise<Response>((resolve) => {

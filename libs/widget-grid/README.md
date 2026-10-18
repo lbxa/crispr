@@ -68,7 +68,8 @@ visibility and `inert`; disabling the grid only controls movement.
 
 ## Placement and order
 
-- `normal` widgets occupy 2×2 cells with even row/column anchors; they may grow
+- `normal` widgets occupy 2×2 cells with even column anchors and can start on
+  any row, so a filled row of small cards does not leave a blank row; they may grow
   vertically for intrinsic content. `small` widgets occupy one square cell.
 - Packing uses earliest-valid first fit and accepts two or four logical columns.
 - The React grid measures its container, using two columns below `wideAt`
@@ -163,6 +164,7 @@ bun run verify:browser
 
 ### 2026-10-17
 
+- Large widgets can start on every row while retaining their 2×2 footprint and paired columns. Packing, drag previews and drop targets share this rule, preventing a blank row beneath small cards in narrow panes.
 - Lift pointer/touch drags into the native top layer so scrollable panes cannot clip moving widgets. Keep the original item mounted, measure viewport coordinates after scrolling, and reserve its footprint until drop or cancellation.
 - Ported the copied library to `@crispr/widget-grid` with shared ESLint/TypeScript configuration, aligned React/tool versions, semantic theme tokens, and the same `cn` utility as shadcn. Layout/gesture ownership stays here; app widget membership stays in `ModelWorkspace`.
 - Pane grids retain in-memory order while mounted. Disabling hidden grids cancels movement without unmounting file content or the Three.js scene; no browser storage or cross-pane transfers are enabled by default.

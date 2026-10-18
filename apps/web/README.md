@@ -16,6 +16,7 @@ operations and workflow policy should be added at the application boundary.
 | `app/genome-analysis/genome-view.ts`            | Validated BED-compatible map and bounded reference-context source     |
 | `app/genome-analysis/client.ts`                 | Capability-bound IBM tus transfers, pause/resume, and job polling     |
 | `app/genome-analysis/use-genome-analysis.ts`    | Workspace upload ownership, cancellation, and latest-file state       |
+| `app/genome-analysis/cache.ts`                   | Versioned IndexedDB cache of the current genome metadata and report   |
 | `app/genome-analysis/summary-card.tsx`          | Processing, failure/retry, and backend summary presentation           |
 | `app/genome-analysis/contract.ts`, `backend.ts` | Validated report contract and server-only Python API adapter          |
 | `app/api/genome-uploads/config/route.ts`        | Public IBM upload origin and bounded transfer settings                |
@@ -113,9 +114,15 @@ discards late callbacks. Closing a pane preserves the file, transfer, report,
 and widget order. Unmounting stops browser activity; an already queued durable
 job may continue on IBM. Explicit cancel stops local activity immediately and
 requests backend cancellation; unreachable sessions are reclaimed by backend
-expiry. Session tokens, file metadata, and reports stay in browser memory,
-without SDK URL storage: pause/network recovery works in the current page,
-while refreshing requires selecting and uploading the file again.
+expiry. Completed analyses persist in the browser's IndexedDB database
+`crispr-genomes`: one validated, versioned record contains file metadata, report,
+progress and the reference contexts used by the DNA viewer. Refresh restores
+that result without network requests or re-uploading. Raw VCF bytes and upload
+capabilities are not cached, keeping recovery independent of file size. Active
+upload/polling sessions remain in memory; pause/network recovery works in the
+current page. Replacing or removing the genome invalidates the saved result.
+The summary's Remove genome action clears it, and unavailable browser storage
+produces a notice while the current analysis remains usable.
 
 The tus SDK owns bounded transport retries and offset reconciliation. Completing
 an upload is idempotent, and failed processing retries reuse the existing stored
@@ -137,13 +144,14 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-17
 
+- The genome explorer adapts to its pane with container queries: DNA and mutation details share columns above 40rem of content width and stack below it. Keep the DNA display height bounded, selected mutation details outside the findings disclosure, and allele text in the main pane flow; long lists start collapsed with a visible count rather than introducing nested scroll areas. Coordinate axes and sequences remain left-to-right when the surrounding controls mirror for RTL.
 - Avatar selection derives from validated `genome.model_profile` metadata rather than a manual toggle. Unknown profiles keep the default visual model; do not infer a female profile from missing Y variants or send the display choice back as clinical sex. Region highlighting remains behind the temporary, disabled `SHOW_DEV_REGION_CONTROLS` switch.
 - `genome_view` is the only app-facing finding/sequence contract. Preserve its assembly and BED-compatible intervals end to end; VCF indels include their anchor, and alternate alleles must not shift reference coordinates. The minimap and scene use the same reference spans; carrier annotations retain their distinct tier.
 - Real findings replace demo DNA after analysis. Only verified reference windows become sequence; unknown coverage stays `N`, avoiding fabricated patient DNA. Old stored reports need reanalysis to obtain a map. The app owns minimap interactions and the library owns highlight rendering.
 - Genome uploads bypass Next.js and use IBM's capability-bound tus sessions, 8 MiB chunks, compressed VCFs, and durable processing jobs. This keeps multi-gigabyte files out of the frontend/Next.js memory path; the former 20 MiB route remains compatibility-only.
 - Upload progress counts server-acknowledged chunks, and processing progress counts real scanned records/bytes. Pause/resume keeps one session, completion is idempotent, and processing retries reuse the stored file rather than transferring it again.
 - A tus creation conflict offers explicit fresh-session recovery only after the SDK observes a missing resource and no acknowledged bytes. Cancel the old reservation before requesting another id: duplicate tusd file-store creation can truncate an existing file, so resuming a saved resource must always use its acknowledged offset.
-- Upload capabilities and file/report state stay in memory, independent of pane visibility. Refresh recovery is deliberately not persisted in browser storage; replacing a file cancels the previous session and ignores its late callbacks.
+- Completed genomes survive refresh through `genome-analysis/cache.ts`, using `idb-keyval` for atomic IndexedDB operations and the existing report/progress schemas at the storage boundary. Keep only one current result, never raw VCF bytes or upload tokens. A delayed restore cannot replace a new selection; replacement/removal invalidates older data, and `data-genome-cached` acknowledges a committed result for deterministic browser verification.
 
 - The genome explorer's Unwind/Rewind button switches between the double helix and a flat ladder without resetting position or fetching sequence again. Mode stays selected across chromosome and pane changes; the library owns the reversible deformation and reduced-motion behavior.
 
@@ -157,10 +165,11 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 - The file card is one clickable, keyboard-accessible drop box. Clicking anywhere chooses or replaces a file; keep it free of separate buttons, headers, footers, and persistent device-status copy.
 - The empty file card identifies genome variants in VCF format. Hover gently changes the surface; bright mint outlines identify keyboard focus and file dragging. The summary uses Python's own wording and disclaimer; the explicit `genome_view` carries only the coordinates, alleles and reference contexts needed by the explorer, while raw edit plans and symptoms remain at the backend.
 - Genome-only requests omit patient sex rather than inferring it from the avatar, and skip symptom extraction with empty symptoms and `use_llm: false`. Results stay paired with the current file across pane switches; late results from replaced files are ignored.
-- The left pane contains a `ManagedWidgetGrid` from `@crispr/widget-grid`. Add widget ids to its `defaultOrder` and matching `WidgetGrid.Item` children in `ModelWorkspace`; use the library README for sizes and interaction contracts. Order stays in memory across pane switches; persistence and cross-pane transfers are not enabled. The right pane reserves its full height for the genome explorer.
+- The left pane contains a `ManagedWidgetGrid` from `@crispr/widget-grid`: small file and local-date cards share its first row, with the full-width analysis summary below. The date follows the browser's local day and refreshes after midnight or returning to the tab. Add widget ids to `defaultOrder` and matching `WidgetGrid.Item` children in `ModelWorkspace`; order stays in memory across pane switches. The right pane reserves its full height for the genome explorer.
 - The file widget's small top grip moves the widget; its single drop box chooses/replaces files and opts out of widget dragging. Keyboard users focus the widget to reorder or the drop box to choose a file. Escape first cancels movement, then a later Escape closes the pane. Hidden grids disable and cancel movement while retaining content state.
-- One pane opens at a time and overlays the centered avatar without translating it sideways; toggling it again or pressing Escape closes it and restores focus. Keep panes transparent rather than introducing solid sidebar shells.
-- Panes animate independently of the mounted `HumanModel`, preserving scene state and avoiding canvas resize/reframing during transitions. Narrow screens scale the scene around its center to leave room; reduced-motion preferences disable transitions.
+- From 90rem (1440px at the default root size), both panes can stay open with the avatar between them. The file pane caps at 400px and the studio at 720px; independent width tokens keep transitions stable. Below that content-fit breakpoint, only the last opened pane is visible. Resizing preserves the wider layout's open panes until the user changes them in compact mode. Escape closes the focused pane (or the last opened one) and restores its toggle's focus.
+- Both pane scroll areas span the viewport, with 32px of internal vertical breathing room. Keep the app header removed and pane toggles fixed above content; the studio header reserves horizontal space for those controls rather than a separate header band.
+- Pane and avatar motion share the existing cubic-bezier timing. Translate the avatar horizontally without scaling its canvas: the canvas must continue reaching the viewport edges when a pane opens. Compact screens give the pane most of the viewport and slide the avatar out of the work area, hiding it after the transition to avoid offscreen keyboard focus. Reduced-motion preferences disable transitions.
 - Cloudflare Workers runs the existing Next.js build through OpenNext; native Workers Builds owns releases from `lbxa/crispr` on `main` after the shared verification gate. Next.js 16.4.1 satisfies the pinned adapter's supported version range.
 - Keep the workspace focused on the full-screen anatomy scene. Profile selection follows the genome report and developer region controls are temporarily disabled; avoid restoring explanatory panels, decorative status badges, duplicate headings, or persistent gesture hints.
 - Next.js is the primary UI driver; `HumanModel` is a lazily loaded library component so page delivery and future research workflows are independent of WebGL startup.

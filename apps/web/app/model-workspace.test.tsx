@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModelWorkspace } from "./model-workspace";
+import { currentGenomeCache } from "./genome-analysis/cache";
 import { carrierReport, report } from "./genome-analysis/report.fixture";
 import {
   uploadConfig,
@@ -74,7 +75,29 @@ vi.mock("./genome-explorer", () => ({
   ),
 }));
 
-beforeEach(() => {
+let wideViewport = false;
+const viewportListeners = new Set<() => void>();
+
+function resizeWorkspace(wide: boolean) {
+  act(() => {
+    wideViewport = wide;
+    viewportListeners.forEach((listener) => listener());
+  });
+}
+
+beforeEach(async () => {
+  await currentGenomeCache.forget();
+  wideViewport = false;
+  viewportListeners.clear();
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: query.includes("min-width") && wideViewport,
+    addEventListener: (_event: string, listener: () => void) => {
+      if (query.includes("min-width")) viewportListeners.add(listener);
+    },
+    removeEventListener: (_event: string, listener: () => void) => {
+      viewportListeners.delete(listener);
+    },
+  }));
   vi.stubGlobal("fetch", mockUploadFetch());
   vi.stubGlobal(
     "ResizeObserver",
@@ -92,6 +115,76 @@ afterEach(() => {
 });
 
 describe("workspace widget grids", () => {
+  it("keeps both panes and the scene mounted on a wide workspace", () => {
+    resizeWorkspace(true);
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    const scene = screen.getByTestId("human-model");
+    const leftToggle = screen.getByRole("button", { name: "Left pane" });
+    const rightToggle = screen.getByRole("button", { name: "Right pane" });
+    fireEvent.click(leftToggle);
+    fireEvent.click(rightToggle);
+
+    const leftPane = screen.getByRole("region", {
+      name: "Left workspace pane",
+    });
+    const rightPane = screen.getByRole("region", {
+      name: "Right workspace pane",
+    });
+    expect(leftToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(rightToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(leftPane.hasAttribute("inert")).toBe(false);
+    expect(rightPane.hasAttribute("inert")).toBe(false);
+    expect(screen.getByTestId("human-model")).toBe(scene);
+
+    fireEvent.keyDown(leftPane, { key: "Escape" });
+    expect(leftToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(rightToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(leftToggle);
+    expect(screen.getByTestId("human-model")).toBe(scene);
+  });
+
+  it("collapses to the last opened pane on resize without losing wide-screen state", () => {
+    resizeWorkspace(true);
+    render(
+      <ModelWorkspace
+        modelUrls={{ male: "/male.glb", female: "/female.glb" }}
+      />,
+    );
+    const leftToggle = screen.getByRole("button", { name: "Left pane" });
+    const rightToggle = screen.getByRole("button", { name: "Right pane" });
+    fireEvent.click(leftToggle);
+    fireEvent.click(rightToggle);
+    const fileCard = screen.getByRole("button", { name: "Choose file" });
+    const rightPane = screen.getByRole("region", {
+      name: "Right workspace pane",
+    });
+
+    resizeWorkspace(false);
+    expect(leftToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(rightToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      screen.queryByRole("region", { name: "Left workspace pane" }),
+    ).toBeNull();
+    expect(screen.getByRole("region", { name: "Right workspace pane" })).toBe(
+      rightPane,
+    );
+
+    resizeWorkspace(true);
+    expect(leftToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(rightToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Choose file" })).toBe(fileCard);
+
+    resizeWorkspace(false);
+    fireEvent.keyDown(rightPane, { key: "Escape" });
+    resizeWorkspace(true);
+    expect(leftToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(rightToggle.getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("omits manual body profiles and developer region controls", () => {
     render(
       <ModelWorkspace
@@ -234,6 +327,7 @@ describe("workspace widget grids", () => {
       .filter((item) => item.hasAttribute("data-widget-id"));
     expect(widgets.map((item) => item.getAttribute("data-widget-id"))).toEqual([
       "files",
+      "date",
       "summary",
     ]);
   });

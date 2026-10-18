@@ -146,12 +146,15 @@ export type GenomeUploadError = {
   retryable: boolean;
 };
 
-export type GenomeProgress = Pick<
-  UploadJob,
-  | "records_scanned"
-  | "variants_checked"
-  | "retained_variants"
-  | "uncompressed_bytes"
+export const genomeProgressSchema = uploadJobSchema.pick({
+  records_scanned: true,
+  variants_checked: true,
+  retained_variants: true,
+  uncompressed_bytes: true,
+});
+export type GenomeProgress = z.infer<typeof genomeProgressSchema>;
+export type GenomeFileInfo = Readonly<
+  Pick<File, "name" | "size" | "type" | "lastModified">
 >;
 
 export type GenomeAnalysisState =
@@ -166,7 +169,7 @@ export type GenomeAnalysisState =
   | { status: "queued" | "processing"; file: File; progress: GenomeProgress }
   | {
       status: "complete";
-      file: File;
+      file: GenomeFileInfo;
       report: GenomeReport;
       progress: GenomeProgress;
     }

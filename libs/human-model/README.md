@@ -181,6 +181,7 @@ anatomy. See `docs/blender-segmentation.md` for the export contract.
 
 ### 2026-10-17
 
+- The anatomy viewer and canvas fill their host without a fixed minimum height. The app owns viewport sizing and pane movement; avoid scaling the canvas element during pane transitions because that pulls its top and bottom away from the viewport edges.
 - `DnaHelix.highlights` and `DnaScene.setHighlights` render exact reference intervals in the existing instanced base pool. Both helix and ladder modes share those coordinates; the app supplies validated reference sequence, annotation policy and navigation. Unknown sequence remains `N` rather than synthetic patient DNA.
 - DNA bases carry the visual emphasis: saturated colors from the shared `DNA_BASES` palette, a glossy clearcoat finish, and direct joins to the rails without connector spheres. Base pairs and the fully opaque, subdued backbone share one tube radius in both helix and ladder views; the legend shares the same palette.
 

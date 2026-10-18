@@ -130,186 +130,218 @@ function GenomeExplorerContent({
       aria-label="Genome explorer"
       style={{ "--dna-finding": DNA_FINDING_COLOR } as CSSProperties}
     >
-      <header className={styles.header}>
-        <div className={styles.title}>
-          <h2>{mode === "helix" ? "Double helix" : "Flat ladder"}</h2>
-          <span className={styles.demo}>
-            {view ? "GRCh38 · Reference context" : "Demo genome"}
-          </span>
-        </div>
-        <button
-          type="button"
-          className={styles.modeToggle}
-          aria-label={
-            mode === "helix" ? "Unwind double helix" : "Rewind double helix"
-          }
-          data-mode={mode}
-          onClick={() =>
-            setMode((current) => (current === "helix" ? "ladder" : "helix"))
-          }
-        >
-          {mode === "helix" ? "Unwind" : "Rewind"}
-        </button>
-      </header>
-      <div className={styles.navigation}>
-        <label className={styles.chromosome}>
-          <span>Chromosome</span>
-          <select
-            aria-label="Chromosome"
-            value={chromosomeId}
-            onChange={(event) => {
-              const id = event.target.value;
-              const region = regions.find((item) => item.chromosome === id);
-              const next = region?.start ?? (view ? 0 : 1_024_000);
-              setChromosomeId(id);
-              setTarget({ position: next });
-              setPosition(next);
-              setSelectedId(region?.id ?? null);
-            }}
+      <div className={styles.content}>
+        <header className={styles.header}>
+          <div className={styles.title}>
+            <h2>{mode === "helix" ? "Double helix" : "Flat ladder"}</h2>
+            <span className={styles.demo}>
+              {view ? "GRCh38 · Reference context" : "Demo genome"}
+            </span>
+          </div>
+          <button
+            type="button"
+            className={styles.modeToggle}
+            aria-label={
+              mode === "helix" ? "Unwind double helix" : "Rewind double helix"
+            }
+            data-mode={mode}
+            onClick={() =>
+              setMode((current) => (current === "helix" ? "ladder" : "helix"))
+            }
           >
-            {chromosomes.map(({ id }) => (
-              <option key={id} value={id}>
-                Chr {id}
-                {regions.some((region) => region.chromosome === id)
-                  ? ` · ${regions.filter((region) => region.chromosome === id).length}`
-                  : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        <form
-          key={`${chromosomeId}:${target.position}`}
-          className={styles.jump}
-          onSubmit={(event) => {
-            event.preventDefault();
-            const input = event.currentTarget.elements.namedItem("position");
-            if (input instanceof HTMLInputElement && input.checkValidity())
-              navigate(input.valueAsNumber - 1);
-          }}
+            {mode === "helix" ? "Unwind" : "Rewind"}
+          </button>
+        </header>
+        <div
+          className={styles.body}
+          data-findings={(view && regions.length > 0) || undefined}
         >
-          <label htmlFor="genome-position">Go to base</label>
-          <div>
-            <input
-              id="genome-position"
-              name="position"
-              type="number"
-              min={1}
-              max={chromosome.length}
-              step={1}
-              defaultValue={Math.round(position) + 1}
-              required
-            />
-            <button type="submit" aria-label="Go to base">
-              ↵
-            </button>
-          </div>
-        </form>
-      </div>
-      <div className={styles.scene}>
-        <DnaHelix
-          key={chromosomeId}
-          chromosome={chromosome}
-          source={source}
-          highlights={highlights}
-          navigation={target}
-          active={active}
-          mode={mode}
-          onPositionChange={setPosition}
-        />
-      </div>
-      <footer className={styles.footer}>
-        <div className={styles.location}>
-          <output aria-label="Current base" aria-live="off">
-            {format.format(position + 1)}
-            <span> bp</span>
-          </output>
-          <span>of {format.format(chromosome.length)}</span>
-        </div>
-        <GenomeMinimap
-          chromosome={chromosome}
-          regions={regions}
-          position={position}
-          onNavigate={navigate}
-          onSelect={selectRegion}
-        />
-        {view && regions.length > 0 && (
-          <div className={styles.findings} aria-label="Regions of interest">
-            {regions.map((region) => (
-              <button
-                key={region.id}
-                type="button"
-                aria-label={`Inspect ${region.annotations.map(({ gene }) => gene).join(", ")} at chr${region.chromosome}:${region.start + 1}`}
-                onClick={() => selectRegion(region)}
-                aria-pressed={selected?.id === region.id}
+          <div className={styles.visualization}>
+            <div className={styles.navigation}>
+              <label className={styles.chromosome}>
+                <span>Chromosome</span>
+                <select
+                  aria-label="Chromosome"
+                  value={chromosomeId}
+                  onChange={(event) => {
+                    const id = event.target.value;
+                    const region = regions.find(
+                      (item) => item.chromosome === id,
+                    );
+                    const next = region?.start ?? (view ? 0 : 1_024_000);
+                    setChromosomeId(id);
+                    setTarget({ position: next });
+                    setPosition(next);
+                    setSelectedId(region?.id ?? null);
+                  }}
+                >
+                  {chromosomes.map(({ id }) => (
+                    <option key={id} value={id}>
+                      Chr {id}
+                      {regions.some((region) => region.chromosome === id)
+                        ? ` · ${regions.filter((region) => region.chromosome === id).length}`
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <form
+                key={`${chromosomeId}:${target.position}`}
+                className={styles.jump}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const input =
+                    event.currentTarget.elements.namedItem("position");
+                  if (
+                    input instanceof HTMLInputElement &&
+                    input.checkValidity()
+                  )
+                    navigate(input.valueAsNumber - 1);
+                }}
               >
-                <span>
-                  {region.annotations
-                    .map(({ gene }) => gene)
-                    .filter(
-                      (gene, index, genes) => genes.indexOf(gene) === index,
-                    )
-                    .join(" / ")}
-                </span>
-                <span>
-                  Chr {region.chromosome}:{format.format(region.start + 1)}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-        {selected && (
-          <div className={styles.site} aria-label="Selected finding">
-            <div>
-              <strong>{selected.annotations[0]!.gene}</strong>
-              <span>
-                Chr {selected.chromosome}:{format.format(selected.start + 1)}
-                {selected.end > selected.start + 1
-                  ? `–${format.format(selected.end)}`
-                  : ""}
-              </span>
+                <label htmlFor="genome-position">Go to base</label>
+                <div>
+                  <input
+                    id="genome-position"
+                    name="position"
+                    type="number"
+                    min={1}
+                    max={chromosome.length}
+                    step={1}
+                    defaultValue={Math.round(position) + 1}
+                    required
+                  />
+                  <button type="submit" aria-label="Go to base">
+                    ↵
+                  </button>
+                </div>
+              </form>
             </div>
-            <p>
-              {selected.annotations
-                .map(
-                  ({ disease, tier }) =>
-                    `${disease}${tier === "carrier" ? " · Carrier" : ""}`,
-                )
-                .join("; ")}
-            </p>
-            <div className={styles.alleles}>
-              <span>
-                Ref <b>{selected.reference}</b>
-              </span>
-              <span>
-                Alt <b>{selected.alternate}</b>
-              </span>
+            <div className={styles.scene}>
+              <DnaHelix
+                key={chromosomeId}
+                chromosome={chromosome}
+                source={source}
+                highlights={highlights}
+                navigation={target}
+                active={active}
+                mode={mode}
+                onPositionChange={setPosition}
+              />
             </div>
+            <footer className={styles.footer}>
+              <div className={styles.location}>
+                <output aria-label="Current base" aria-live="off">
+                  {format.format(position + 1)}
+                  <span> bp</span>
+                </output>
+                <span>of {format.format(chromosome.length)}</span>
+              </div>
+              <GenomeMinimap
+                chromosome={chromosome}
+                regions={regions}
+                position={position}
+                onNavigate={navigate}
+                onSelect={selectRegion}
+              />
+              <div className={styles.legend} aria-label="Base colors">
+                {(["A", "T", "C", "G"] as const).map((base) => (
+                  <span key={base}>
+                    <i style={{ background: DNA_BASES[base].color }} />
+                    {base}
+                  </span>
+                ))}
+                {view && (
+                  <span>
+                    <i style={{ background: DNA_FINDING_COLOR }} />
+                    Finding
+                  </span>
+                )}
+              </div>
+              <p className={styles.disclaimer}>
+                {view
+                  ? regions.length === 0
+                    ? "No flagged regions in the screened genes. Reference sequence is unavailable here."
+                    : covered
+                      ? "GRCh38 reference · Alternate allele shown separately"
+                      : "Reference unavailable here · N = unknown base"
+                  : "Synthetic sequence · Upload a genome to map findings"}
+              </p>
+            </footer>
           </div>
-        )}
-        <div className={styles.legend} aria-label="Base colors">
-          {(["A", "T", "C", "G"] as const).map((base) => (
-            <span key={base}>
-              <i style={{ background: DNA_BASES[base].color }} />
-              {base}
-            </span>
-          ))}
-          {view && (
-            <span>
-              <i style={{ background: DNA_FINDING_COLOR }} />
-              Finding
-            </span>
+          {view && regions.length > 0 && (
+            <aside className={styles.inspector} aria-label="Mutation details">
+              {selected && (
+                <section className={styles.site} aria-label="Selected finding">
+                  <div className={styles.siteHeading}>
+                    <strong>{selected.annotations[0]!.gene}</strong>
+                    <span dir="ltr">
+                      Chr {selected.chromosome}:
+                      {format.format(selected.start + 1)}
+                      {selected.end > selected.start + 1
+                        ? `–${format.format(selected.end)}`
+                        : ""}
+                    </span>
+                  </div>
+                  <p>
+                    {selected.annotations
+                      .map(
+                        ({ disease, tier }) =>
+                          `${disease}${tier === "carrier" ? " · Carrier" : ""}`,
+                      )
+                      .join("; ")}
+                  </p>
+                  <dl className={styles.alleles}>
+                    <div>
+                      <dt>Reference</dt>
+                      <dd dir="ltr">{selected.reference}</dd>
+                    </div>
+                    <div>
+                      <dt>Alternate</dt>
+                      <dd dir="ltr">{selected.alternate}</dd>
+                    </div>
+                  </dl>
+                </section>
+              )}
+              <details
+                className={styles.findings}
+                aria-label="Regions of interest"
+                open={regions.length <= 3}
+              >
+                <summary>
+                  <span>Browse findings</span>
+                  <span className={styles.findingCount}>{regions.length}</span>
+                </summary>
+                <div className={styles.findingList}>
+                  {regions.map((region) => (
+                    <button
+                      key={region.id}
+                      type="button"
+                      aria-label={`Inspect ${region.annotations.map(({ gene }) => gene).join(", ")} at chr${region.chromosome}:${region.start + 1}`}
+                      onClick={() => selectRegion(region)}
+                      aria-pressed={selected?.id === region.id}
+                    >
+                      <span>
+                        {region.annotations
+                          .map(({ gene }) => gene)
+                          .filter(
+                            (gene, index, genes) =>
+                              genes.indexOf(gene) === index,
+                          )
+                          .join(" / ")}
+                      </span>
+                      <span dir="ltr">
+                        Chr {region.chromosome}:
+                        {format.format(region.start + 1)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </details>
+            </aside>
           )}
         </div>
-        <p className={styles.disclaimer}>
-          {view
-            ? regions.length === 0
-              ? "No flagged regions in the screened genes. Reference sequence is unavailable here."
-              : covered
-                ? "GRCh38 reference · Alternate allele shown separately"
-                : "Reference unavailable here · N = unknown base"
-            : "Synthetic sequence · Upload a genome to map findings"}
-        </p>
-      </footer>
+      </div>
     </section>
   );
 }

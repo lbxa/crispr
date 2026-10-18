@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import {
   ANATOMY_REGIONS,
   type AnatomyRegionId,
@@ -11,6 +11,7 @@ import type { HumanModelHighlight } from "@crispr/human-model";
 import { ManagedWidgetGrid } from "@crispr/widget-grid/managed-react";
 import { WidgetGrid } from "@crispr/widget-grid/react";
 import { FileDropCard } from "./file-drop-card";
+import { DateCard } from "./date-card";
 import { GenomeExplorer } from "./genome-explorer";
 import { GenomeSummaryCard } from "./genome-analysis/summary-card";
 import { useGenomeAnalysis } from "./genome-analysis/use-genome-analysis";
@@ -33,6 +34,23 @@ const REGIONS = ANATOMY_REGIONS.filter(
   ({ id }) => id !== "skin" && id !== "whole_body",
 );
 const PANES = ["left", "right"] as const;
+type Pane = (typeof PANES)[number];
+// 360px files + 548px studio + 440px anatomy + 64px margins + 28px gaps.
+const SHARED_WORKSPACE_QUERY = "(min-width: 90rem)";
+
+function subscribeToWorkspaceWidth(onChange: () => void) {
+  const media = window.matchMedia(SHARED_WORKSPACE_QUERY);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
+function getSharedWorkspace() {
+  return window.matchMedia(SHARED_WORKSPACE_QUERY).matches;
+}
+
+function getServerSharedWorkspace() {
+  return false;
+}
 // Temporarily disabled: manual anatomy highlighting is a developer tool.
 const SHOW_DEV_REGION_CONTROLS = false;
 
@@ -41,21 +59,35 @@ export function ModelWorkspace({
 }: {
   modelUrls: Record<ModelProfile, string>;
 }) {
-  const { analysis, analyze, retry, pause, resume, cancel } =
-    useGenomeAnalysis();
+  const {
+    analysis,
+    analyze,
+    retry,
+    pause,
+    resume,
+    cancel,
+    clear,
+    cacheError,
+    cacheSaved,
+    cacheReady,
+  } = useGenomeAnalysis();
   const genomeFile = analysis.status === "idle" ? null : analysis.file;
   const profile: ModelProfile =
     analysis.status === "complete"
       ? (analysis.report.genome.model_profile ?? "male")
       : "male";
-  const [activePane, setActivePane] = useState<(typeof PANES)[number] | null>(
-    null,
+  const sharedWorkspace = useSyncExternalStore(
+    subscribeToWorkspaceWidth,
+    getSharedWorkspace,
+    getServerSharedWorkspace,
   );
+  const [openPanes, setOpenPanes] = useState<readonly Pane[]>([]);
+  const visiblePanes = sharedWorkspace ? openPanes : openPanes.slice(-1);
+  const paneLayout =
+    visiblePanes.length === 2 ? "both" : (visiblePanes[0] ?? "none");
   const [genomeOpened, setGenomeOpened] = useState(false);
   const [genomeSelection, setGenomeSelection] = useState(0);
-  const paneToggles = useRef<
-    Record<(typeof PANES)[number], HTMLButtonElement | null>
-  >({
+  const paneToggles = useRef<Record<Pane, HTMLButtonElement | null>>({
     left: null,
     right: null,
   });
@@ -74,18 +106,33 @@ export function ModelWorkspace({
   return (
     <div
       className={styles.workspace}
-      data-pane={activePane ?? "none"}
+      data-pane={paneLayout}
+      data-genome-cached={cacheSaved || undefined}
+      data-genome-cache-ready={cacheReady || undefined}
       onKeyDown={(event) => {
         if (
           event.key === "Escape" &&
           !event.defaultPrevented &&
-          activePane &&
+          visiblePanes.length > 0 &&
           !(
             event.target instanceof Element && event.target.closest("[popover]")
           )
         ) {
-          setActivePane(null);
-          paneToggles.current[activePane]?.focus();
+          const target =
+            event.target instanceof Element
+              ? event.target.closest<HTMLElement>("[data-side]")?.dataset.side
+              : undefined;
+          const closingPane =
+            (target === "left" || target === "right") &&
+            visiblePanes.includes(target)
+              ? target
+              : visiblePanes.at(-1)!;
+          setOpenPanes((current) =>
+            sharedWorkspace
+              ? current.filter((pane) => pane !== closingPane)
+              : [],
+          );
+          paneToggles.current[closingPane]?.focus();
         }
       }}
     >
@@ -102,12 +149,21 @@ export function ModelWorkspace({
             }}
             type="button"
             className={styles.paneToggle}
+            data-side={side}
             aria-label={`${side === "left" ? "Left" : "Right"} pane`}
             aria-controls={`workspace-pane-${side}`}
-            aria-expanded={activePane === side}
+            aria-expanded={visiblePanes.includes(side)}
             onClick={() => {
               if (side === "right") setGenomeOpened(true);
-              setActivePane((current) => (current === side ? null : side));
+              setOpenPanes((current) => {
+                const visible = sharedWorkspace ? current : current.slice(-1);
+                if (visible.includes(side)) {
+                  return sharedWorkspace
+                    ? current.filter((pane) => pane !== side)
+                    : [];
+                }
+                return sharedWorkspace ? [...current, side] : [side];
+              });
             }}
           >
             <span
@@ -132,53 +188,76 @@ export function ModelWorkspace({
           className={styles.pane}
           data-side={side}
           aria-label={`${side === "left" ? "Left" : "Right"} workspace pane`}
-          aria-hidden={activePane !== side}
-          inert={activePane !== side}
+          aria-hidden={!visiblePanes.includes(side)}
+          inert={!visiblePanes.includes(side)}
         >
           {side === "left" && (
-            <ManagedWidgetGrid
-              defaultOrder={genomeFile ? ["files", "summary"] : ["files"]}
-              disabled={activePane !== side}
-              aria-label="Left widgets"
-            >
-              <WidgetGrid.Item
-                id="files"
-                size="normal"
-                label="Files"
-                className={styles.widget}
+            <>
+              {cacheError && (
+                <p className={styles.cacheNotice} role="status">
+                  {cacheError}
+                </p>
+              )}
+              <ManagedWidgetGrid
+                defaultOrder={
+                  genomeFile ? ["files", "date", "summary"] : ["files", "date"]
+                }
+                disabled={!visiblePanes.includes(side)}
+                aria-label="Left widgets"
               >
-                <span className={styles.widgetGrip} aria-hidden="true" />
-                <FileDropCard
-                  file={genomeFile}
-                  onFileSelect={(file) => {
-                    setGenomeSelection((current) => current + 1);
-                    void analyze(file);
-                  }}
-                />
-              </WidgetGrid.Item>
-              {genomeFile && analysis.status !== "idle" && (
                 <WidgetGrid.Item
-                  id="summary"
-                  size="normal"
-                  label="Analysis summary"
+                  id="files"
+                  size="small"
+                  label="Files"
                   className={styles.widget}
                 >
                   <span className={styles.widgetGrip} aria-hidden="true" />
-                  <GenomeSummaryCard
-                    analysis={analysis}
-                    onRetry={retry}
-                    onPause={pause}
-                    onResume={resume}
-                    onCancel={cancel}
+                  <FileDropCard
+                    file={genomeFile}
+                    onFileSelect={(file) => {
+                      setGenomeSelection((current) => current + 1);
+                      void analyze(file);
+                    }}
                   />
                 </WidgetGrid.Item>
-              )}
-            </ManagedWidgetGrid>
+                <WidgetGrid.Item
+                  id="date"
+                  size="small"
+                  label="Current date"
+                  className={styles.widget}
+                >
+                  <span className={styles.widgetGrip} aria-hidden="true" />
+                  <DateCard />
+                </WidgetGrid.Item>
+                {genomeFile && analysis.status !== "idle" && (
+                  <WidgetGrid.Item
+                    id="summary"
+                    size="normal"
+                    label="Analysis summary"
+                    className={styles.widget}
+                  >
+                    <span className={styles.widgetGrip} aria-hidden="true" />
+                    <GenomeSummaryCard
+                      analysis={analysis}
+                      onRetry={retry}
+                      onPause={pause}
+                      onResume={resume}
+                      onCancel={cancel}
+                      onClear={() => {
+                        void clear().then(() =>
+                          paneToggles.current.left?.focus(),
+                        );
+                      }}
+                    />
+                  </WidgetGrid.Item>
+                )}
+              </ManagedWidgetGrid>
+            </>
           )}
           {side === "right" && genomeOpened && (
             <GenomeExplorer
               key={genomeSelection}
-              active={activePane === "right"}
+              active={visiblePanes.includes("right")}
               hasGenome={genomeFile !== null}
               report={
                 analysis.status === "complete" ? analysis.report : undefined

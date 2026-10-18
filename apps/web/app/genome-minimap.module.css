@@ -1,5 +1,7 @@
 .minimap {
-  margin: 16px 0 12px;
+  display: grid;
+  min-inline-size: 0;
+  gap: 4px;
 }
 .caption,
 .scale {
@@ -7,20 +9,22 @@
   justify-content: space-between;
   gap: 8px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 .caption > span:last-child {
   color: var(--destructive);
 }
 .scale {
+  direction: ltr;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 9px;
+  font-size: 10px;
 }
 .map {
   position: relative;
-  height: 44px;
-  margin: 0 8px;
+  block-size: 44px;
+  margin-inline: 10px;
   border-radius: 8px;
+  direction: ltr;
 }
 .map:has(.scrub:focus-visible) {
   outline: 1px solid var(--accent);
