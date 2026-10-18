@@ -35,24 +35,24 @@ analysis never reads it.
 
 ## Code map
 
-| Path                                     | Owns                                                                                 |
-| ---------------------------------------- | ------------------------------------------------------------------------------------ |
-| `crispr_backend/panel.py`                | Disease panel, inheritance and mechanism                                             |
-| `crispr_backend/db.py`                   | SQLite schema and connections                                                        |
-| `crispr_backend/vcf.py`                  | Pure-Python VCF reading (no htslib needed on s390x)                                  |
-| `crispr_backend/analysis/`               | Genotype, phenotype, CRISPR design, pipeline. Never reads ground truth               |
-| `crispr_backend/analysis/genome_view.py` | Versioned BED-compatible finding map and bounded GRCh38 reference contexts           |
-| `crispr_backend/analysis/body_map.py`, `anatomy_regions.json` | Validated Gemini condition-to-avatar region mapping and supported display catalog |
-| `crispr_backend/simulation/`             | "Order your kit" flow and simulated customer symptoms; reads ground truth            |
-| `crispr_backend/llm.py`                  | Gemini or Granite, chosen in `.env`; `None` when unavailable                         |
-| `crispr_backend/api.py`                  | FastAPI app                                                                          |
-| `crispr_backend/uploads/`                | Upload admission/capabilities, tus receipts, durable SQLite jobs and separate worker |
-| `scripts/validate_large_genome.py`       | Isolated-process memory measurement and resumability/integrity acceptance            |
-| `scripts/validate_database_genomes.py`   | Read-only streaming/parity acceptance for compressed demo-genome SQLite BLOBs        |
-| `Dockerfile.tusd`, `Caddyfile`           | Native s390x tusd build and authenticated streaming HTTPS proxy                      |
-| `etl/`                                   | Builds the database from HPO, ClinVar, Ensembl, NCBI and 1000 Genomes                |
-| `scripts/evaluate.py`                    | Accuracy on planted diseases and false-alarm rate on controls                        |
-| `scripts/pregenerate_symptoms.py`        | Batch language-model symptom descriptions                                            |
+| Path                                                          | Owns                                                                                 |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `crispr_backend/panel.py`                                     | Disease panel, inheritance and mechanism                                             |
+| `crispr_backend/db.py`                                        | SQLite schema and connections                                                        |
+| `crispr_backend/vcf.py`                                       | Pure-Python VCF reading (no htslib needed on s390x)                                  |
+| `crispr_backend/analysis/`                                    | Genotype, phenotype, CRISPR design, pipeline. Never reads ground truth               |
+| `crispr_backend/analysis/genome_view.py`                      | Versioned BED-compatible finding map and bounded GRCh38 reference contexts           |
+| `crispr_backend/analysis/body_map.py`, `anatomy_regions.json` | Validated Gemini condition-to-avatar region mapping and supported display catalog    |
+| `crispr_backend/simulation/`                                  | "Order your kit" flow and simulated customer symptoms; reads ground truth            |
+| `crispr_backend/llm.py`                                       | Gemini or Granite, chosen in `.env`; `None` when unavailable                         |
+| `crispr_backend/api.py`                                       | FastAPI app                                                                          |
+| `crispr_backend/uploads/`                                     | Upload admission/capabilities, tus receipts, durable SQLite jobs and separate worker |
+| `scripts/validate_large_genome.py`                            | Isolated-process memory measurement and resumability/integrity acceptance            |
+| `scripts/validate_database_genomes.py`                        | Read-only streaming/parity acceptance for compressed demo-genome SQLite BLOBs        |
+| `Dockerfile.tusd`, `Caddyfile`                                | Native s390x tusd build and authenticated streaming HTTPS proxy                      |
+| `etl/`                                                        | Builds the database from HPO, ClinVar, Ensembl, NCBI and 1000 Genomes                |
+| `scripts/evaluate.py`                                         | Accuracy on planted diseases and false-alarm rate on controls                        |
+| `scripts/pregenerate_symptoms.py`                             | Batch language-model symptom descriptions                                            |
 
 ## Using the backend (no data download needed)
 
@@ -65,6 +65,7 @@ only backend code opens the database.
 | ------ | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/health`                  | Liveness                                                                                                             |
 | GET    | `/diseases`                | The panel                                                                                                            |
+| GET    | `/reference/{chromosome}`  | `?start=&end=` → GRCh38 bases (zero-based, ≤ 16,384), `N` where unknown; read from `hg38.2bit`                       |
 | GET    | `/genomes`                 | Demo genomes (id, 1000 Genomes sample, sex); never reveals what was planted                                          |
 | GET    | `/genomes/{id}/genome.vcf` | One genome's panel VCF (~80 KB)                                                                                      |
 | POST   | `/genomes/{id}/analyze`    | `{symptoms, use_llm?}` → report for a chosen genome                                                                  |
@@ -78,8 +79,8 @@ only backend code opens the database.
 | POST   | `/uploads/{id}/complete`   | Verify durable upload and enqueue analysis idempotently                                                              |
 | POST   | `/uploads/{id}/retry`      | Retry a retryable analysis without retransferring the genome                                                         |
 | DELETE | `/uploads/{id}`            | Cancel unfinished transfer/analysis                                                                                  |
-| GET    | `/genes`                   | Genes that can be scored for editing: disease, inheritance, mechanism, variant count                                  |
-| GET    | `/genes/{gene}/crispr`     | Edit plans + CRISPRon scores by gene name; optional `variation_id`, `max_variants` (default 2)                        |
+| GET    | `/genes`                   | Genes that can be scored for editing: disease, inheritance, mechanism, variant count                                 |
+| GET    | `/genes/{gene}/crispr`     | Edit plans + CRISPRon scores by gene name; optional `variation_id`, `max_variants` (default 2)                       |
 
 `use_llm: false` skips the language model and answers in under a second (`use_granite` is
 accepted as the old name), but
@@ -306,6 +307,7 @@ base model that cannot follow instructions.
 ### 2026-10-18
 
 - Security hardening. Caddy now blocks `/internal/*` with a `handle` block (a bare `respond` ran after the catch-all `handle`, so the tus hook and forward-auth routes were publicly reachable), caps non-upload bodies at 21 MB, and sends HSTS, nosniff, frame and referrer headers without a `Server` header. `crispr_backend/security.py` owns allowed origins (this team's Worker and `genome.lbxa.net`, not any `crispr.*.workers.dev`), per-IP rate limits (`CRISPR_ANALYSES_PER_MINUTE` 20, `CRISPR_PLANS_PER_MINUTE` 60, `CRISPR_ORDERS_PER_MINUTE` 5) and a cap on concurrent analyses (`CRISPR_MAX_ACTIVE_ANALYSES` 3), each answering 429 with `Retry-After`. `/docs`, `/redoc` and `/openapi.json` need `CRISPR_PUBLIC_DOCS=1`; VCF parse errors no longer echo input; the scorer binds loopback by default. `deploy.sh` restores a missing `CRISPRON_URL`, keeps `~/data` owner-only (0700/0600) and limits tusd CORS to the same origins; base images are pinned by digest.
+- `/reference/{chromosome}` serves GRCh38 bases from UCSC's `hg38.2bit` (835 MB) in `~/data/reference/` on the server; `deploy.sh` downloads it once. `reference.py` is a pure-Python, byte-order-aware random-access reader (a 4,096-base read takes ~0.3 ms on LinuxONE), so no compiled 2bit library is needed on s390x. Without the file the endpoint returns 503 and the web app falls back to `N`.
 - Avatar mapping uses Gemini only after deterministic clinical findings are finalized. Restrict its schema to the avatar catalog and exact non-carrier finding indices so the model cannot add diagnoses, color carriers or change clinical tiers. Keep disease associations separate from predicted symptoms and genetic edit targets.
 - Persist `body_map` with completed upload reports; reuse it on reads and refreshes. Mapping is optional enrichment, so provider errors leave an explicit unavailable state instead of failing genome analysis. The web contract test checks catalog parity with the actual model regions.
 - Gemini's structured-output grammar rejects larger nested `maxItems` bounds. Keep the outer mapping cardinality limit in Pydantic and validate exact finding coverage locally; retain the supported-region enum in the request schema. Live acceptance covers the full 24-condition panel, not just a single finding.

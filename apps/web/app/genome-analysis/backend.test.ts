@@ -131,14 +131,12 @@ describe("Python genome analysis gateway", () => {
 
 describe("Cloudflare Workers compatibility", () => {
   it("never asks fetch for redirect: error, which Workers rejects, and still refuses redirects", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(null, {
-          status: 302,
-          headers: { Location: "https://elsewhere.example" },
-        }),
-      );
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { Location: "https://elsewhere.example" },
+      }),
+    );
     vi.stubGlobal("fetch", fetch);
     const result = await analyzeGenome({
       vcf: "data",
