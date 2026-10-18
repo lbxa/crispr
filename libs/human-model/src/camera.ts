@@ -25,8 +25,13 @@ export function fitCameraToObject(
   const viewDirection = new THREE.Vector3(0.08, 0.03, 1).normalize();
 
   controls.target.copy(center);
-  controls.minDistance = distance * 0.3;
-  controls.maxDistance = distance * 4;
+  // Fixed framing: the model only turns left/right around its vertical axis.
+  // Distance (zoom) and the vertical viewing angle are pinned to this fit.
+  controls.minDistance = distance;
+  controls.maxDistance = distance;
+  const polarAngle = Math.acos(viewDirection.y);
+  controls.minPolarAngle = polarAngle;
+  controls.maxPolarAngle = polarAngle;
   camera.near = Math.max(distance / 100, 0.01);
   camera.far = distance * 100;
   camera.position.copy(center).addScaledVector(viewDirection, distance);

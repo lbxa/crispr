@@ -6,7 +6,7 @@ const nextConfig = {
   output: "standalone",
   outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)),
   serverExternalPackages: ["@crispr/observability"],
-  transpilePackages: ["@crispr/human-model"],
+  transpilePackages: ["@crispr/human-model", "@crispr/ui"],
   async headers() {
     return [
       {

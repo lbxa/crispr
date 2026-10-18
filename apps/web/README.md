@@ -25,6 +25,9 @@ operations and workflow policy should be added at the application boundary.
 | `app/page.module.css`, `app/globals.css`        | App layout and styling                                                |
 | `app/layout.tsx`                                | Fonts and page metadata                                               |
 | `instrumentation.ts`                            | Node server observability                                             |
+| `app/genome/page.tsx`                           | Genome results route: server shell and top navigation                 |
+| `app/genome/genome-workspace.tsx`               | Body-system rail, `HumanModel` highlights, panel filters, ask bar     |
+| `@crispr/ui/genome/*` (`libs/ui`)               | Summary/edit-plan cards, icons, report types + demo data, styles      |
 | `wrangler.jsonc`, `open-next.config.ts`         | Cloudflare Worker deployment, bindings, and adapter settings          |
 | `scripts/sync-model-assets.ts`                  | Copies the library's generated assets into Next's public directory    |
 | `../../libs/human-model/src/scene.ts`           | Three.js scene lifecycle, not app policy                              |
@@ -144,6 +147,7 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-17
 
+- Added `/genome`, a Superpower-style results dashboard: body-system rail, the 3D twin highlighting the selected finding, summary, the 24-disease panel with search and filters, and the edit-plan concept. It renders `DEMO_REPORT` until it reads a backend `/orders/{id}` report; its light/dark tokens are scoped to the route so `/` keeps its theme. The cards, icons, report data and styles live in `libs/ui` (`@crispr/ui/genome/*`, added to `transpilePackages` for its CSS module); the 3D workspace stays in the route. The 3D model now only turns horizontally at a fixed zoom (pinned in `libs/human-model/src/camera.ts`).
 - The genome explorer adapts to its pane with container queries: DNA and mutation details share columns above 40rem of content width and stack below it. Keep the DNA display height bounded, selected mutation details outside the findings disclosure, and allele text in the main pane flow; long lists start collapsed with a visible count rather than introducing nested scroll areas. Coordinate axes and sequences remain left-to-right when the surrounding controls mirror for RTL.
 - Avatar selection derives from validated `genome.model_profile` metadata rather than a manual toggle. Unknown profiles keep the default visual model; do not infer a female profile from missing Y variants or send the display choice back as clinical sex. Region highlighting remains behind the temporary, disabled `SHOW_DEV_REGION_CONTROLS` switch.
 - `genome_view` is the only app-facing finding/sequence contract. Preserve its assembly and BED-compatible intervals end to end; VCF indels include their anchor, and alternate alleles must not shift reference coordinates. The minimap and scene use the same reference spans; carrier annotations retain their distinct tier.
