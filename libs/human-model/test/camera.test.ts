@@ -22,4 +22,26 @@ describe("fitCameraToObject", () => {
     expect(camera.far).toBeGreaterThan(camera.near);
     expect(controls.target.distanceTo(result.center)).toBeLessThan(0.0001);
   });
+
+  test("pins zoom and the vertical angle so the model only turns horizontally", () => {
+    const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 100);
+    const controls = {
+      maxDistance: Infinity,
+      minDistance: 0,
+      minPolarAngle: 0,
+      maxPolarAngle: Math.PI,
+      target: new THREE.Vector3(),
+      update: () => true,
+    } as unknown as OrbitControls;
+    const model = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.8, 0.3));
+
+    const result = fitCameraToObject(camera, controls, model);
+
+    expect(controls.minDistance).toBe(result.distance);
+    expect(controls.maxDistance).toBe(result.distance);
+    expect(controls.minPolarAngle).toBe(controls.maxPolarAngle);
+    // The camera sits at the pinned angle, measured from the up axis.
+    const offset = camera.position.clone().sub(result.center).normalize();
+    expect(Math.acos(offset.y)).toBeCloseTo(controls.minPolarAngle, 6);
+  });
 });

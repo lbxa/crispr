@@ -57,7 +57,7 @@ export function ModelWorkspace({
           highlights={highlights}
         />
       </section>
-      <p className={styles.hint}>Drag to rotate · Scroll to zoom</p>
+      <p className={styles.hint}>Drag to turn</p>
       <aside className={styles.controls} aria-label="Anatomy controls">
         <fieldset className={styles.profiles}>
           <legend className={styles.srOnly}>Body profile</legend>

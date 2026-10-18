@@ -13,6 +13,9 @@ operations and workflow policy should be added at the application boundary.
 | `app/page.module.css`, `app/globals.css` | App layout and styling                                             |
 | `app/layout.tsx`                         | Fonts and page metadata                                            |
 | `instrumentation.ts`                     | Node server observability                                          |
+| `app/genome/page.tsx`                    | Genome results route: server shell and top navigation              |
+| `app/genome/genome-workspace.tsx`        | Body-system rail, `HumanModel` highlights, panel filters, ask bar  |
+| `@crispr/ui/genome/*` (`libs/ui`)        | Summary/edit-plan cards, icons, report types + demo data, styles   |
 | `wrangler.jsonc`, `open-next.config.ts`  | Cloudflare Worker deployment, bindings, and adapter settings       |
 | `scripts/sync-model-assets.ts`           | Copies the library's generated assets into Next's public directory |
 | `../../libs/human-model/src/scene.ts`    | Three.js scene lifecycle, not app policy                           |
@@ -60,6 +63,7 @@ and recovery](../../docs/deployment.md) before changing the release workflow.
 
 ### 2026-10-17
 
+- Added `/genome`, a Superpower-style results dashboard: body-system rail, the 3D twin highlighting the selected finding, summary, the 24-disease panel with search and filters, and the edit-plan concept. It renders `DEMO_REPORT` until it reads a backend `/orders/{id}` report; its light/dark tokens are scoped to the route so `/` keeps its theme. The cards, icons, report data and styles live in `libs/ui` (`@crispr/ui/genome/*`, added to `transpilePackages` for its CSS module); the 3D workspace stays in the route. The 3D model now only turns horizontally at a fixed zoom (pinned in `libs/human-model/src/camera.ts`).
 - Cloudflare Workers runs the existing Next.js build through OpenNext; native Workers Builds owns releases from `lbxa/crispr` on `main` after the shared verification gate. Next.js 16.4.1 satisfies the pinned adapter's supported version range.
 - Keep the workspace focused on the full-screen anatomy scene. Profile controls stay in a compact dock and region selection opens on demand; avoid restoring explanatory panels, decorative status badges, or duplicate headings.
 - Next.js is the primary UI driver; `HumanModel` is a lazily loaded library component so page delivery and future research workflows are independent of WebGL startup.

@@ -142,6 +142,7 @@
       "name": "@crispr/ui",
       "version": "0.0.0",
       "dependencies": {
+        "@crispr/human-model": "workspace:*",
         "react": "19.2.8",
         "react-dom": "19.2.8",
       },

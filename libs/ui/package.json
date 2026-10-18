@@ -3,6 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
+    "./genome/report": "./src/genome/report.ts",
+    "./genome/genome.module.css": "./src/genome/genome.module.css",
     "./*": "./src/*.tsx"
   },
   "scripts": {
@@ -20,6 +22,7 @@
     "typescript": "7.0.2"
   },
   "dependencies": {
+    "@crispr/human-model": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   }
