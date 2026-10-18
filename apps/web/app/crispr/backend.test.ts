@@ -37,8 +37,24 @@ describe("Python CRISPR plan gateway", () => {
     expect(String(url)).toBe("https://plans.example/genes/MEFV/crispr");
     expect(init).toMatchObject({
       cache: "no-store",
-      redirect: "error",
+      redirect: "manual",
       headers: { "X-Request-Id": "run-1" },
+    });
+  });
+
+  it("does not follow a redirect from the backend", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { Location: "https://elsewhere.example/plan" },
+        }),
+      ),
+    );
+    expect(await call()).toMatchObject({
+      ok: false,
+      error: { code: "backend_unavailable" },
     });
   });
 

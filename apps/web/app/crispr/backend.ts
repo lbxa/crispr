@@ -41,7 +41,9 @@ export async function fetchGenePlan({
       {
         headers: { "X-Request-Id": requestId },
         cache: "no-store",
-        redirect: "error",
+        // Workers rejects redirect: "error" outright. "manual" hands back the 3xx itself, which is not
+        // ok, so a redirecting backend is still treated as a failure rather than followed.
+        redirect: "manual",
         signal: AbortSignal.any([signal, timeout]),
       },
     );

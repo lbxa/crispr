@@ -128,3 +128,27 @@ describe("Python genome analysis gateway", () => {
     ).toMatchObject({ ok: false, error: { code: "canceled" } });
   });
 });
+
+describe("Cloudflare Workers compatibility", () => {
+  it("never asks fetch for redirect: error, which Workers rejects, and still refuses redirects", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { Location: "https://elsewhere.example" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetch);
+    const result = await analyzeGenome({
+      vcf: "data",
+      signal: new AbortController().signal,
+      requestId: "redirect",
+    });
+    expect(fetch.mock.calls[0]![1]).toMatchObject({ redirect: "manual" });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "backend_unavailable" },
+    });
+  });
+});
