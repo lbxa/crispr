@@ -14,7 +14,7 @@ const call = (gene = "MEFV", signal = new AbortController().signal) =>
   fetchGenePlan({ gene, signal, requestId: "run-1" });
 
 describe("Python CRISPR plan gateway", () => {
-  it("validates the plan and keeps backend-only sequence data out of the result", async () => {
+  it("retains validated repair templates for the full report and strips unrelated fields", async () => {
     vi.stubEnv("CRISPR_PLAN_API_URL", "https://plans.example");
     const edit = plan.edits[0]!;
     const fetch = vi.fn().mockResolvedValue(
@@ -23,15 +23,28 @@ describe("Python CRISPR plan gateway", () => {
         edits: [
           {
             ...edit,
-            repair_template: "PRIVATE_TEMPLATE",
-            repair_template_notes: "PRIVATE_NOTES",
+            repair_template: "ACGTACGT",
+            repair_template_notes: "Synthetic template notes",
+            unused_sequence: "PRIVATE_SEQUENCE",
           },
         ],
       }),
     );
     vi.stubGlobal("fetch", fetch);
     const result = await call();
-    expect(result).toEqual({ ok: true, plan });
+    expect(result).toEqual({
+      ok: true,
+      plan: {
+        ...plan,
+        edits: [
+          {
+            ...edit,
+            repair_template: "ACGTACGT",
+            repair_template_notes: "Synthetic template notes",
+          },
+        ],
+      },
+    });
     expect(JSON.stringify(result)).not.toContain("PRIVATE_");
     const [url, init] = fetch.mock.calls[0]!;
     expect(String(url)).toBe("https://plans.example/genes/MEFV/crispr");

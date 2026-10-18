@@ -9,7 +9,6 @@ import {
   type ModelProfile,
 } from "@crispr/human-model/profiles";
 import {
-  ArrowUpRight,
   ChevronDown,
   Heart,
   Mic,
@@ -64,10 +63,7 @@ export function GenomeWorkspace({
 }) {
   const [profile, setProfile] = useState<ModelProfile>("male");
   const [system, setSystem] = useState<SystemFilter>("all");
-  const [openGene, setOpenGene] = useState<string | null>(
-    () =>
-      report.results.find((result) => result.status === "likely")?.gene ?? null,
-  );
+  const [openGene, setOpenGene] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | FindingStatus>(
     "all",
@@ -342,19 +338,18 @@ export function GenomeWorkspace({
                 <DiseaseResult
                   key={result.gene}
                   result={result}
+                  editPlan={
+                    result.gene === report.editPlan.gene ? editPlan : undefined
+                  }
                   open={openGene === result.gene}
-                  onToggle={() =>
-                    setOpenGene((current) =>
-                      current === result.gene ? null : result.gene,
-                    )
+                  onOpenChange={(open) =>
+                    setOpenGene(open ? result.gene : null)
                   }
                 />
               ))
             )}
           </div>
         </div>
-
-        {editPlan}
 
         <p className={styles.disclaimer}>
           Research prototype on simulated genomes. Not medical advice.
@@ -391,21 +386,24 @@ export function GenomeWorkspace({
 
 function DiseaseResult({
   result,
+  editPlan,
   open,
-  onToggle,
+  onOpenChange,
 }: {
   result: PanelResult;
+  editPlan?: ReactNode;
   open: boolean;
-  onToggle: () => void;
+  onOpenChange: (open: boolean) => void;
 }) {
   return (
     <DiseaseCard
       name={result.name}
+      size="sm"
       gene={result.gene}
       status={result.status}
       artwork={DISEASE_ARTWORK[result.gene]}
-      expanded={open}
-      onExpandedChange={onToggle}
+      open={open}
+      onOpenChange={onOpenChange}
     >
       <dl>
         <dt>Inheritance</dt>
@@ -415,11 +413,7 @@ function DiseaseResult({
         <dt>Matched symptoms</dt>
         <dd>{result.matchedSymptoms}</dd>
       </dl>
-      {result.status === "likely" && (
-        <a className={styles.linkish} href="#edit-plan">
-          See edit plan <ArrowUpRight />
-        </a>
-      )}
+      {editPlan}
     </DiseaseCard>
   );
 }

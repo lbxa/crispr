@@ -81,7 +81,10 @@ class VcfScanResult:
 
 
 def _sample_model_profile(headers: Iterable[str], sample_id: str) -> ModelProfile | None:
-    """Resolve explicit SAMPLE Sex metadata for display, never clinical inference."""
+    """Resolve declared or documented reference-sample metadata for display only."""
+    # NIST RM 8398 documents HG001 and its Coriell aliases as female:
+    # https://tsapps.nist.gov/srmext/certificates/8398(QTY10).pdf
+    reference_profile: ModelProfile | None = "female" if sample_id in ("HG001", "NA12878", "GM12878") else None
     profile: ModelProfile | None = None
     for header in headers:
         if not header.startswith("##SAMPLE=<") or not header.endswith(">"):
@@ -113,7 +116,9 @@ def _sample_model_profile(headers: Iterable[str], sample_id: str) -> ModelProfil
         if profile is not None and profile != declared:
             return None
         profile = declared
-    return profile
+    if profile is not None and reference_profile is not None and profile != reference_profile:
+        return None
+    return profile or reference_profile
 
 
 def normalize_chrom(chrom: str) -> str:
@@ -265,7 +270,8 @@ def scan_vcf(
                     or not columns[9]
                 ):
                     raise VcfValidationError("VCF requires a valid header with exactly one sample")
-                model_profile = _sample_model_profile(sample_headers, columns[9])
+                if sample_metadata_bytes <= MAX_SAMPLE_METADATA_BYTES:
+                    model_profile = _sample_model_profile(sample_headers, columns[9])
                 sample_headers.clear()
                 saw_columns = True
                 continue

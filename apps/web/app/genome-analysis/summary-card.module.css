@@ -67,9 +67,7 @@
   gap: 12px;
 }
 .processing p,
-.failure p,
-.summary,
-.disclaimer {
+.failure p {
   margin: 0;
 }
 .spinner {
@@ -78,12 +76,10 @@
   color: var(--accent);
   animation: spin 1s linear infinite;
 }
-.detail,
-.disclaimer {
+.detail {
   color: var(--muted);
 }
 .detail,
-.summary,
 .failure {
   font-size: 13px;
   line-height: 1.65;
@@ -116,10 +112,6 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   letter-spacing: -0.04em;
-}
-.disclaimer {
-  font-size: 11px;
-  line-height: 1.6;
 }
 @container widget-card (max-width: 240px) {
   .card {

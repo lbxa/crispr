@@ -23,7 +23,7 @@ export function SummaryCard({ report }: { report: GenomeReport }) {
         </span>
       </div>
       <div className={styles.tiles}>
-        <a className={styles.tile} href="#edit-plan">
+        <a className={styles.tile} href="#disease-panel">
           <div className={styles.tileTop}>
             <h3>Findings</h3>
             <ArrowUpRight />

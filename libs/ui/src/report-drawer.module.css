@@ -1,0 +1,53 @@
+.drawer[data-swipe-axis="x"] {
+  --drawer-content-width: min(30rem, 90vw);
+}
+.drawer[data-swipe-axis="y"] {
+  --drawer-content-height: 90dvh;
+  --drawer-content-max-height: calc(
+    100dvh - max(16px, env(safe-area-inset-top))
+  );
+}
+.header {
+  position: relative;
+  padding: 24px 64px 20px 24px;
+  text-align: start;
+}
+.close {
+  position: absolute;
+  inset-block-start: 20px;
+  inset-inline-end: 20px;
+}
+.body {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 24px max(24px, env(safe-area-inset-bottom));
+  overflow-wrap: anywhere;
+}
+.body dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.body dt {
+  color: var(--muted);
+}
+.body dd {
+  margin: 0 0 12px;
+}
+.body p {
+  line-height: 1.65;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    transition: none;
+  }
+}

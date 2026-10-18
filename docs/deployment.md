@@ -66,6 +66,10 @@ hostname in the `lbxa.net` zone. The existing `workers.dev` URL remains enabled.
 Commit this route configuration before the next push to `main`; Workers Builds
 deploys the committed configuration, not local edits.
 
+The backend API, upload authorization and tusd CORS rules must allow
+`https://genome.lbxa.net` as well. Deploy the matching backend configuration when
+changing this hostname so direct browser uploads remain available.
+
 Configure Workers Builds at the repository root (`/`):
 
 | Setting                   | Value                                                                     |
