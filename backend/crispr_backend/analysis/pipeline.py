@@ -1,12 +1,15 @@
 """Genome + symptoms -> report. Never reads simulation ground truth (genome_truth)."""
 
 import sqlite3
+from collections import defaultdict
 from dataclasses import asdict
 
 import requests
 
 from crispr_backend.analysis import crispr, genotype, phenotype
+from crispr_backend.analysis.advisability import overview
 from crispr_backend.analysis.genome_view import build_genome_view
+from crispr_backend.efficiency import get_scorer
 from crispr_backend.llm import chat_json, get_llm
 from crispr_backend.panel import Inheritance, Mechanism
 from crispr_backend.vcf import Call, ModelProfile
@@ -36,6 +39,9 @@ class Analyzer:
         self.variants = genotype.VariantIndex(connection)
         self.profiles = phenotype.DiseaseProfiles(connection)
         self.regions = {row["gene"]: dict(row) for row in connection.execute("SELECT * FROM gene_regions")}
+        self.gene_variants: dict[str, list[sqlite3.Row]] = defaultdict(list)
+        for row in connection.execute("SELECT * FROM variants ORDER BY stars DESC, variation_id"):
+            self.gene_variants[row["gene"]].append(row)
 
     def extract_symptoms(self, text: str, use_llm: bool = True) -> tuple[list[phenotype.ExtractedTerm], str]:
         """Returns the terms and how they were found: 'keyword', or the model's name ('gemini', 'granite')."""
@@ -85,6 +91,7 @@ class Analyzer:
 
         report = {
             "conclusion": self._conclusion(findings),
+            "overview": self._overview(findings),
             "findings": findings,
             "genome_view": build_genome_view(findings, self.regions),
             "symptoms": {
@@ -115,20 +122,19 @@ class Analyzer:
             tier = "possible"
 
         edits = []
+        scorer = get_scorer()
         if tier != "carrier":
-            region = self.regions[finding.gene]
             unique = {hit.variation_id: hit for hit in finding.hits}.values()
             for hit in sorted(unique, key=lambda h: -h.stars)[:MAX_VARIANTS_TO_EDIT]:
-                plan = crispr.plan_edit(
-                    region["sequence"],
-                    region["start"],
-                    hit.pos,
-                    hit.ref,
-                    hit.alt,
-                    Inheritance(finding.inheritance),
-                    Mechanism(finding.mechanism),
+                edits.append(
+                    self._edit(
+                        finding.gene,
+                        (hit.variation_id, hit.name, hit.pos, hit.ref, hit.alt),
+                        Inheritance(finding.inheritance),
+                        Mechanism(finding.mechanism),
+                        scorer,
+                    )
                 )
-                edits.append({"variation_id": hit.variation_id, "variant": hit.name, **asdict(plan)})
 
         return {
             "tier": tier,
@@ -142,6 +148,74 @@ class Analyzer:
                 {"score": match.score, "rank": match.rank, "matched_terms": match.matched_terms} if match else None
             ),
             "crispr": edits,
+        }
+
+    def _edit(self, gene: str, variant: tuple, inheritance: Inheritance, mechanism: Mechanism, scorer) -> dict:
+        """One edit plan for one variant, shaped like an entry of a finding's `crispr` list."""
+        variation_id, name, pos, ref, alt = variant
+        region = self.regions[gene]
+        plan = crispr.plan_edit(
+            region["sequence"], region["start"], pos, ref, alt, inheritance, mechanism, scorer=scorer
+        )
+        return {"variation_id": variation_id, "variant": name, **asdict(plan)}
+
+    @staticmethod
+    def _overview(findings: list[dict]) -> dict:
+        """CRISPR verdict for the findings that best explain the symptoms (likely ones, else possible)."""
+        for tier in ("likely", "possible"):
+            edits = [(f["gene"], e) for f in findings if f["tier"] == tier for e in f["crispr"]]
+            if edits:
+                return overview(edits)
+        return overview([])
+
+    def genes(self) -> list[dict]:
+        """Genes with a known edit target: the panel genes that have a reference region and variants."""
+        out = []
+        for disease in self.variants.diseases.values():
+            gene = disease["gene"]
+            if gene in self.regions and self.gene_variants.get(gene):
+                out.append(
+                    {
+                        "gene": gene,
+                        "disease": disease["name"],
+                        "omim_id": disease["omim_id"],
+                        "inheritance": disease["inheritance"],
+                        "mechanism": disease["mechanism"],
+                        "variants": len(self.gene_variants[gene]),
+                    }
+                )
+        return sorted(out, key=lambda g: g["gene"])
+
+    def plan_gene(self, gene: str, variation_id: int | None = None, max_variants: int = MAX_VARIANTS_TO_EDIT) -> dict:
+        """Edit plans for a gene by name: a chosen ClinVar variant, or its best-supported ones.
+
+        Raises KeyError for an unknown gene or a variant that isn't in that gene.
+        """
+        gene = gene.upper()
+        rows = self.gene_variants.get(gene)
+        if gene not in self.regions or not rows:
+            raise KeyError(f"No edit target for gene {gene}")
+        if variation_id is not None:
+            rows = [row for row in rows if row["variation_id"] == variation_id]
+            if not rows:
+                raise KeyError(f"Variant {variation_id} is not a known pathogenic variant of {gene}")
+        scorer = get_scorer()
+        edits = []
+        for row in rows[:max_variants]:
+            disease = self.variants.diseases[row["omim_id"]]
+            edit = self._edit(
+                gene,
+                (row["variation_id"], row["name"], row["pos"], row["ref"], row["alt"]),
+                Inheritance(disease["inheritance"]),
+                Mechanism(disease["mechanism"]),
+                scorer,
+            )
+            edits.append({**edit, "disease": disease["name"], "stars": row["stars"]})
+        return {
+            "gene": gene,
+            "overview": overview([(gene, e) for e in edits]),
+            "edits": edits,
+            "disclaimer": DISCLAIMER,
         }
 
     @staticmethod
@@ -170,7 +244,9 @@ class Analyzer:
                 )
             else:
                 strategy = f["crispr"][0]["strategy"].lower() if f["crispr"] else "no suitable edit found"
-                lines.append(
-                    f"{f['disease']} ({f['gene']}): {f['genotype']['explanation']}. Proposed approach: {strategy}."
-                )
+                line = f"{f['disease']} ({f['gene']}): {f['genotype']['explanation']}. Proposed approach: {strategy}."
+                advisability = f["crispr"][0]["advisability"] if f["crispr"] else None
+                if advisability and advisability["score"] is not None:
+                    line += f" CRISPR advisability {advisability['score']:.0f}/100 ({advisability['band']})."
+                lines.append(line)
         return {"text": " ".join(lines), "source": "template"}

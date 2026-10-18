@@ -77,6 +77,8 @@ only backend code opens the database.
 | POST   | `/uploads/{id}/complete`   | Verify durable upload and enqueue analysis idempotently                                                              |
 | POST   | `/uploads/{id}/retry`      | Retry a retryable analysis without retransferring the genome                                                         |
 | DELETE | `/uploads/{id}`            | Cancel unfinished transfer/analysis                                                                                  |
+| GET    | `/genes`                   | Genes that can be scored for editing: disease, inheritance, mechanism, variant count                                  |
+| GET    | `/genes/{gene}/crispr`     | Edit plans + CRISPRon scores by gene name; optional `variation_id`, `max_variants` (default 2)                        |
 
 `use_llm: false` skips the language model and answers in under a second (`use_granite` is
 accepted as the old name), but
@@ -208,6 +210,35 @@ upload through public HTTPS from the deploying machine. Use the development
 virtualenv above (or `CRISPR_VALIDATION_PYTHON`) for that gate. LinuxONE cannot
 reach its own public IP, so public acceptance must run from an external client;
 in-place file processing tests still run inside the worker on IBM.
+
+## CRISPR advisability (CRISPRon)
+
+Each edit plan gets an `advisability` block: the best CRISPRon-predicted indel frequency (0-100) among
+its guides, a band (high >= 60, moderate >= 40, low) and a plain-language basis. Every guide also
+carries its own `efficiency`, `model_scores` (each of the six ensemble models' predictions) and `energy` (the CRISPRoff
+terms behind the ΔG input: `rna_dna`, `rna_dna_weighted`, `dna_opening`, `spacer_self_fold`, `crisproff_score`), plus its
+30-nt `context`. Guide ranking is unchanged. CRISPRon runs as a separate service
+([scoring_service/](scoring_service/)) in IBM's s390x TensorFlow 2.4.1 container, because the backend's
+Python 3.12 is newer than that TensorFlow supports. Set `CRISPRON_URL` in `.env` to enable it; unset or
+unreachable, reports simply omit the score. The service needs the cloned
+[RTH-tools/crispron](https://github.com/RTH-tools/crispron) repo (SavedModels in
+`data/deep_models/best/*/`, `data/model/energy_dics.pkl`) mounted at `/crispron`, plus the CRISPRoff
+pipeline script that CRISPRon uses for ΔG (ViennaRNA 2.2.5 via Bioconda).
+
+**Setup (verified).** Clone [RTH-tools/crispron](https://github.com/RTH-tools/crispron) (AGPL-3.0) into
+`backend/data/crispron` and add two files from the [CRISPRoff 1.1.2 download](https://rth.dk/resources/crispr/crisproff/download):
+`CRISPRspec_CRISPRoff_pipeline.py` to `bin/` and `energy_dics.pkl` to `data/model/`. In a conda env with
+`python=3.9 biopython=1.78 viennarna=2.2.5 tensorflow=2.4.1 numpy=1.19.5` (conda-forge + bioconda), start the service
+with `CRISPRON_DIR=backend/data/crispron python -m scoring_service.server`. On the 341 guides in CRISPRon's own test
+set it reproduces the published predictions to within 0.005. Then run the API with `CRISPRON_URL=http://127.0.0.1:8001`.
+
+Reports (`overview`) and gene plans carry one verdict: the best advisability score against a threshold
+(`recommended`, `not_recommended`, `unavailable` or `no_edit`). The threshold defaults to 50 and is set with
+`CRISPR_ADVISE_THRESHOLD`; it is provisional until real gene scores have been reviewed.
+
+To try it locally without TensorFlow or the model files, run `.venv/bin/python -m scripts.dev_stack`:
+a synthetic database plus a **mock** scorer on :8001 and the API on :8000, then open the web app's
+`/advisability-test` page.
 
 ## Language model
 
