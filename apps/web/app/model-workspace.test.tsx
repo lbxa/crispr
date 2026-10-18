@@ -205,7 +205,8 @@ describe("workspace widget grids", () => {
     ).toBeNull();
   });
 
-  it("restores saved highlights without a new analysis call and clears them on removal", async () => {
+  it("starts fresh instead of restoring a saved genome, and clears highlights on removal", async () => {
+    vi.stubGlobal("fetch", mockUploadFetch(mappedReport));
     await currentGenomeCache.remember({
       status: "complete",
       file: new File(["VCF"], "saved.vcf"),
@@ -222,13 +223,24 @@ describe("workspace widget grids", () => {
         modelUrls={{ male: "/male.glb", female: "/female.glb" }}
       />,
     );
+    // The saved genome is not brought back (restore is opt-in in useGenomeAnalysis).
     await waitFor(() =>
       expect(
-        screen.getByTestId("human-model").getAttribute("data-highlights"),
-      ).toContain("#ef4444"),
+        screen
+          .getByRole("region", { name: "3D anatomy workspace" })
+          .closest("[data-genome-cache-ready]"),
+      ).toBeTruthy(),
     );
+    const model = screen.getByTestId("human-model");
+    expect(model.getAttribute("data-highlights")).toBe("[]");
     expect(fetch).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Left pane" }));
+    // The file pane starts open, so the summary's remove button is reachable.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Choose a file"), {
+        target: { files: [new File(["VCF"], "affected.vcf")] },
+      });
+    });
+    expect(model.getAttribute("data-highlights")).toContain("#ef4444");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Remove genome" }));
     });
